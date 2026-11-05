@@ -1,0 +1,469 @@
+//@version=6
+indicator("Extrema", overlay=true, max_bars_back=5000)
+import TradingView/ta/8
+groupDisp = "01. Signals"
+showBuySignals  = input.bool(true, "BUY",   group=groupDisp, inline="sig")
+showSellSignals = input.bool(true, "SELL",  group=groupDisp, inline="sig")
+showStatsTable  = input.bool(true, "Stats", group=groupDisp, inline="sig")
+groupTable = "02. Stats Table"
+MAX_STATS_YEARS = 10
+statsYearsInput = input.int(10, "顯示近幾年（含當年）", minval=1, maxval=MAX_STATS_YEARS, group=groupTable, tooltip="可設定 1～10 年，以圖表最後一根 K 棒的年份為基準，包含該年。統計使用圖表已載入資料，上市時間或歷史資料不足時，可能無法涵蓋完整 10 年。")
+tablePosInput=input.string("Top Right","Position",options=["Top Right","Top Left","Bottom Right","Bottom Left"],group=groupTable)
+tableTextSize=input.string("Normal","Size",options=["Tiny","Small","Normal"],group=groupTable)
+gold_col = color.rgb(255, 224, 178)
+groupBuyColors = "03. Buy Colors"
+lane_buy2_col_in = input.color( color.rgb(140, 210, 255), "Light Blue", group=groupBuyColors, inline="buyc1" )
+lane_buy3_col_in = input.color( color.rgb(0, 120, 255), "Blue", group=groupBuyColors, inline="buyc1" )
+lane_buy_gold_col_in = input.color( gold_col, "Gold", group=groupBuyColors, inline="buyc2" )
+groupSellColors = "04. Sell Colors"
+lane_sell_col_in = input.color( color.red, "Red", group=groupSellColors, inline="sellc1" )
+lane_sell_pink_in = input.color( color.rgb(255, 105, 180), "Pink", group=groupSellColors, inline="sellc1" )
+lane_sell_gold_col_in = input.color( gold_col, "Gold", group=groupSellColors, inline="sellc2" )
+groupDotSwitch = "05. Dot Filters"
+useBuyLightBlueDot = input.bool(true, "BUY Light Blue", group=groupDotSwitch, inline="buy1")
+useBuyBlueDot      = input.bool(true, "BUY Blue",       group=groupDotSwitch, inline="buy1")
+useBuyGoldDot      = input.bool(true, "BUY Gold",       group=groupDotSwitch, inline="buy1")
+useSellRedDot      = input.bool(true, "SELL Red",       group=groupDotSwitch, inline="sell1")
+useSellPinkDot     = input.bool(true, "SELL Pink",      group=groupDotSwitch, inline="sell1")
+useSellGoldDot     = input.bool(true, "SELL Gold",      group=groupDotSwitch, inline="sell1")
+groupPosition = "06. Position Level"
+showPositionRows = input.bool(true, "Show Position Level", group=groupPosition)
+marketSymbol       = input.symbol("NASDAQ:NDX", "Market Benchmark", group=groupPosition)
+marketTf           = input.timeframe("D", "Benchmark Timeframe", group=groupPosition)
+marketLookbackBars = input.int(1260, "High Lookback Bars", minval=100, group=groupPosition)
+tableHeaderBg = color.rgb(45, 45, 45)
+tableCellBg   = color.rgb(20, 20, 20)
+tableFrameCol = color.rgb(100, 100, 100)
+tableTextCol  = color.white
+eqTrendLock       = 35.0
+eq_smoothScore    = 3
+eq_scoreClampMode = "SmoothThenClamp"
+eq_epsMode        = "mintick"
+eq_useTrend       = true
+eq_emaFastLen     = 50
+eq_emaSlowLen     = 200
+eq_trendDeadband  = 0.0
+eq_useMomentum    = true
+eq_rsiLen         = 14
+eq_rsiBull        = 60
+eq_rsiBear        = 40
+eq_cciLen         = 20
+eq_cciBull        = 100
+eq_cciBear        = 100
+eq_useVolume      = true
+eq_cvdSmoothLen   = 21
+eq_cvdNormMode    = "None"
+eq_cvdNormLen     = 100
+eq_cvdDeadband    = 0.0
+eq_useVolaConf    = true
+eq_bbLen          = 20
+eq_bbMult         = 2.0
+eq_bwLookback     = 200
+eq_squeezePct     = 0.2
+eq_minConf        = 0.6
+eq_maxConf        = 1.0
+eq_confMap        = "Step"
+eq_wTrend         = 0.45
+eq_wMomentum      = 0.35
+eq_wVolume        = 0.20
+w_rsi_const    = 0.6
+w_cci_const    = 0.4
+cci_norm_const = 200.0
+bb_length_fixed      = 20
+bb_mult_fixed        = 2.0
+rsi_length_fixed     = 14
+rsi_oversold_fixed   = 27
+cci_length_fixed     = 25
+cci_lower_band_fixed = -200
+sma360_len_fixed = 360
+buy_rsi_cap_fixed = 35
+drop_pct_fixed    = 18.0 * 0.01
+sell_rsi_arm_fixed   = 70.0
+sell_rsi_force_fixed = 80.0
+sell_cooldown_fixed  = 5
+clamp_safe(x, lo, hi) =>
+    math.max(lo, math.min(x, hi))
+tanh_safe(x) =>
+    x2 = clamp_safe(x, -5.0, 5.0)
+    e  = math.exp(2.0 * x2)
+    (e - 1.0) / (e + 1.0)
+f_pct_rank(src, lb) =>
+    float pct = na
+    if bar_index >= lb
+        float cnt = 0.0
+        for i = 0 to lb - 1
+            cnt += (nz(src[i]) <= src) ? 1.0 : 0.0
+        pct := (cnt / lb) * 100.0
+    pct
+eq_toScore(bull, bear) =>
+    bull ? 1.0 : bear ? -1.0 : 0.0
+eq_clamp(x, lo, hi) =>
+    math.max(lo, math.min(hi, x))
+eq_eps = eq_epsMode == "mintick" ? syminfo.mintick : 1e-6
+eq_safeDiv(n, d) =>
+    dd = math.abs(d) < eq_eps ? (d >= 0 ? eq_eps : -eq_eps) : d
+    n / dd
+eq_smoothstep01(x) =>
+    t = eq_clamp(x, 0.0, 1.0)
+    t * t * (3.0 - 2.0 * t)
+f_table_pos(pos) =>
+    pos == "Top Left" ? position.top_left :
+     pos == "Bottom Right" ? position.bottom_right :
+     pos == "Bottom Left" ? position.bottom_left :
+     position.top_right
+f_text_size(sz) =>
+    sz == "Tiny" ? size.tiny :
+     sz == "Normal" ? size.normal :
+     size.small
+f_lerp_clamped(x, x1, x2, y1, y2) =>
+    t = clamp_safe((x - x1) / math.max(x2 - x1, 0.0001), 0.0, 1.0)
+    y1 + t * (y2 - y1)
+f_position_level(dd) =>
+    na(dd) ? na :
+     dd <= 3.0 ? f_lerp_clamped(dd, 0.0, 3.0, 3.0, 8.0) :
+     dd <= 5.0 ? f_lerp_clamped(dd, 3.0, 5.0, 8.0, 12.0) :
+     dd <= 8.0 ? f_lerp_clamped(dd, 5.0, 8.0, 12.0, 18.0) :
+     dd <= 10.0 ? f_lerp_clamped(dd, 8.0, 10.0, 18.0, 25.0) :
+     dd <= 12.0 ? f_lerp_clamped(dd, 10.0, 12.0, 25.0, 35.0) :
+     dd <= 15.0 ? f_lerp_clamped(dd, 12.0, 15.0, 35.0, 45.0) :
+     dd <= 18.0 ? f_lerp_clamped(dd, 15.0, 18.0, 45.0, 55.0) :
+     dd <= 20.0 ? f_lerp_clamped(dd, 18.0, 20.0, 55.0, 65.0) :
+     dd <= 23.0 ? f_lerp_clamped(dd, 20.0, 23.0, 65.0, 74.0) :
+     dd <= 26.0 ? f_lerp_clamped(dd, 23.0, 26.0, 74.0, 82.0) :
+     dd <= 29.0 ? f_lerp_clamped(dd, 26.0, 29.0, 82.0, 88.0) :
+     dd <= 32.0 ? f_lerp_clamped(dd, 29.0, 32.0, 88.0, 95.0) :
+     dd <= 35.0 ? f_lerp_clamped(dd, 32.0, 35.0, 95.0, 100.0) :
+     100.0
+f_position_zone(dd) =>
+    na(dd) ? "N/A" :
+     dd < 5.0 ? "HIGH" :
+     dd < 10.0 ? "LIGHT" :
+     dd < 20.0 ? "BUILD" :
+     dd < 29.0 ? "ACCUMULATE" :
+     dd < 35.0 ? "DEEP VALUE" :
+     "MAX FEAR"
+f_pct_txt(x) =>
+    na(x) ? "-" : str.tostring(x, "#.0") + "%"
+basis  = ta.sma(close, bb_length_fixed)
+dev    = bb_mult_fixed * ta.stdev(close, bb_length_fixed)
+upper  = basis + dev
+lower  = basis - dev
+rsi_bb = ta.rsi(close, rsi_length_fixed)
+cci_src = hlc3
+ma_cci  = ta.sma(cci_src, cci_length_fixed)
+cci     = (cci_src - ma_cci) / (0.015 * ta.dev(cci_src, cci_length_fixed))
+sma360 = ta.sma(close, sma360_len_fixed)
+sell_above_sma360 = close > sma360
+var float lastBuyPrice = na
+var float lastBuyRsi   = na
+hasPrevBuy    = (not na(lastBuyPrice)) and (not na(lastBuyRsi))
+price_drop_ok = hasPrevBuy and (low <= lastBuyPrice * (1.0 - drop_pct_fixed))
+buy_signal_base  = (close < lower) and (rsi_bb < rsi_oversold_fixed) and (cci <= cci_lower_band_fixed) and (rsi_bb <= buy_rsi_cap_fixed)
+buy_signal_addon = hasPrevBuy and price_drop_ok and (rsi_bb > lastBuyRsi) and (rsi_bb <= buy_rsi_cap_fixed)
+buy_signal       = buy_signal_base or buy_signal_addon
+if buy_signal
+    lastBuyPrice := close
+    lastBuyRsi   := rsi_bb
+var bool  sellArmed   = false
+var float sellArmHigh = na
+var int   lastSellBar = na
+cooldown_ok = na(lastSellBar) or (bar_index - lastSellBar >= sell_cooldown_fixed)
+if (rsi_bb > sell_rsi_arm_fixed) and (not sellArmed)
+    sellArmed := true
+    sellArmHigh := high
+new_higher_high = sellArmed and (high > sellArmHigh)
+if sellArmed
+    sellArmHigh := math.max(sellArmHigh, high)
+sell_signal_force   = sell_above_sma360 and cooldown_ok and (rsi_bb >= sell_rsi_force_fixed)
+sell_signal_delayed = sell_above_sma360 and cooldown_ok and sellArmed and new_higher_high and (rsi_bb < sell_rsi_arm_fixed)
+sell_signal         = sell_signal_force or sell_signal_delayed
+if sell_signal
+    sellArmed := false
+    sellArmHigh := na
+    lastSellBar := bar_index
+rsiN = (rsi_bb - 50.0) / 50.0
+cciN = tanh_safe(cci / cci_norm_const)
+wSum = math.max(w_rsi_const + w_cci_const, 0.0001)
+mix  = (w_rsi_const * rsiN + w_cci_const * cciN) / wSum
+val  = mix * 100.0
+val_rank = f_pct_rank(val, 360)
+redGlow  = not na(val_rank) and val_rank >= 95.0
+f_autoLowerTF() =>
+    string tf = "60"
+    if timeframe.isseconds
+        tf := "1S"
+    else if timeframe.isintraday
+        int m = timeframe.multiplier
+        if m <= 1
+            tf := "1S"
+        else if m <= 15
+            tf := "1"
+        else if m <= 60
+            tf := "5"
+        else if m <= 240
+            tf := "15"
+        else
+            tf := "60"
+    else if timeframe.isdaily
+        tf := "60"
+    else
+        tf := "240"
+    tf
+lowerTimeframe = f_autoLowerTF()
+[openVol, maxVol, minVol, lastVol] = ta.requestVolumeDelta(lowerTimeframe)
+vd_len     = 200
+vd_height  = 55.0
+vd_weak_th = 20.0
+vd_peak  = ta.highest(math.max(math.abs(maxVol), math.abs(minVol)), vd_len)
+vd_scale = vd_peak == 0.0 ? 1.0 : vd_peak
+vd_c       = vd_height * (lastVol / vd_scale)
+vd_c2      = math.max(-100.0, math.min(vd_c, 100.0))
+vd_is_weak = math.abs(vd_c2) < vd_weak_th
+var float cumVol = 0.0
+cumVol += nz(volume)
+eq_emaFast = ta.ema(close, eq_emaFastLen)
+eq_emaSlow = ta.ema(close, eq_emaSlowLen)
+eq_gapN    = eq_safeDiv(eq_emaFast - eq_emaSlow, close)
+float eq_trendScore = 0.0
+if eq_useTrend
+    bull = eq_emaFast > eq_emaSlow and eq_gapN > eq_trendDeadband
+    bear = eq_emaFast < eq_emaSlow and -eq_gapN > eq_trendDeadband
+    eq_trendScore := eq_toScore(bull, bear)
+eq_rsi  = ta.rsi(close, eq_rsiLen)
+eq_cci2 = ta.cci(close, eq_cciLen)
+eq_momRaw = (eq_toScore(eq_rsi > eq_rsiBull, eq_rsi < eq_rsiBear) + eq_toScore(eq_cci2 > eq_cciBull, eq_cci2 < -eq_cciBear)) * 0.5
+float eq_momScore = 0.0
+if eq_useMomentum
+    eq_momScore := eq_momRaw > 0.25 ? 1.0 : eq_momRaw < -0.25 ? -1.0 : 0.0
+float eq_volDelta = 0.0
+if close > open
+    eq_volDelta := volume
+else if close < open
+    eq_volDelta := -volume
+else
+    eq_volDelta := 0.0
+eq_cvd      = ta.cum(eq_volDelta)
+eq_cvdMA    = ta.ema(eq_cvd, eq_cvdSmoothLen)
+eq_cvdSlope = eq_cvdMA - eq_cvdMA[1]
+eq_atr14   = ta.atr(14)
+eq_volMA50 = ta.sma(volume, 50)
+float eq_cvdSlopeNorm = eq_cvdSlope
+if eq_cvdNormMode == "ZScore(Stdev)"
+    eq_cvdSlopeNorm := eq_safeDiv(eq_cvdSlope, ta.stdev(eq_cvdSlope, eq_cvdNormLen))
+else if eq_cvdNormMode == "ATR"
+    eq_cvdSlopeNorm := eq_safeDiv(eq_cvdSlope, eq_atr14)
+else if eq_cvdNormMode == "VolumeMA"
+    eq_cvdSlopeNorm := eq_safeDiv(eq_cvdSlope, eq_volMA50)
+float eq_volScore = 0.0
+if eq_useVolume
+    eq_volScore := eq_toScore(eq_cvdSlopeNorm > eq_cvdDeadband, eq_cvdSlopeNorm < -eq_cvdDeadband)
+eq_basis2 = ta.sma(close, eq_bbLen)
+eq_dev2   = ta.stdev(close, eq_bbLen) * eq_bbMult
+eq_bbW    = (2.0 * eq_dev2) / math.max(math.abs(eq_basis2), eq_eps)
+eq_lo   = ta.lowest(eq_bbW, eq_bwLookback)
+eq_hi   = ta.highest(eq_bbW, eq_bwLookback)
+eq_rank = eq_hi == eq_lo ? 0.5 : (eq_bbW - eq_lo) / (eq_hi - eq_lo)
+float eq_confidence = 1.0
+if eq_useVolaConf
+    if eq_confMap == "Step"
+        eq_confidence := eq_rank <= eq_squeezePct ? eq_minConf : eq_maxConf
+    else
+        t = eq_clamp(eq_safeDiv(eq_rank - eq_squeezePct, 1.0 - eq_squeezePct), 0.0, 1.0)
+        eq_confidence := eq_confMap == "Linear" ? (eq_minConf + t * (eq_maxConf - eq_minConf)) : (eq_minConf + eq_smoothstep01(t) * (eq_maxConf - eq_minConf))
+eq_wSum     = eq_wTrend + eq_wMomentum + eq_wVolume
+eq_wSumSafe = math.abs(eq_wSum) < eq_eps ? 1.0 : eq_wSum
+eq_raw    = (eq_trendScore * eq_wTrend + eq_momScore * eq_wMomentum + eq_volScore * eq_wVolume) / eq_wSumSafe
+eq_rawAdj = eq_raw * eq_confidence
+float eq_score = 0.0
+if eq_scoreClampMode == "ClampThenSmooth"
+    eq_score := ta.ema(eq_clamp(eq_rawAdj, -1.0, 1.0), eq_smoothScore)
+else
+    eq_score := eq_clamp(ta.ema(eq_rawAdj, eq_smoothScore), -1.0, 1.0)
+eq_score_100 = eq_score * 100.0
+buy_c1 = close < lower
+buy_c2 = rsi_bb < rsi_oversold_fixed
+buy_c3 = cci <= cci_lower_band_fixed
+buy_c4 = not vd_is_weak
+int buy_score = (buy_c1 ? 1 : 0) + (buy_c2 ? 1 : 0) + (buy_c3 ? 1 : 0) + (buy_c4 ? 1 : 0)
+buy_light_blue_raw = buy_score == 2
+buy_blue_raw       = buy_score == 3
+buy_gold_raw       = buy_score >= 4
+buy_light_blue_on = buy_light_blue_raw and useBuyLightBlueDot
+buy_blue_on       = buy_blue_raw and useBuyBlueDot
+buy_gold_on       = buy_gold_raw and useBuyGoldDot
+color buy_col = buy_gold_on ? lane_buy_gold_col_in : buy_blue_on ? lane_buy3_col_in : buy_light_blue_on ? lane_buy2_col_in : na
+sell_c1 = sell_above_sma360
+sell_c2 = cooldown_ok
+sell_c3 = sell_signal_force or sell_signal_delayed
+sell_c4 = rsi_bb >= sell_rsi_arm_fixed
+int sell_score = (sell_c1 ? 1 : 0) + (sell_c2 ? 1 : 0) + (sell_c3 ? 1 : 0) + (sell_c4 ? 1 : 0)
+sell_red_base = sell_score >= 3
+sell_gold_raw = sell_red_base and (not vd_is_weak)
+osc_rank_360 = f_pct_rank(val, 360)
+osc_top20     = not na(osc_rank_360) and osc_rank_360 >= 80.0
+con           = eq_score_100
+sell_pink_raw = osc_top20 and con > 99.0
+sellGrid = sell_red_base or sell_pink_raw
+sellCondition1Raw = con > 90.0 and redGlow and sellGrid
+var int sell1State = 0
+var int sell1GlowOffBar = na
+bool sellCondition1 = false
+if sellCondition1Raw
+    sell1State := 1
+    sell1GlowOffBar := na
+if sell1State == 1
+    if not redGlow
+        sell1State := 2
+        sell1GlowOffBar := bar_index
+if sell1State == 2 and not na(sell1GlowOffBar)
+    if bar_index == sell1GlowOffBar + 1
+        if not redGlow
+            sellCondition1 := true
+            sell1State := 0
+            sell1GlowOffBar := na
+        else
+            sell1State := 1
+            sell1GlowOffBar := na
+divMaxBars = 30
+obStart = redGlow and not redGlow[1]
+obEnd   = not redGlow and redGlow[1]
+f_positive_div_path_ok(offsetA, offsetB) =>
+    int lo = math.min(offsetA, offsetB)
+    int hi = math.max(offsetA, offsetB)
+    bool ok = hi <= bar_index and hi <= 4990 and hi - lo <= 500
+    if ok
+        for i = lo to hi
+            float v = nz(val[i])
+            ok := ok and v >= 0.0
+    ok
+var bool  obInSeg = false
+var float obMaxP = na
+var int   obMaxB = na
+var float obMaxV = na
+var int   prevB_ob = na
+var float prevP_ob = na
+var float prevV_ob = na
+bool positiveDivSignal = false
+if obStart
+    obInSeg := true
+    obMaxP := high
+    obMaxB := bar_index
+    obMaxV := val
+if obInSeg and redGlow
+    if high > obMaxP
+        obMaxP := high
+        obMaxB := bar_index
+        obMaxV := val
+if obEnd
+    obInSeg := false
+    if not na(prevB_ob)
+        bool inRange = (obMaxB - prevB_ob) <= divMaxBars and (obMaxB - prevB_ob) > 0
+        bool indOK = prevV_ob > obMaxV
+        bool pxOK = obMaxP > prevP_ob
+        bool pathOK = f_positive_div_path_ok(bar_index - prevB_ob, bar_index - obMaxB)
+        bool positiveOK = prevV_ob > 0.0 and obMaxV > 0.0
+        if inRange and indOK and pxOK and pathOK and positiveOK
+            positiveDivSignal := true
+    prevB_ob := obMaxB
+    prevP_ob := obMaxP
+    prevV_ob := obMaxV
+sellCondition2 = positiveDivSignal[1]
+finalSellSignal = (sellCondition1 or sellCondition2) and val >= 0.0
+[mktClose,mktHighRef]=request.security(marketSymbol,marketTf,[close,ta.highest(high,marketLookbackBars)])
+marketDD      = na(mktHighRef) or mktHighRef == 0.0 ? na : ((mktHighRef - mktClose) / mktHighRef) * 100.0
+positionLevel = f_position_level(marketDD)
+positionZone  = f_position_zone(marketDD)
+buy_plot_signal       = showBuySignals and not na(buy_col)
+sell_plot_signal      = showSellSignals and useSellRedDot and finalSellSignal
+sell_gold_plot_signal = showSellSignals and useSellGoldDot and sell_gold_raw
+plotshape( buy_plot_signal, title="BUY Circle", style=shape.circle, location=location.belowbar, color=buy_col, size=size.tiny, text="" )
+plotshape( sell_plot_signal, title="SELL Circle", style=shape.circle, location=location.abovebar, color=lane_sell_col_in, size=size.tiny, text="" )
+plotshape( sell_gold_plot_signal, title="SELL Gold Circle", style=shape.circle, location=location.abovebar, color=lane_sell_gold_col_in, size=size.tiny, text="" )
+// 統計沿用訊號隔日開盤價；當根 BUY 收盤通知不計入尚未發生的隔日成交。
+currentYear=year(time,"Asia/Taipei")
+var int statsYear=currentYear
+var counts=array.new_int(MAX_STATS_YEARS,0)
+var sums=array.new_float(MAX_STATS_YEARS,0.0)
+if currentYear>statsYear
+    for i=1 to math.min(currentYear-statsYear,MAX_STATS_YEARS)
+        array.unshift(counts,0)
+        array.pop(counts)
+        array.unshift(sums,0.0)
+        array.pop(sums)
+    statsYear:=currentYear
+if bar_index>0 and buy_plot_signal[1]
+    d=currentYear-year(time[1],"Asia/Taipei")
+    if d>=0 and d<MAX_STATS_YEARS
+        array.set(counts,d,array.get(counts,d)+1)
+        array.set(sums,d,array.get(sums,d)+open)
+buyCountY0=array.get(counts,0)
+avgY=buyCountY0>0?array.get(sums,0)/buyCountY0:na
+pnlY=na(avgY)?na:(close/avgY-1)*100
+avgTxt=na(avgY)?"-":str.tostring(avgY,format.mintick)
+pxTxt=str.tostring(close,format.mintick)
+pnlTxt=na(pnlY)?"-":(pnlY>=0?"+":"")+str.tostring(pnlY,"#.##")+"%"
+// 市場：1 台股、2 美股、3 加密；資產：1 股票、2 存託憑證、3 基金、4 加密。
+exchangeCode=str.replace_all(str.replace_all(syminfo.prefix,"_DLY",""),"_DL","")
+marketCode=syminfo.type=="crypto"?3:exchangeCode=="TWSE" or exchangeCode=="TPEX"?1:exchangeCode=="NASDAQ" or exchangeCode=="NYSE" or exchangeCode=="AMEX" or exchangeCode=="NYSEARCA" or exchangeCode=="ARCA" or exchangeCode=="BATS" or exchangeCode=="CBOE" or exchangeCode=="OTC"?2:0
+assetCode=syminfo.type=="stock"?1:syminfo.type=="dr"?2:syminfo.type=="fund"?3:syminfo.type=="crypto"?4:0
+plot(marketCode,"Make Market",display=display.none)
+plot(assetCode,"Make Asset",display=display.none)
+plot(buyCountY0,"Make Count",display=display.none)
+plot(nz(avgY,-1),"Make Avg",display=display.none)
+plot(nz(pnlY,-999999),"Make PnL",display=display.none)
+plot(time_close,"Make Time",display=display.none)
+plot(currentYear,"Make Year",display=display.none)
+f_json(x)=>
+    str.replace_all(str.replace_all(str.replace_all(str.replace_all(x,"\\","\\\\"),"\"","\\\""),"\n","\\n"),"\r","\\r")
+alertcondition(buy_plot_signal and barstate.isconfirmed and marketCode>0 and assetCode>0,title="BUY → Make",message="{\"schema_version\":1,\"signal\":\"BUY\",\"exchange\":\"{{exchange}}\",\"ticker\":\"{{ticker}}\",\"ticker_id\":\"{{exchange}}:{{ticker}}\",\"name_hint\":\"\",\"currency\":\"{{syminfo.currency}}\",\"timeframe\":\"{{interval}}\",\"price\":\"{{close}}\",\"market_code\":{{plot(\"Make Market\")}},\"asset_code\":{{plot(\"Make Asset\")}},\"timestamp_ms\":{{plot(\"Make Time\")}},\"stats_year\":{{plot(\"Make Year\")}},\"buy_count\":{{plot(\"Make Count\")}},\"avg_entry\":\"{{plot(\"Make Avg\")}}\",\"pnl_pct\":\"{{plot(\"Make PnL\")}}\",\"stats_basis\":\"next_bar_open\",\"pending_buy\":true,\"is_test\":false}")
+makeMessage="{"+"\"schema_version\":1"+",\"signal\":\"BUY\""+",\"exchange\":\""+f_json(syminfo.prefix)+"\""+",\"ticker\":\""+f_json(syminfo.ticker)+"\""+",\"ticker_id\":\""+f_json(syminfo.prefix+":"+syminfo.ticker)+"\""+",\"name_hint\":\""+f_json(syminfo.description)+"\""+",\"currency\":\""+f_json(syminfo.currency)+"\""+",\"timeframe\":\""+f_json(timeframe.period)+"\""+",\"price\":\""+pxTxt+"\""+",\"market_code\":"+str.tostring(marketCode)+",\"asset_code\":"+str.tostring(assetCode)+",\"timestamp_ms\":"+str.tostring(time_close)+",\"stats_year\":"+str.tostring(currentYear)+",\"buy_count\":"+str.tostring(buyCountY0)+",\"avg_entry\":\""+str.tostring(nz(avgY,-1),format.mintick)+"\""+",\"pnl_pct\":\""+str.tostring(nz(pnlY,-999999),"#.##")+"\""+",\"stats_basis\":\"next_bar_open\""+",\"pending_buy\":true"+",\"is_test\":false"+"}"
+if barstate.isconfirmed and buy_plot_signal and marketCode>0 and assetCode>0
+    alert(makeMessage,alert.freq_once_per_bar_close)
+// 表頭 + 年度列 + 持倉資訊（選配三列）+ 今年均價盈虧。
+tableRows = statsYearsInput + (showPositionRows ? 5 : 2)
+var table buyTable=table.new(f_table_pos(tablePosInput),3,tableRows,border_width=1,frame_color=tableFrameCol,border_color=tableFrameCol)
+f_cell(c,r,t,bg,fg)=>
+    table.cell(buyTable,c,r,t,bgcolor=bg,text_color=fg,text_size=f_text_size(tableTextSize))
+if barstate.islast
+    table.clear(buyTable,0,0,2,tableRows-1)
+    if showStatsTable
+        f_cell(0,0,"Year",tableHeaderBg,tableTextCol)
+        f_cell(1,0,"Buy Count",tableHeaderBg,tableTextCol)
+        f_cell(2,0,"Avg Price",tableHeaderBg,tableTextCol)
+        for i=0 to statsYearsInput-1
+            n=array.get(counts,i)
+            f_cell(0,i+1,str.tostring(currentYear-i),tableCellBg,tableTextCol)
+            f_cell(1,i+1,str.tostring(n),tableCellBg,tableTextCol)
+            f_cell(2,i+1,n>0?str.tostring(array.get(sums,i)/n,format.mintick):"-",tableCellBg,tableTextCol)
+        positionRow=statsYearsInput+1
+        if showPositionRows
+            f_cell(0,positionRow,"Position Level",tableHeaderBg,tableTextCol)
+            f_cell(1,positionRow,f_pct_txt(positionLevel),tableCellBg,tableTextCol)
+            f_cell(2,positionRow,positionZone,tableCellBg,tableTextCol)
+            f_cell(0,positionRow+1,"Nasdaq DD",tableCellBg,tableTextCol)
+            f_cell(1,positionRow+1,f_pct_txt(marketDD),tableCellBg,tableTextCol)
+            f_cell(2,positionRow+1,marketSymbol,tableCellBg,tableTextCol)
+            f_cell(0,positionRow+2,"Rule",tableCellBg,tableTextCol)
+            f_cell(1,positionRow+2,"32% DD",tableCellBg,tableTextCol)
+            f_cell(2,positionRow+2,"95% Level",tableCellBg,tableTextCol)
+        row=positionRow+(showPositionRows?3:0)
+        f_cell(0,row,"今年均價盈虧",tableHeaderBg,tableTextCol)
+        f_cell(1,row,pnlTxt,tableCellBg,na(pnlY)?tableTextCol:pnlY>=0?color.lime:color.red)
+        f_cell(2,row,"Avg → Now",tableCellBg,tableTextCol)
+groupMRBands = "07. Mean Reversion Bands"
+mr_sourceInput=input.source(close,"計算來源",group=groupMRBands)
+mr_lengthInput=input.int(20,"計算週期",minval=2,group=groupMRBands)
+mr_multiplierInput=input.float(2.0,"標準差倍數",minval=0.1,step=0.1,group=groupMRBands)
+mr_basis     = ta.sma(mr_sourceInput, mr_lengthInput)
+mr_deviation = ta.stdev(mr_sourceInput, mr_lengthInput)
+mr_upperBand = mr_basis + mr_deviation * mr_multiplierInput
+mr_lowerBand = mr_basis - mr_deviation * mr_multiplierInput
+plot(mr_upperBand,title="MR 上軌",color=color.gray,linewidth=1)
+plot(mr_lowerBand,title="MR 下軌",color=color.gray,linewidth=1)
+
+// Python 網站匯出欄位：使用原版實際顯示的買點；不要改成 buy_signal。
+plot(buy_plot_signal ? 1 : 0, title="EX Buy", display=display.data_window)
+plot(buy_gold_on ? 3 : buy_blue_on ? 2 : buy_light_blue_on ? 1 : 0, title="EX Type", display=display.data_window)
+plot(barstate.isconfirmed ? 1 : 0, title="EX Closed", display=display.data_window)
+plot(sell_plot_signal ? 1 : 0, title="EX Sell", display=display.data_window)
+plot(sell_gold_plot_signal ? 1 : 0, title="EX SellGold", display=display.data_window)
