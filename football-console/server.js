@@ -154,7 +154,7 @@ const server=http.createServer(async(req,res)=>{
   const safePath=path.normalize(decodeURIComponent(url.pathname)).replace(/^([/\\]*\.\.[/\\])+/, '');
   const file=path.resolve(BASE,'.'+(safePath==='/'?'/analysis.html':safePath));
   if(!file.startsWith(BASE+path.sep))return send(res,403,{error:'Forbidden'});
-  fs.readFile(file,(err,buf)=>{if(err)return send(res,404,{error:'Not found'});res.writeHead(200,{'content-type':MIME[path.extname(file)]||'application/octet-stream','x-content-type-options':'nosniff','referrer-policy':'no-referrer','cache-control':'public, max-age=180'});res.end(buf)});
+  fs.readFile(file,(err,buf)=>{if(err)return send(res,404,{error:'Not found'});res.writeHead(200,{'content-type':MIME[path.extname(file)]||'application/octet-stream','x-content-type-options':'nosniff','referrer-policy':'no-referrer','cache-control':/\.(?:html|css|js|json)$/i.test(file)?'no-cache, max-age=0, must-revalidate':'public, max-age=3600'});res.end(buf)});
  }catch(e){send(res,500,{error:'伺服器處理失敗',detail:String(e.message||e)})}
 });
 server.listen(PORT,'0.0.0.0',()=>{
