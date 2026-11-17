@@ -50,3 +50,13 @@ Google Drive ChatGPT 連線不會替你授權外部 Apps Script。必須由 Goog
 - server.js：免費賽程與同步代理
 
 原有 ChatGPT → Gmail → Make → Discord 與 Make 場景 6659029 不修改。
+
+
+## API-FOOTBALL 免費備援（已授權）
+- Render 環境變數 `API_FOOTBALL_KEY`：僅伺服器端使用。**金鑰不可寫入 GitHub、網頁 JavaScript、查詢網址或紀錄。**
+- 僅補強既有成年男子賽事範圍（依 16:00 足球分析排程的聯賽清單）：不新增女子、青年／預備隊、俱樂部友誼賽或未指定賽事。
+- 原 ESPN、TheSportsDB 與既有驗證流程仍保留；API-FOOTBALL 是候補來源，查不到則不填假資料。
+- 端點 `/api/api-football/fixtures?date=YYYY-MM-DD` 一次取得台灣日期的賽程，後端僅回傳既有類別；進球事件只允許查詢同一伺服器已讀取的核准賽事識別碼。
+- API-SPORTS Free 對外公布 100 次／日、10 次／分鐘；網站伺服器保守上限 65 次／UTC 日、8 次／分鐘，並在接近提供者剩餘額度低水位時停止，以保留其他用途。
+- 同日賽程 10 分鐘伺服器快取，歷史 8 小時快取；前端共用同日結果，不逐聯賽重複消耗額度。
+- **重要：免費方案可能限制當前賽季**。如果帳號未授權 2026 賽季，網站仍以原免費來源運作，不應顯示 API-FOOTBALL 成功補全或宣稱已保證即時。
