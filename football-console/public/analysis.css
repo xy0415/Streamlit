@@ -516,3 +516,146 @@ tbody tr:hover{background:#fcfdff}
  .team-names strong{font-size:15px}
  .team-names small{font-size:11.5px}
 }
+
+
+/* Match detail: light version of the clean national-team scorecard reference. */
+.clickable-match{cursor:pointer}
+.clickable-match:hover{background:#f7faff!important}
+.clickable-match:focus-visible{outline:2px solid #3f70ce;outline-offset:-2px;background:#f4f8ff}
+.match-dialog{
+ width:min(760px,100%);
+ border-radius:18px;
+ padding:0;
+ background:#fff;
+ box-shadow:0 28px 80px rgba(17,39,70,.19);
+ overflow:auto;
+ max-height:min(90vh,860px)
+}
+.match-dialog-head{
+ padding:20px 25px 6px;
+ display:flex;
+ justify-content:space-between;
+ align-items:start;
+ gap:10px
+}
+.match-dialog-overline{
+ font-size:12px;font-weight:800;color:#6c83a5;
+ margin-bottom:4px
+}
+.match-dialog-head h2{
+ font-size:17px;color:#283d56;font-weight:800;line-height:1.4;margin:0
+}
+.match-dialog-head .cross{
+ width:34px;height:34px;flex:none;
+ border-radius:9px;font-size:24px
+}
+.match-hero{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) minmax(170px,1.05fr) minmax(0,1fr);
+ align-items:start;
+ gap:12px;
+ padding:31px 29px 29px;
+ border-bottom:1px solid #e9eef5;
+ text-align:center
+}
+.hero-team{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ gap:7px;
+ min-width:0;
+}
+.hero-crest{height:82px;width:82px;display:grid;place-items:center;margin-bottom:6px}
+.hero-crest .team-crest{height:82px;width:82px;border-radius:50%;background:#f3f6fa}
+.hero-crest .team-crest img{background:#fff;object-fit:contain}
+.hero-crest .crest-fallback{font-size:57px}
+.hero-team>strong{
+ font-size:20px;color:#1b314e;font-weight:800;
+ letter-spacing:-.45px;line-height:1.3;overflow-wrap:anywhere
+}
+.hero-english{font-size:12px;color:#91a0b3;line-height:1.4;word-break:break-word}
+.hero-side{
+ font-size:11px;font-weight:750;color:#687c98;
+ background:#f1f5fa;padding:4px 11px;border-radius:99px
+}
+.hero-center{padding-top:11px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.hero-score{
+ font-size:66px;line-height:1;font-weight:850;
+ color:#182f4d;letter-spacing:-2px;
+ font-variant-numeric:tabular-nums;
+ white-space:nowrap
+}
+.hero-dash{font-weight:500;color:#a8b3c3;padding:0 2px}
+.hero-status{
+ margin-top:4px;font-size:15px;color:#1f785f;
+ font-weight:800;line-height:1.5
+}
+.hero-status.warn{color:#ad782a}
+.hero-status.bad{color:#bf4f5f}
+.hero-status.blue{color:#356abe}
+.hero-status.neutral{color:#7588a0}
+.hero-time{font-size:12px;color:#8e9db1;line-height:1.5}
+.match-details-section{padding:21px 29px 24px}
+.match-details-section h3{
+ margin:0 0 14px;color:#314967;font-size:15px;font-weight:800
+}
+.goal-columns{
+ display:grid;grid-template-columns:1fr 1fr;gap:24px;
+ min-height:35px
+}
+.goal-side{display:flex;flex-direction:column;gap:8px}
+.goal-side+.goal-side{
+ border-left:1px solid #e8edf5;padding-left:21px
+}
+.scorer{
+ display:flex;align-items:baseline;gap:9px;
+ color:#3c516f;font-size:13px;padding:6px 0
+}
+.scorer-ball{font-size:14px;line-height:1}
+.scorer-person{flex:1;min-width:0;overflow-wrap:anywhere}
+.scorer strong{font-size:13px;color:#304762;font-variant-numeric:tabular-nums}
+.scorer-og{
+ color:#a96d29;font-size:11px;
+ padding:2px 5px;border-radius:4px;background:#fff5e6
+}
+.match-detail-empty,.no-goal-events{
+ display:block;color:#93a1b3;font-size:13px;line-height:1.75
+}
+.match-source-footer{
+ border-top:1px solid #eef2f7;
+ padding:14px 29px;
+ font-size:11px;color:#9ba9b8;
+ background:#fbfcfe
+}
+@media(max-width:700px){
+ .match-dialog{width:min(100%,530px);border-radius:14px;max-height:91vh}
+ .match-dialog-head{padding:17px 16px 3px}
+ .match-dialog-head h2{font-size:16px}
+ .match-hero{
+  grid-template-columns:minmax(0,1fr) minmax(112px,1.05fr) minmax(0,1fr);
+  gap:4px;padding:25px 12px 24px
+ }
+ .hero-crest,.hero-crest .team-crest{height:60px;width:60px}
+ .hero-crest .crest-fallback{font-size:43px}
+ .hero-team>strong{font-size:16px;line-height:1.4}
+ .hero-english{font-size:11px;max-width:120px}
+ .hero-side{font-size:10px;padding:3px 8px}
+ .hero-score{font-size:42px;letter-spacing:-1px}
+ .hero-center{gap:9px;padding-top:9px}
+ .hero-status{font-size:12px}
+ .hero-time{font-size:10.5px}
+ .match-details-section{padding:17px 15px 19px}
+ .match-details-section h3{font-size:14px}
+ .goal-columns{gap:12px}
+ .goal-side+.goal-side{padding-left:12px}
+ .scorer{font-size:12px;gap:5px}
+ .scorer strong{font-size:12px}
+ .match-source-footer{padding:12px 15px;font-size:11px}
+}
+@media(max-width:370px){
+ .match-hero{grid-template-columns:minmax(0,1fr) 100px minmax(0,1fr);padding:23px 8px}
+ .hero-crest,.hero-crest .team-crest{height:50px;width:50px}
+ .hero-crest .crest-fallback{font-size:35px}
+ .hero-team>strong{font-size:14px}
+ .hero-score{font-size:36px}
+}
