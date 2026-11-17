@@ -1,7 +1,7 @@
 'use strict';
 const LEAGUES=[
 ['uefa.nations','歐國聯'],['caf.nations','非洲盃'],['caf.nations_qual','非洲盃資格賽'],['fifa.friendly','國際友誼賽'],['eng.1','英超'],['eng.2','英冠'],
-['esp.1','西甲'],['ger.1','德甲'],['ita.1','義甲'],['fra.1','法甲'],['ned.1','荷甲'],
+['esp.1','西甲'],['esp.copa_del_rey','西班牙國王盃'],['eng.fa','英格蘭足總盃'],['ger.1','德甲'],['ita.1','義甲'],['fra.1','法甲'],['ned.1','荷甲'],
 ['por.1','葡超'],['uefa.champions','歐冠'],['uefa.europa','歐霸'],['uefa.europa.conf','歐協聯'],
 ['bra.1','巴甲'],['arg.1','阿甲'],['usa.1','美職聯'],['ksa.1','沙職'],['jpn.1','日職'],
 ['kor.1','韓職'],['aus.1','澳甲'],['fifa.world','世界盃'],['fifa.worldq.uefa','世界盃歐洲區資格賽'],
@@ -26,7 +26,8 @@ const PRED_LEAGUE_CODES={
  '歐國聯':'uefa.nations','歐洲國家聯賽':'uefa.nations','國際友誼賽':'fifa.friendly',
  '非洲國家盃':'caf.nations','非洲盃':'caf.nations','AFCON':'caf.nations',
  '非洲國家盃資格賽':'caf.nations_qual','非洲盃資格賽':'caf.nations_qual','AFCON資格賽':'caf.nations_qual',
- '英超':'eng.1','英冠':'eng.2','西甲':'esp.1','德甲':'ger.1','義甲':'ita.1','法甲':'fra.1',
+ '英超':'eng.1','英冠':'eng.2','英格蘭足總盃':'eng.fa','西班牙國王盃':'esp.copa_del_rey',
+ '西甲':'esp.1','德甲':'ger.1','義甲':'ita.1','法甲':'fra.1',
  '荷甲':'ned.1','葡超':'por.1','歐冠':'uefa.champions','歐霸':'uefa.europa',
  '歐協聯':'uefa.europa.conf','歐洲協會聯賽':'uefa.europa.conf',
  '巴甲':'bra.1','阿甲':'arg.1','美職聯':'usa.1','沙職':'ksa.1',
