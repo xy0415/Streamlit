@@ -396,8 +396,8 @@ function apiFootballTime(data){
 function apiSourceLogo(s){
  return safeLogo(s||'');
 }
-function apiFixtureView(item){
- if(!item||!KN[item.leagueCode]||!state.leagues.has(item.leagueCode))return null;
+function apiFixtureView(item,requireSelected=true){
+ if(!item||!KN[item.leagueCode]||(requireSelected&&!state.leagues.has(item.leagueCode)))return null;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(item.date||'')||!item.home||!item.away)return null;
  const status=['scheduled','inprogress','halftime','finished','postponed','cancelled'].includes(item.status)?item.status:'scheduled';
  const id=Number(item.apiFixtureId);
@@ -427,10 +427,10 @@ function matchingFixture(primary,additional){
  });
  return matches.length===1?matches[0]:null;
 }
-function mergeApiFootballFixtures(existing,received,selectedDay){
+function mergeApiFootballFixtures(existing,received,selectedDay,requireSelected=true){
  let added=0,merged=0,conflicts=0;
  for(const item of received||[]){
-  const a=apiFixtureView(item);
+  const a=apiFixtureView(item,requireSelected);
   if(!a||a.date!==selectedDay)continue;
   const old=matchingFixture(existing,a);
   if(!old){existing.push(a);added++;continue}
@@ -461,7 +461,7 @@ async function supplementFromApiFootball(fixtures,day,force=false,{requireSelect
  if(!apiFootballAllowedDay(day))return {added:0,merged:0,conflicts:0,skipped:'outside recent-date range'};
  const memo=apiFootballFetchedDays.get(day);
  if(!force&&memo&&memo.expires>Date.now()){
-  return mergeApiFootballFixtures(fixtures,memo.fixtures,day)
+  return mergeApiFootballFixtures(fixtures,memo.fixtures,day,requireSelected)
  }
  const response=await fetch('/api/api-football/fixtures?date='+encodeURIComponent(day),{cache:'no-store'});
  const json=await response.json();
@@ -469,7 +469,7 @@ async function supplementFromApiFootball(fixtures,day,force=false,{requireSelect
   return {added:0,merged:0,conflicts:0,skipped:json.reason||json.error||'API-FOOTBALL unavailable'};
  }
  apiFootballFetchedDays.set(day,{fixtures:json.fixtures,expires:Date.now()+8*60*1000});
- const merged=mergeApiFootballFixtures(fixtures,json.fixtures,day);
+ const merged=mergeApiFootballFixtures(fixtures,json.fixtures,day,requireSelected);
  return {...merged,source:'API-FOOTBALL',count:json.fixtures.length};
 }
 
@@ -536,8 +536,9 @@ async function loadReviewScores(force=false){
  renderReview();
  Promise.allSettled([
   enrichScoreResults(fixtures,force,false),
-  includeMissingClubPredictions(fixtures,force,day,false)
- ]).then(()=>{
+  supplementFromApiFootball(fixtures,day,force,{requireSelected:false})
+ ]).then(async()=>{
+  await includeMissingClubPredictions(fixtures,force,day,false);
   if(state.day===day&&state.view==='reviews')renderReview();
  }).catch(err=>console.warn('Review score cross-check failed:',String(err.message||err)));
  if(state.day!==day&&state.view==='reviews')loadReviewScores(false);
@@ -667,8 +668,13 @@ async function loadFixtures(force){
  // Do not block the fixtures list while individual free source lookups are slow.
  Promise.allSettled([
    enrichScoreResults(fixtures,force,false),
-   includeMissingClubPredictions(fixtures,force,day)
- ]).then(()=>{
+   supplementFromApiFootball(fixtures,day,force)
+ ]).then(async results=>{
+   const api=results[1]?.status==='fulfilled'?results[1].value:null;
+   if(api?.source){
+    sources.push({provider:'api-football',status:'ok',count:api.count,sourceLabel:'API-FOOTBALL'});
+   }
+   await includeMissingClubPredictions(fixtures,force,day);
    if(state.day===day&&cacheKey()===key){
      state.fixtures=fixtures;
      state.cache.set(key,{fixtures,sources,expiresAt:Date.now()+DAY_CACHE_MS});
@@ -907,7 +913,7 @@ function renderSchedule(){
    ].filter(Boolean).join('；');
  }
  $('fixtureNotice').classList.toggle('hidden',!state.loading&&failures===0&&staleCount===0);
- if(!state.loading)$('sourceSummary').textContent=state.sources.length?'ESPN · '+(state.sources.length-failures)+' / '+state.sources.length+' 請求成功':'尚未查詢賽程';
+ if(!state.loading)$('sourceSummary').textContent=state.sources.length?(state.sources.some(s=>s.provider==='api-football')?'ESPN + API-FOOTBALL':'ESPN')+' · '+(state.sources.length-failures)+' / '+state.sources.length+' 請求成功':'尚未查詢賽程';
 }
 function renderPredictions(){
  const rows=predsForView();
@@ -1084,6 +1090,9 @@ async function loadHistoryResults(force=false){
     const upstream=await readScoreboard(task.league,task.day,force);
     const fixtures=upstream.map(parseScore).filter(Boolean);
     await enrichScoreResults(fixtures,false,true);
+    if(task.predictions.some(p=>!resultScoreFromFixture(p,eventForPrediction(p,fixtures)))){
+      await supplementFromApiFootball(fixtures,task.predictions[0].date,false,{requireSelected:false});
+    }
     for(const p of task.predictions){
      const f=eventForPrediction(p,fixtures);
      if(f){
