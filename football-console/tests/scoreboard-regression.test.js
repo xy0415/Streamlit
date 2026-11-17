@@ -104,3 +104,41 @@ test('ESPN terminal state is recognized even when completed flag is absent',()=>
  assert.equal(f.status,'finished');
  assert.equal(f.scoreAway,'2');
 });
+
+test('Match detail preserves official home/away orientation and large score',()=>{
+ const {context}=setup();
+ const e=fixtureEvent('France','Turkey','2026-11-17T18:00:00Z');
+ e.id='12345678';e.status.type={name:'STATUS_FINAL',state:'post',completed:true};
+ e.competitions[0].competitors[0].score='2';e.competitions[0].competitors[1].score='1';
+ e.competitions[0].competitors[0].team.id='7';
+ e.competitions[0].competitors[1].team.id='8';
+ const f=context.parseScore(e);
+ const html=context.matchHero(f);
+ assert.match(html,/hero-team home/);
+ assert.match(html,/hero-team away/);
+ assert.match(html,/hero-score/);
+ assert.match(html,/2 <span class="hero-dash">–<\/span> 1/);
+ assert.match(html,/主隊/);
+ assert.match(html,/客隊/);
+ assert.match(html,/已完賽/);
+});
+test('Only confirmed goal events with matching team identities appear as scorers',()=>{
+ const {context}=setup();
+ const fixture={
+  homeId:'7',awayId:'8',
+  home:'France',away:'Turkey',league:'國際友誼賽',
+  date:'2026-11-17',time:'20:00'
+ };
+ const summary={header:{competitions:[{details:[
+  {type:{text:'Goal'},athletesInvolved:[{displayName:'Kroupi'}],clock:{displayValue:"80'"},team:{id:'7'}},
+  {type:{text:'Goal'},athletesInvolved:[{displayName:'Bardakci'}],clock:{displayValue:"90'"},team:{id:'8'}},
+  {type:{text:'Goal Kick'},athletesInvolved:[{displayName:'Not a scorer'}],clock:{displayValue:"25'"},team:{id:'7'}},
+  {type:{text:'Goal'},athletesInvolved:[{displayName:'Unknown team'}],clock:{displayValue:"40'"},team:{id:'999'}}
+ ]}]}};
+ const goals=context.goalEventsFromSummary(summary,fixture);
+ assert.equal(goals.length,2);
+ assert.equal(goals[0].side,'home');
+ assert.equal(goals[1].side,'away');
+ assert.doesNotMatch(context.goalDetailMarkup(goals),/Not a scorer|Unknown team/);
+ assert.match(context.goalDetailMarkup([]),/尚未提供可核實/);
+});
