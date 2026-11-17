@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="足球賽程資料驗證與分析控制台">
+  <title>足球賽程資料驗證與分析控制台</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon"><span></span></div><div><strong>FOOTBALL</strong><small>DATA CONTROL</small></div></div>
+    <div class="nav-caption">WORKSPACE</div>
+    <button class="nav-item active" data-page="fixtures"><span class="nav-glyph">▦</span>賽程總覽</button>
+    <button class="nav-item" data-page="requests"><span class="nav-glyph">⇄</span>請求紀錄 <span id="navRequestCount" class="nav-count">0</span></button>
+    <button class="nav-item" data-page="issues"><span class="nav-glyph">◇</span>驗證異常 <span id="navIssueCount" class="nav-count">0</span></button>
+    <button class="nav-item" data-page="responses"><span class="nav-glyph">{ }</span>原始回應</button>
+    <div class="sidebar-bottom"><div class="side-chip"><span class="pulse"></span><span id="systemStatus">系統待命中</span></div><small>Asia/Taipei · UTC+08:00</small><small>本地紀錄 · 不儲存 API 金鑰</small></div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div class="breadcrumb">足球資料 <span>／</span><strong id="crumbName">賽程總覽</strong></div>
+      <div class="topright"><span id="todayLabel"></span><span class="separator"></span><span class="clocktag">台灣時間 UTC+8</span></div>
+    </header>
+    <div class="content">
+      <div class="pageheading"><div><div class="eyebrow">DATA OPERATIONS / 01</div><h1>足球賽程資料驗證與分析控制台</h1><div class="subhead">賽程抓取、來源交叉驗證、欄位檢核與去重結果</div></div>
+        <div class="heading-actions"><button id="importBtn" class="btn ghost"><span>＋</span> 匯入資料</button><button id="exportBtn" class="btn ghost">匯出結果 <span>↗</span></button><button id="runBtn" class="btn primary"><span id="runGlyph">↻</span> <span id="runText">開始檢查</span></button></div>
+      </div>
+      <section class="config-panel panel">
+        <div class="section-title"><div><span class="section-index">01</span> 查核條件</div><span class="hint">所有比賽日期與顯示時間以台灣時間為準</span></div>
+        <div class="control-grid">
+          <div class="field"><label for="dateFrom">起始日期</label><input type="date" id="dateFrom"></div>
+          <div class="field"><label for="dateTo">結束日期</label><input type="date" id="dateTo"></div>
+          <div class="field"><label for="rangePreset">資料範圍</label><select id="rangePreset"><option value="1">1 天</option><option value="3">3 天</option><option value="7">7 天</option><option value="14">14 天</option><option value="custom">自訂日期</option></select></div>
+          <div class="field"><label for="leaguePicker">分析聯賽</label><button class="selectlike" id="leaguePicker"><span id="selectedLeaguesLabel">請選擇聯賽</span><span>⌄</span></button></div>
+        </div>
+        <div class="sources-config">
+          <div class="source-heading">抓取來源</div>
+          <label class="source-toggle"><input type="checkbox" id="useEspn" checked><span class="toggle-surface"></span><span class="source-label"><strong>ESPN</strong><small>即時賽程 · 主要來源</small></span></label>
+          <label class="source-toggle"><input type="checkbox" id="useTsdb" checked><span class="toggle-surface"></span><span class="source-label"><strong>TheSportsDB</strong><small>備援比對 · 非完整覆蓋</small></span></label>
+          <label class="source-toggle"><input type="checkbox" id="useFd"><span class="toggle-surface"></span><span class="source-label"><strong>football-data.org</strong><small>選用 API 金鑰 · 第二來源</small></span></label>
+          <button id="moreSettingsBtn" class="textbtn">來源設定 <span>⌄</span></button>
+        </div>
+        <div id="fdSettings" class="fd-settings hidden">
+          <div class="field"><label for="fdToken">football-data.org API 金鑰</label><input type="password" autocomplete="off" placeholder="本次檢查使用，不儲存" id="fdToken"></div><p>只有支援的聯賽會產生請求。金鑰不會寫入查核紀錄或匯出資料。</p>
+        </div>
+      </section>
+      <section class="kpi-grid" aria-label="檢查結果統計">
+        <div class="kpi panel"><div class="kpi-label">預期請求 <span class="kpi-icon">↗</span></div><div class="kpi-number" id="kpiExpected">0</div><div class="kpi-meta" id="kpiExpectedMeta">尚未建立清單</div></div>
+        <div class="kpi panel"><div class="kpi-label">成功回應 <span class="kpi-icon">✓</span></div><div class="kpi-number" id="kpiSuccess">0</div><div class="kpi-meta" id="kpiSuccessMeta">尚未執行查核</div></div>
+        <div class="kpi panel"><div class="kpi-label">去重賽事 <span class="kpi-icon">▤</span></div><div class="kpi-number" id="kpiFixtures">0</div><div class="kpi-meta" id="kpiFixturesMeta">以台灣日期歸集</div></div>
+        <div class="kpi panel"><div class="kpi-label">驗證異常 <span class="kpi-icon">!</span></div><div class="kpi-number" id="kpiIssues">0</div><div class="kpi-meta" id="kpiIssuesMeta">錯誤、缺漏與重複</div></div>
+      </section>
+      <div id="progressContainer" class="progress-area hidden"><div class="progress-text"><strong id="progressTitle">正在取得資料</strong><span id="progressLabel">0 / 0</span></div><div class="progress-outer"><div id="progressBar"></div></div></div>
+      <section class="panel source-summary"><div class="section-title"><div><span class="section-index">02</span> 來源狀態</div><span id="lastCheck" class="hint">尚無執行紀錄</span></div><div class="source-cards" id="sourceCards"></div></section>
+      <section class="panel results-panel">
+        <div class="section-title results-title"><div><span class="section-index" id="tableIndex">03</span> <span id="tableTitle">去重後賽程清單</span><span id="tableCount" class="count-pill">0</span></div><button class="textbtn" id="revalidateBtn">重新驗證目前資料 ↻</button></div>
+        <div class="filters"><div class="search-wrap"><span>⌕</span><input type="search" id="searchText" placeholder="搜尋球隊、聯賽或事件識別碼"></div>
+          <select id="filterLeague"><option value="">全部聯賽</option></select>
+          <select id="filterDate"><option value="">全部日期</option></select>
+          <select id="filterSource"><option value="">全部來源</option><option value="espn">ESPN</option><option value="tsdb">TheSportsDB</option><option value="fd">football-data.org</option><option value="import">匯入資料</option></select>
+          <select id="filterStatus"><option value="">全部狀態</option><option value="ok">完整</option><option value="warn">待確認</option><option value="error">異常</option><option value="duplicate">重複</option><option value="missing">缺漏</option></select>
+          <button class="filter-reset" id="resetFilters" aria-label="清除篩選">重設</button>
+        </div>
+        <div id="fixtureView"><div class="table-scroll"><table><thead><tr><th>台灣時間</th><th>聯賽</th><th>主隊 / 客隊</th><th>事件識別碼</th><th>資料來源</th><th>完整性</th><th>處理狀態</th><th></th></tr></thead><tbody id="fixtureRows"></tbody></table></div><div id="fixtureEmpty" class="empty hidden"><div class="empty-mark">▦</div><strong>尚無可顯示的賽程</strong><span>調整日期與聯賽後執行檢查，或匯入 JSON / CSV 資料。</span></div></div>
+        <div id="requestsView" class="hidden"><div class="table-scroll"><table><thead><tr><th>來源</th><th>聯賽 / 範圍</th><th>預期請求</th><th>HTTP</th><th>回傳筆數</th><th>耗時</th><th>狀態</th><th></th></tr></thead><tbody id="requestRows"></tbody></table></div><div id="requestEmpty" class="empty hidden"><strong>尚無請求紀錄</strong><span>按「開始檢查」可產生預期請求清單與實際回應。</span></div></div>
+        <div id="issuesView" class="hidden"><div class="table-scroll"><table><thead><tr><th>異常類別</th><th>台灣日期</th><th>聯賽</th><th>賽事 / 請求</th><th>資料來源</th><th>內容</th><th>處理狀態</th></tr></thead><tbody id="issueRows"></tbody></table></div><div id="issueEmpty" class="empty hidden"><strong>目前沒有已記錄的異常</strong><span>待執行查核或匯入資料後驗證。</span></div></div>
+        <div id="responsesView" class="hidden"><div class="response-toolbar"><label for="responseSelect">查看實際回傳結果</label><select id="responseSelect"><option value="">請選擇請求</option></select></div><div class="response-meta" id="responseMeta"></div><pre id="responseBody" class="codeview">尚無原始回傳內容。</pre></div>
+        <footer class="table-footer"><span id="tableFooter">0 筆紀錄</span><span>日期格式：YYYY/MM/DD HH:mm（UTC+8）</span></footer>
+      </section>
+      <section class="bottom-note"><div><span class="note-dot"></span><span id="footerStatus">未執行資料抓取</span></div><div>查核紀錄僅儲存於目前瀏覽器 · <button id="historyBtn">歷次查核</button></div></section>
+    </div>
+  </main>
+</div>
+
+<div id="leagueModal" class="modal-overlay hidden"><div class="modal large"><div class="modal-head"><div><div class="eyebrow">LEAGUE SELECTOR</div><h2>選擇分析聯賽</h2></div><button class="close-btn" data-close="leagueModal">×</button></div><input id="leagueSearch" class="modal-search" placeholder="搜尋聯賽名稱或代碼"><div class="modal-controls"><button id="selectAllLeagues" class="textbtn">全選</button><button id="clearLeagues" class="textbtn">清除</button><span id="leagueSelectedCount">已選 0 個聯賽</span></div><div id="leagueList" class="league-list"></div><div class="modal-foot"><button class="btn ghost" data-close="leagueModal">取消</button><button class="btn primary" id="saveLeagues">確認選擇</button></div></div></div>
+<div id="importModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><div class="eyebrow">DATA INGEST</div><h2>匯入賽程資料</h2></div><button class="close-btn" data-close="importModal">×</button></div><div class="upload-zone" id="dropZone"><span class="upload-art">⇧</span><strong>選擇或拖曳 JSON / CSV 檔案</strong><small>支援 ESPN、football-data.org、TheSportsDB 回應或一般比賽清單</small><input id="fileInput" type="file" accept=".json,.csv,application/json,text/csv"></div><div class="field" style="margin-top:16px"><label for="importSource">資料來源標籤</label><select id="importSource"><option value="import">外部匯入 / Make</option><option value="espn">ESPN 匯出</option><option value="tsdb">TheSportsDB 匯出</option><option value="fd">football-data.org 匯出</option></select></div><p class="modal-help">匯入會加入目前結果，保留原始記錄並重新執行去重與欄位驗證。</p><div class="modal-foot"><button class="btn ghost" data-close="importModal">關閉</button></div></div></div>
+<div id="detailModal" class="modal-overlay hidden"><div class="modal large"><div class="modal-head"><div><div class="eyebrow" id="detailEyebrow">RECORD DETAIL</div><h2 id="detailTitle">詳細資訊</h2></div><button class="close-btn" data-close="detailModal">×</button></div><div id="detailBody" class="detail-body"></div><div class="modal-foot" id="detailActions"><button class="btn ghost" data-close="detailModal">關閉</button></div></div></div>
+<div id="historyModal" class="modal-overlay hidden"><div class="modal large"><div class="modal-head"><div><div class="eyebrow">AUDIT ARCHIVE</div><h2>歷次查核</h2></div><button class="close-btn" data-close="historyModal">×</button></div><div id="historyList" class="history-list"></div><div class="modal-foot"><button class="btn ghost" id="clearHistory">清空歷史</button><button class="btn primary" data-close="historyModal">完成</button></div></div></div>
+<div id="exportModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><div class="eyebrow">EXPORT</div><h2>匯出查核結果</h2></div><button class="close-btn" data-close="exportModal">×</button></div><div class="export-list"><button id="exportJson"><strong>完整查核報告 JSON</strong><small>含賽事、請求、原始回應與異常</small><span>↗</span></button><button id="exportCsv"><strong>去重賽程 CSV</strong><small>依目前篩選結果匯出</small><span>↗</span></button><button id="exportIssues"><strong>異常紀錄 CSV</strong><small>錯誤、重複、缺漏與欄位驗證</small><span>↗</span></button></div><div class="modal-foot"><button class="btn ghost" data-close="exportModal">關閉</button></div></div></div>
+<div id="toast" class="toast hidden"></div>
+<script src="/app.js" defer></script>
+</body></html>
