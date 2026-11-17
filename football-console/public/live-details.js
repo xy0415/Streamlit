@@ -133,7 +133,7 @@
   const text=String(play?.shortText||play?.text||play?.description||'');
   if(/disallow|ruled out|no goal|missed|saved|not scored|overturned|var.?cancel/i.test(type+' '+text))return false;
   if(play?.scoringPlay===true || play?.isGoal===true)return true;
-  return /\bgoal\b|penalty.scored/i.test(type)&&!/\bgoal kick\b|\bgoalkeeper\b/i.test(type);
+  return (/\bgoal\b|penalty[\s_-]*(?:scored|converted)/i.test(type))&&!/\bgoal kick\b|\bgoalkeeper\b/i.test(type);
  }
  function collectGoalEvents(data){
   const nodes=[
