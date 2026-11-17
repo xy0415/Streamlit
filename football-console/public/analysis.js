@@ -936,7 +936,11 @@ function applyHistoricalResult(p,fixture){
   verified:s.scoreVerified,status:grade?'settled':'unsupported',updatedAt:Date.now()
  };
  const existing=state.historyScores.get(key);
- if(existing?.verified&&!output.verified&&(existing.h!==s.h||existing.a!==s.a))return false;
+ if(existing?.verified&&!output.verified){
+   // A single-source refresh can neither downgrade nor overwrite an existing
+   // settlement confirmed by the Google background workflow.
+   return existing.h===s.h&&existing.a===s.a;
+ }
  if(existing?.grade&&(existing.h!==s.h||existing.a!==s.a)&&!s.scoreVerified){
   state.historyScores.set(key,{grade:null,status:'conflict',updatedAt:Date.now()});
   return false;
