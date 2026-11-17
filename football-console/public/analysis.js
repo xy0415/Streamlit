@@ -15,7 +15,9 @@ const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[]
   leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),resultLookupCache:new Map(),verifiedResultsPromise:null,scheduleQueued:false,
   reviewFixtures:[],reviewErrors:[],reviewLoading:false,reviewUpdatedAt:0,reviewDate:'',
   fifaRanks:new Map(),fifaRanksBusy:false,fifaRankPubDate:'',livePolling:false,
-  summaryCache:new Map(),activeMatchId:'',matchDetailPayload:null};
+  summaryCache:new Map(),activeMatchId:'',matchDetailPayload:null,
+  historyScores:new Map(),historyLoading:false,historyChecks:0,historyErrors:0,
+  historyRequired:0,historyCheckedAt:0,historyBatch:0};
 
 const SCOREBOARD_TTL=120000; // Standard full-day rechecks; live-only match summaries refresh faster
 const LIVE=typeof window!=='undefined'?window.FootballLive:null;
@@ -440,7 +442,9 @@ async function loadFeed(){
   }
   $('selectedDay').value=state.day;
  }catch(e){state.feed={connected:false,reports:[]};$('sideSync').textContent='正式預測資料未連線';$('sideTime').textContent=String(e.message||e);toast('預測資料來源暫時無法讀取')}
+ primeHistoryFromFeed();
  setReport();render();
+ if(state.view==='history')loadHistoryResults(false);
 }
 function setReport(){state.report=state.feed?.reports.find(x=>x.date===state.day)||null}
 function pickDay(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;state.day=day;$('selectedDay').value=day;setReport();state.fixtures=state.cache.get(cacheKey())?.fixtures||[];state.sources=state.cache.get(cacheKey())?.sources||[];state.reviewFixtures=[];state.reviewDate='';state.reviewUpdatedAt=0;render();if(state.view==='reviews')loadReviewScores(false);else loadFixtures(false)}
@@ -823,15 +827,162 @@ function renderReview(){
     '<td class="review-result-cell"><strong class="review-result '+resultClass+'">'+escapeHtml(label)+'</strong></td></tr>';
  }).join('');
 }
+
+const HISTORY=window.FootballHistory||null;
+const HIST_CACHE_KEY='football-history-finals-v2';
+function historyId(p){
+ return [p.date,p.league,p.time,p.home,p.away,p.market,p.order].join('|');
+}
+function historyReportRows(){
+ const all=state.feed?.reports||[];
+ return all.flatMap(r=>(r.matches||[]).map(p=>({p,reportDate:r.date,key:historyId(p)})));
+}
+function resultScoreFromFixture(p,f){
+ if(!f||f.status!=='finished'||f.scoreConflict)return null;
+ const raw=String(f.sourceStatus?.type?.name||'')+' '+String(f.sourceStatus?.type?.description||'')+' '+String(f.stateName||'');
+ if(/\bAET\b|\bPEN\b|penalt(?:y|ies)|extra[ -]?time|加時|十二碼大戰/i.test(raw))return null;
+ const h=Number(f.scoreHome),a=Number(f.scoreAway);
+ if(!Number.isInteger(h)||!Number.isInteger(a)||h<0||a<0)return null;
+ return {h,a,source:f.scoreVerified?'兩來源核實':f.scoreSource||'ESPN',eventId:f.id||'',scoreVerified:!!f.scoreVerified};
+}
+function gradeHistory(p,score){
+ if(!HISTORY||!score)return null;
+ return HISTORY.evaluate(p,score.h,score.a);
+}
+function primeHistoryFromFeed(){
+ if(!HISTORY)return;
+ for(const {p,key} of historyReportRows()){
+  if(!p.verified||!Number.isInteger(p.homeScore)||!Number.isInteger(p.awayScore))continue;
+  const grade=gradeHistory(p,{h:p.homeScore,a:p.awayScore})||HISTORY.settledFromString(p.settlement);
+  if(grade)state.historyScores.set(key,{grade,h:p.homeScore,a:p.awayScore,source:'Google 已核實',verified:true,updatedAt:Date.now(),status:'settled'});
+ }
+ try{
+  const saved=JSON.parse(localStorage.getItem(HIST_CACHE_KEY)||'{}');
+  if(saved.version!==2||!Array.isArray(saved.results))return;
+  for(const entry of saved.results){
+   if(!entry||typeof entry.key!=='string'||!entry.grade||!Number.isInteger(entry.h)||!Number.isInteger(entry.a))continue;
+   if(!state.historyScores.has(entry.key))state.historyScores.set(entry.key,entry);
+  }
+ }catch{}
+}
+function saveHistoryCache(){
+ try{
+  const allowed=new Set(historyReportRows().map(x=>x.key));
+  const out=[...state.historyScores.entries()].filter(([key,result])=>
+   allowed.has(key)&&result.grade&&Number.isInteger(result.h)&&Number.isInteger(result.a))
+   .map(([key,result])=>({key,...result})).slice(0,400);
+  localStorage.setItem(HIST_CACHE_KEY,JSON.stringify({version:2,results:out,storedAt:Date.now()}));
+ }catch{}
+}
+function utcDayForPrediction(p){
+ if(!/^\d{2}:\d{2}$/.test(p.time||''))return null;
+ return addDay(p.date,Number(p.time.slice(0,2))<8?-1:0);
+}
+function applyHistoricalResult(p,fixture){
+ const key=historyId(p),s=resultScoreFromFixture(p,fixture);
+ if(!s)return false;
+ const grade=gradeHistory(p,s);
+ const output={
+  grade, h:s.h,a:s.a, source:s.source,eventId:s.eventId,
+  verified:s.scoreVerified,status:grade?'settled':'unsupported',updatedAt:Date.now()
+ };
+ const existing=state.historyScores.get(key);
+ if(existing?.verified&&!output.verified&&(existing.h!==s.h||existing.a!==s.a))return false;
+ if(existing&&(existing.h!==s.h||existing.a!==s.a)){
+  state.historyScores.set(key,{grade:null,status:'conflict',updatedAt:Date.now()});
+  return false;
+ }
+ state.historyScores.set(key,output);
+ return !!grade;
+}
+async function loadHistoryResults(force=false){
+ if(state.historyLoading||!state.feed?.reports?.length||!HISTORY)return;
+ state.historyLoading=true;state.historyBatch++;
+ const batch=state.historyBatch;
+ if(force){
+  // Manual refresh must recheck live source matches without overwriting previously
+  // verified settlements, but it should not erase historical evidence.
+  for(const r of state.historyScores.values())if(r?.status==='pending')r.updatedAt=0;
+ }
+ const rows=historyReportRows(),currentDate=todayTaiwan();
+ const todo=new Map();
+ for(const {p,key} of rows){
+  if(p.date>currentDate)continue;
+  const kickoff=Date.parse(p.date+'T'+p.time+':00+08:00');
+  if(!Number.isFinite(kickoff)||kickoff>Date.now()-120*60000)continue;
+  const previous=state.historyScores.get(key);
+  if(!force&&previous?.grade&&previous.updatedAt&&Date.now()-previous.updatedAt<24*3600000)continue;
+  const league=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
+  const day=utcDayForPrediction(p);
+  if(!league||!day){
+   if(!previous?.grade)state.historyScores.set(key,{status:'pending',reason:'聯賽或時間缺漏'});
+   continue;
+  }
+  const id=league+'|'+day;
+  if(!todo.has(id))todo.set(id,{league,day,predictions:[]});
+  todo.get(id).predictions.push(p);
+ }
+ state.historyRequired=todo.size;state.historyChecks=0;state.historyErrors=0;
+ renderHistory();
+ let index=0;
+ const jobs=[...todo.values()];
+ async function worker(){
+  while(index<jobs.length){
+   const task=jobs[index++];
+   try{
+    const upstream=await readScoreboard(task.league,task.day,force);
+    const fixtures=upstream.map(parseScore).filter(Boolean);
+    await enrichScoreResults(fixtures,false,true);
+    for(const p of task.predictions){
+     const f=eventForPrediction(p,fixtures);
+     if(f)applyHistoricalResult(p,f);
+    }
+   }catch(err){state.historyErrors++;console.warn('歷史賽程查核失敗:',task.league,task.day,String(err.message||err))}
+   state.historyChecks++;
+   if(batch===state.historyBatch)renderHistory();
+  }
+ }
+ try{
+  await Promise.all(Array.from({length:Math.min(3,jobs.length)},worker));
+  state.historyCheckedAt=Date.now();
+  saveHistoryCache();
+ }finally{
+  if(batch===state.historyBatch){state.historyLoading=false;renderHistory()}
+ }
+}
+
 function renderHistory(){
- const reports=state.feed?.reports||[],all=reports.flatMap(r=>r.matches||[]),v=all.filter(p=>p.verified&&p.settlement!=='待核實');
- const valid=v.filter(p=>/(全贏|半贏|全輸|半輸)/.test(p.settlement)),win=valid.filter(p=>/^(全贏|半贏)$/.test(p.settlement));
- $('historyTotal').textContent=all.length;$('historyVerified').textContent=v.length;
- $('historyWin').textContent=valid.length?String(win.length):'—';
- $('historyRate').textContent=valid.length?(Math.round(win.length/valid.length*1000)/10)+'%':'—';
- $('historyRows').innerHTML=reports.map(r=>{
-  const total=r.matches.length,verified=r.matches.filter(p=>p.verified).length,ref=r.matches.filter(p=>!p.verified&&/^參考/.test(p.settlement)).length;
-  return '<div class="history-item"><strong>'+escapeHtml(r.date)+'</strong><span>正式推薦 '+total+' 場</span><span>核實 '+verified+'</span><span>參考結果 '+ref+'</span><button class="mlauto" data-load-day="'+escapeHtml(r.date)+'">查看</button></div>'
+ const source=historyReportRows();
+ const rows=source.map(row=>({...row,result:state.historyScores.get(row.key)||null}));
+ let summary={total:rows.length,finished:0,win:0,loss:0,halfwin:0,halfloss:0,push:0,pending:rows.length,unsupported:0,rate:null};
+ if(HISTORY)summary=HISTORY.summarize(rows.map(x=>x.result?.grade?x.result:{status:x.result?.status||'pending'}));
+ $('historyTotal').textContent=String(summary.total);
+ $('historyVerified').textContent=String(summary.finished);
+ $('historyWin').textContent=String(summary.win+summary.halfwin);
+ $('historyRate').textContent=summary.rate===null?'—':summary.rate.toFixed(1)+'%';
+ const label=state.historyLoading?
+  '比對歷史比分 '+state.historyChecks+'/'+state.historyRequired+(state.historyErrors?' · 來源失敗 '+state.historyErrors:''):
+  state.historyCheckedAt?'最近比對 '+fTaiwan(state.historyCheckedAt).stamp:
+  summary.finished?'已取得部分終場資料':'尚未查核歷史比分';
+ $('historyProgress').textContent=label;
+ $('historyRefresh').disabled=state.historyLoading;
+ const byDay=new Map();
+ for(const row of rows){
+  if(!byDay.has(row.reportDate))byDay.set(row.reportDate,[]);
+  byDay.get(row.reportDate).push(row);
+ }
+ $('historyRows').innerHTML=[...byDay].sort((a,b)=>b[0].localeCompare(a[0])).map(([day,group])=>{
+  const stats=HISTORY?HISTORY.summarize(group.map(x=>x.result?.grade?x.result:{status:x.result?.status||'pending'})):null;
+  const win=stats?stats.win+stats.halfwin:0;
+  const loss=stats?stats.loss+stats.halfloss:0;
+  return '<div class="history-item"><strong>'+escapeHtml(day)+'</strong>'+
+   '<span>推薦 '+group.length+'</span>'+
+   '<span class="history-done">結算 '+(stats?.finished||0)+'</span>'+
+   '<span class="history-win">贏 '+win+'</span>'+
+   '<span class="history-loss">輸 '+loss+'</span>'+
+   '<span>待核 '+((stats?.pending||0)+(stats?.unsupported||0))+'</span>'+
+   '<span class="history-percentage">'+(stats?.rate===null||stats?.rate===undefined?'—':stats.rate.toFixed(1)+'%')+'</span>'+
+   '<button class="mlauto" data-load-day="'+escapeHtml(day)+'">查看</button></div>';
  }).join('')||'<div class="empty">尚無歷史預測</div>';
 }
 function render(){
@@ -869,6 +1020,7 @@ function init(){
    state.view=b.dataset.view;render();
    if(state.view==='reviews')loadReviewScores(false);
    else if(state.view==='schedule')loadFixtures(false);
+   else if(state.view==='history')loadHistoryResults(false);
  }));
  $('selectedDay').onchange=e=>pickDay(e.target.value);
  $('prevDay').onclick=()=>pickDay(addDay(state.day,-1));
@@ -890,6 +1042,7 @@ function init(){
    if(state.view==='reviews')await loadReviewScores(true);else await loadFixtures(true);
    toast('資料已重新查詢');
  };
+ $('historyRefresh').onclick=()=>loadHistoryResults(true);
  $('refreshReview').onclick=async()=>{
    await loadFeed();await loadReviewScores(true);
    toast('比分已重新查詢');
