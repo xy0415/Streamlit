@@ -1,4 +1,5 @@
 const http = require('node:http');
+const apiFootball = require('./api-football');
 const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -131,7 +132,23 @@ function remoteGet(target, headers={}) {
 }
 async function api(req,res,route){
  if(!rateOk(req))return send(res,429,{error:'請求過於頻繁，請稍後再試'});
- if(route.pathname==='/api/health')return send(res,200,{ok:true,serverTime:new Date().toISOString(),sources:['ESPN','TheSportsDB','football-data.org'],reportSyncConfigured:Boolean(process.env.FOOTBALL_REPORT_FEED_URL)});
+ if(route.pathname==='/api/health')return send(res,200,{ok:true,serverTime:new Date().toISOString(),sources:['ESPN','TheSportsDB','football-data.org',...(process.env.API_FOOTBALL_KEY?['API-FOOTBALL']:[])],apiFootball:apiFootball.publicQuota(),reportSyncConfigured:Boolean(process.env.FOOTBALL_REPORT_FEED_URL)});
+ if(route.pathname==='/api/api-football/fixtures'&&req.method==='GET'){
+  const date=route.searchParams.get('date');
+  if(!dateOk(date))return send(res,400,{error:'日期無效'});
+  try{
+   const data=await apiFootball.getFixtures(date);
+   return send(res,data.ok?200:503,data);
+  }catch(error){return send(res,502,{ok:false,error:String(error.message||error),fixtures:[]})}
+ }
+ if(route.pathname==='/api/api-football/events'&&req.method==='GET'){
+  const fixture=String(route.searchParams.get('fixture')||'');
+  if(!/^\d{1,12}$/.test(fixture))return send(res,400,{error:'賽事識別碼錯誤'});
+  try{
+   const data=await apiFootball.getEvents(Number(fixture));
+   return send(res,data.ok?200:503,data);
+  }catch(error){return send(res,502,{ok:false,error:String(error.message||error),events:[]})}
+ }
  if(route.pathname==='/api/reports'&&req.method==='GET'){
   const target=String(process.env.FOOTBALL_REPORT_FEED_URL||'').trim();
   if(!target)return send(res,200,fallbackReports());
