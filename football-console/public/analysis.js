@@ -169,6 +169,9 @@ async function enrichScoreResults(fixtures,force=false,skipLookups=false){
     f.scoreVerified=true;f.scoreSource='獨立來源核對';
     f.source='兩來源核對';f.sourceLinks=correction.sources;
    }
+   // Verified score can be retained while club badges are independently sourced.
+   if(!f.scoreConflict&&!LIVE?.NATIONAL_LEAGUES?.has(f.leagueCode)&&
+      (!safeLogo(f.homeLogo)||!safeLogo(f.awayLogo)))unresolved.push(f);
    continue;
   }
   if((elapsedStatus(f)==='stale'||elapsedStatus(f)==='pending'||(
@@ -924,7 +927,7 @@ function applyHistoricalResult(p,fixture){
  };
  const existing=state.historyScores.get(key);
  if(existing?.verified&&!output.verified&&(existing.h!==s.h||existing.a!==s.a))return false;
- if(existing&&(existing.h!==s.h||existing.a!==s.a)){
+ if(existing?.grade&&(existing.h!==s.h||existing.a!==s.a)&&!s.scoreVerified){
   state.historyScores.set(key,{grade:null,status:'conflict',updatedAt:Date.now()});
   return false;
  }
@@ -960,7 +963,8 @@ async function loadHistoryResults(force=false){
  }
  state.historyRequired=todo.size;state.historyChecks=0;state.historyErrors=0;
  renderHistory();
- let index=0;
+ let index=0,backupCount=0;
+ const maxBackupLookups=22;
  const jobs=[...todo.values()];
  async function worker(){
   while(index<jobs.length){
@@ -971,7 +975,23 @@ async function loadHistoryResults(force=false){
     await enrichScoreResults(fixtures,false,true);
     for(const p of task.predictions){
      const f=eventForPrediction(p,fixtures);
-     if(f)applyHistoricalResult(p,f);
+     if(f){
+       applyHistoricalResult(p,f);
+       continue;
+     }
+     // ESPN may omit lower-tier club cups or some international friendlies.
+     // Only attempt free, exact team-and-kickoff lookups; never invent a score.
+     if(backupCount++>=maxBackupLookups)continue;
+     const provisional={date:p.date,time:p.time,leagueCode:task.league,
+       home:p.home,away:p.away,status:'scheduled',scoreHome:null,scoreAway:null};
+     try{
+       const alternative=await getIndependentMatchInfo(provisional,false);
+       if(alternative?.final){
+         applyHistoricalResult(p,{...provisional,status:'finished',scoreHome:alternative.h,
+           scoreAway:alternative.a,scoreSource:'TheSportsDB',
+           scoreVerified:false,id:alternative.id,sourceStatus:{type:{name:'STATUS_FINAL'}}});
+       }
+     }catch(e){console.warn('歷史備援查核未成功:',p.date,p.home,String(e.message||e))}
     }
    }catch(err){state.historyErrors++;console.warn('歷史賽程查核失敗:',task.league,task.day,String(err.message||err))}
    state.historyChecks++;
