@@ -12,7 +12,155 @@ const KN=Object.fromEntries(LEAGUES);
 const defaultLeagues=['uefa.nations','fifa.friendly','eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','bra.1','usa.1','ksa.1'];
 const $=id=>document.getElementById(id);
 const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[],loading:false,
-  leagues:new Set(defaultLeagues),cache:new Map()};
+  leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),
+  reviewFixtures:[],reviewErrors:[],reviewLoading:false,reviewUpdatedAt:0,reviewDate:''};
+
+const SCOREBOARD_TTL=120000; // 2 minute browser cache for active fixtures and review
+const PRED_LEAGUE_CODES={
+ '歐國聯':'uefa.nations','歐洲國家聯賽':'uefa.nations','國際友誼賽':'fifa.friendly',
+ '英超':'eng.1','英冠':'eng.2','西甲':'esp.1','德甲':'ger.1','義甲':'ita.1','法甲':'fra.1',
+ '荷甲':'ned.1','葡超':'por.1','歐冠':'uefa.champions','歐霸':'uefa.europa',
+ '歐協聯':'uefa.europa.conf','歐洲協會聯賽':'uefa.europa.conf',
+ '巴甲':'bra.1','阿甲':'arg.1','美職聯':'usa.1','沙職':'ksa.1',
+ '日職':'jpn.1','韓職':'kor.1','澳甲':'aus.1',
+ '世界盃':'fifa.world','世歐預':'fifa.worldq.uefa','世南預':'fifa.worldq.conmebol',
+ '亞冠':'afc.champions','中北美冠軍盃':'concacaf.champions'
+};
+function safeLogo(url){
+ try{
+  if(!url)return '';
+  const u=new URL(String(url));
+  if(u.protocol!=='https:'||!(u.hostname==='espncdn.com'||u.hostname.endsWith('.espncdn.com')))return '';
+  return u.href;
+ }catch{return ''}
+}
+function nameKey(name){
+ let s=String(name||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+  .replace(/&/g,'and').replace(/[^a-z0-9\u4e00-\u9fa5]+/g,' ')
+  .replace(/\b(fc|cf|sc|afc|ac|club|football|soccer|the)\b/g,' ')
+  .replace(/\s+/g,' ').trim();
+ const aliases={
+  'bayern munich':'bayern munchen','fc bayern munich':'bayern munchen',
+  'czech republic':'czechia','turkiye':'turkey','türkiye':'turkey',
+  'republic of ireland':'ireland','bosnia and herzegovina':'bosnia herzegovina',
+  'northern ireland':'north ireland','north macedonia':'macedonia',
+  'inter milan':'internazionale','psg':'paris saint germain',
+  'manchester utd':'manchester united','atletico de madrid':'atletico madrid',
+  'atletico mineiro':'atletico mg','1 koln':'koln','cologne':'koln'
+ };
+ return aliases[s]||s;
+}
+function sameTeam(a,b){
+ const x=nameKey(a),y=nameKey(b);
+ return !!x&&!!y&&(x===y||Math.min(x.length,y.length)>=7&&(x.includes(y)||y.includes(x)));
+}
+function compareEventTime(p,f){
+ if(!/^\d\d:\d\d$/.test(String(p.time||'')))return false;
+ const t=Date.parse(p.date+'T'+p.time+':00+08:00'),v=Date.parse(f.date+'T'+f.time+':00+08:00');
+ return Number.isFinite(t)&&Number.isFinite(v)&&Math.abs(t-v)<=120*60000;
+}
+function eventForPrediction(p,list){
+ const code=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
+ const matches=(list||[]).filter(f=>
+  (!code||f.leagueCode===code)&&sameTeam(f.home,p.home)&&sameTeam(f.away,p.away)&&compareEventTime(p,f));
+ return matches.length===1?matches[0]:null;
+}
+function predictionForEvent(f){
+ const rows=state.report?.matches||[];
+ const matches=rows.filter(p=>sameTeam(f.home,p.home)&&sameTeam(f.away,p.away)&&compareEventTime(p,f));
+ return matches.length?matches[0]:null;
+}
+function onLogoError(event){
+ if(event.target instanceof HTMLImageElement && event.target.closest('.team-crest'))
+   event.target.classList.add('logo-unavailable');
+}
+function teamLogo(logo,name){
+ const src=safeLogo(logo),letter=String(name||'?').trim().charAt(0)||'?';
+ return '<span class="team-crest"><span class="crest-fallback">'+escapeHtml(letter.toUpperCase())+'</span>'+
+  (src?'<img src="'+escapeHtml(src)+'" alt="" loading="lazy" decoding="async">':'')+'</span>';
+}
+function teamLine(side,full,short,logo,translated){
+ const name=translated||full;
+ const sub=translated&&full!==translated?full:(short&&short!==full?short:'');
+ return '<div class="match-team '+(side==='home'?'home-team':'away-team')+'">'+
+  '<span class="team-position '+side+'">'+(side==='home'?'主':'客')+'</span>'+
+  teamLogo(logo,full)+'<span class="team-names"><strong>'+escapeHtml(name||'隊名未提供')+'</strong>'+
+  (sub?'<small>'+escapeHtml(sub)+'</small>':'')+'</span></div>';
+}
+async function readScoreboard(league,date,force){
+ const key=league+'|'+date,old=state.scoreboardCache.get(key);
+ if(!force&&old&&Date.now()<old.expiresAt)return old.promise;
+ const promise=(async()=>{
+  const url='/api/fixtures?provider=espn&league='+encodeURIComponent(league)+'&date='+date;
+  const resp=await fetch(url,{cache:'no-store'}),data=await resp.json();
+  if(!resp.ok||data.upstreamStatus!==200)throw Error(data.error||'HTTP '+(data.upstreamStatus||resp.status));
+  if(!data.data||!Array.isArray(data.data.events))throw Error('ESPN 回傳欄位不完整');
+  return data.data.events.map(e=>({...e,_league:league}));
+ })();
+ state.scoreboardCache.set(key,{expiresAt:Date.now()+SCOREBOARD_TTL,promise});
+ try{return await promise}catch(e){state.scoreboardCache.delete(key);throw e}
+}
+function referenceResult(p,h,a){
+ if(!Number.isInteger(h)||!Number.isInteger(a))return '';
+ const market=String(p.market||'').replace(/\s+/g,''),total=h+a;
+ if(/雙方進球/.test(market)){
+   const yes=/是|有/.test(market),has=h>0&&a>0;
+   if(/是|否|有|無/.test(market))return (has===yes?'參考全贏':'參考全輸');
+ }
+ const totalMatch=market.match(/(?:全場)?(?:總進球)?(大|小)(\d+(?:\.\d+)?)/);
+ if(totalMatch){
+  const line=Number(totalMatch[2]);
+  if(!Number.isFinite(line)||line%0.5!==0)return '';
+  const won=totalMatch[1]==='大'?total>line:total<line;
+  const draw=total===line;return draw?'參考走盤':won?'參考全贏':'參考全輸';
+ }
+ if(/不敗/.test(market)){
+  if((p.homeZh&&market.includes(p.homeZh))||market.includes('主勝或和局'))return h>=a?'參考全贏':'參考全輸';
+  if((p.awayZh&&market.includes(p.awayZh))||market.includes('客勝或和局'))return a>=h?'參考全贏':'參考全輸';
+ }
+ if(/獲勝|勝出|主勝|客勝/.test(market)){
+  if((p.homeZh&&market.includes(p.homeZh))||market==='主勝')return h>a?'參考全贏':'參考全輸';
+  if((p.awayZh&&market.includes(p.awayZh))||market==='客勝')return a>h?'參考全贏':'參考全輸';
+ }
+ return '';
+}
+async function loadReviewScores(force=false){
+ if(state.reviewLoading||!state.report?.matches?.length){
+   if(!state.report?.matches?.length){state.reviewFixtures=[];state.reviewUpdatedAt=0;renderReview()}
+   return;
+ }
+ const day=state.day,prev=state.reviewDate===day;
+ if(!force&&prev&&state.reviewUpdatedAt&&Date.now()-state.reviewUpdatedAt<SCOREBOARD_TTL){renderReview();return}
+ const codes=[...new Set(state.report.matches.map(p=>PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league)).filter(Boolean))];
+ if(!codes.length){state.reviewFixtures=[];state.reviewUpdatedAt=Date.now();state.reviewDate=day;renderReview();return}
+ state.reviewLoading=true;
+ $('refreshReview').disabled=true;
+ $('reviewFreshness').textContent='查詢最新比分中…';
+ const todo=codes.flatMap(league=>[addDay(day,-1),day].map(date=>({league,date})));
+ let cursor=0,matched=[],errors=[];
+ async function worker(){
+  for(;;){
+   const index=cursor++;if(index>=todo.length)break;
+   const item=todo[index];
+   try{
+    const entries=await readScoreboard(item.league,item.date,force);
+    for(const event of entries){
+     const fixture=parseScore(event);
+     if(fixture&&fixture.date===day)matched.push(fixture)
+    }
+   }catch(e){errors.push({league:item.league,date:item.date,error:String(e.message||e)})}
+  }
+ }
+ await Promise.all(Array.from({length:Math.min(3,todo.length)},worker));
+ if(state.day===day){
+  const byId=new Map();matched.forEach(f=>byId.set(f.id||f.leagueCode+'|'+f.home+'|'+f.away+'|'+f.time,f));
+  state.reviewFixtures=[...byId.values()];
+  state.reviewErrors=errors;state.reviewUpdatedAt=Date.now();state.reviewDate=day;
+ }
+ state.reviewLoading=false;$('refreshReview').disabled=false;
+ renderReview();
+}
+
 function escapeHtml(x){return String(x==null?'':x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;')}
 function fTaiwan(date){
  const d=new Date(date);if(!Number.isFinite(d.getTime()))return null;
@@ -54,13 +202,16 @@ async function loadFeed(){
  setReport();render();
 }
 function setReport(){state.report=state.feed?.reports.find(x=>x.date===state.day)||null}
-function pickDay(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;state.day=day;$('selectedDay').value=day;setReport();state.fixtures=state.cache.get(cacheKey())?.fixtures||[];state.sources=state.cache.get(cacheKey())?.sources||[];render();loadFixtures(false)}
+function pickDay(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;state.day=day;$('selectedDay').value=day;setReport();state.fixtures=state.cache.get(cacheKey())?.fixtures||[];state.sources=state.cache.get(cacheKey())?.sources||[];state.reviewFixtures=[];state.reviewDate='';state.reviewUpdatedAt=0;render();if(state.view==='reviews')loadReviewScores(false);else loadFixtures(false)}
 function cacheKey(){return state.day+'|'+[...state.leagues].sort().join(',')}
 function getSelected(){const set=new Set(state.leagues);return LEAGUES.filter(x=>set.has(x[0]))}
 function parseScore(item){
  const competition=item.competitions?.[0]||{},players=competition.competitors||[];
  const home=players.find(x=>x.homeAway==='home')||{},away=players.find(x=>x.homeAway==='away')||{};
  const titleHome=home.team?.displayName||home.team?.name||'',titleAway=away.team?.displayName||away.team?.name||'';
+ const homeLogo=home.team?.logo||home.team?.logos?.[0]?.href||'';
+ const awayLogo=away.team?.logo||away.team?.logos?.[0]?.href||'';
+ const homeShort=home.team?.shortDisplayName||'',awayShort=away.team?.shortDisplayName||'';
  const stamp=fTaiwan(item.date||competition.date),type=item.status?.type||{};
  if(!stamp||!titleHome||!titleAway)return null;
  const completed=type.completed===true||/final|full.?time/i.test(String(type.name||''));
@@ -69,7 +220,8 @@ function parseScore(item){
  if(typeof homeScore==='object')homeScore=homeScore.value;if(typeof awayScore==='object')awayScore=awayScore.value;
  return {id:String(item.id||''),date:stamp.date,time:stamp.time,
   leagueCode:item._league||'',league:KN[item._league]||item._league||'',
-  home:titleHome,away:titleAway,scoreHome:completed||progress?homeScore:null,scoreAway:completed||progress?awayScore:null,
+  home:titleHome,away:titleAway,homeLogo,awayLogo,homeShort,awayShort,
+  scoreHome:completed||progress?homeScore:null,scoreAway:completed||progress?awayScore:null,
   status:completed?'finished':progress?'inprogress':'scheduled',
   stateName:type.description||type.name||'',source:'ESPN',url:item.links?.[0]?.href||''};
 }
@@ -88,12 +240,9 @@ async function loadFixtures(force){
    const ix=cursor++;if(ix>=queries.length)break;
    const q=queries[ix];
    try{
-    const url='/api/fixtures?provider=espn&league='+encodeURIComponent(q.league)+'&date='+q.date;
-    const response=await fetch(url,{cache:'no-store'}),json=await response.json();
-    if(!response.ok||json.upstreamStatus!==200)throw Error(json.error||'HTTP '+(json.upstreamStatus||response.status));
-    if(!json.data||!Array.isArray(json.data.events))throw Error('來源未提供 events');
-    sources.push({league:q.league,date:q.date,status:'ok',count:json.data.events.length});
-    for(const event of json.data.events)results.push({...event,_league:q.league})
+    const events=await readScoreboard(q.league,q.date,force);
+    sources.push({league:q.league,date:q.date,status:'ok',count:events.length});
+    for(const event of events)results.push(event)
    }catch(e){sources.push({league:q.league,date:q.date,status:'error',message:String(e.message||e)})}
    finished++;
    $('sourceSummary').textContent='賽程來源查詢 '+finished+' / '+queries.length;
@@ -131,7 +280,22 @@ function updateFilter(){
 }
 function renderSchedule(){
  const rows=fixturesForView();$('fixtureCount').textContent=rows.length;$('fixtureEmpty').classList.toggle('hidden',rows.length>0);
- $('fixtureTable').innerHTML=rows.map(x=>'<tr><td><strong>'+escapeHtml(x.time)+'</strong></td><td class="comp">'+escapeHtml(x.league)+'</td><td class="fixture-home">'+escapeHtml(x.home)+'</td><td class="vscol"><span class="score '+(x.status==='scheduled'?'vs':'')+'">'+(x.status==='scheduled'?'VS':escapeHtml(x.scoreHome)+' : '+escapeHtml(x.scoreAway))+'</span></td><td class="fixture-away">'+escapeHtml(x.away)+'</td><td>'+statusPill(x.status==='finished'?'已完賽':x.status==='inprogress'?'進行中':'未開賽',x.status==='finished'?'ok':x.status==='inprogress'?'blue':'neutral')+'</td><td>'+escapeHtml(x.source)+'</td></tr>').join('');
+ $('fixtureTable').innerHTML=rows.map(x=>{
+  const p=predictionForEvent(x),when=state.day.slice(5).replace('-','/'),
+   score=(x.status==='scheduled'||x.scoreHome===null||x.scoreHome===undefined||x.scoreAway===null||x.scoreAway===undefined)
+      ?'<span class="schedule-vs">VS</span>'
+      :'<span class="match-score">'+escapeHtml(x.scoreHome)+' : '+escapeHtml(x.scoreAway)+'</span>';
+  return '<tr><td class="fixture-time"><span class="fixture-day">'+escapeHtml(when)+'</span><strong>'+escapeHtml(x.time)+'</strong></td>'+
+   '<td class="fixture-league"><span class="league-token">'+escapeHtml(x.league)+'</span></td>'+
+   '<td class="fixture-match"><div class="teams-stack">'+
+   teamLine('home',x.home,x.homeShort,x.homeLogo,p?.homeZh)+
+   teamLine('away',x.away,x.awayShort,x.awayLogo,p?.awayZh)+
+   '</div></td>'+
+   '<td class="fixture-outcome"><div>'+score+'</div>'+
+   statusPill(x.status==='finished'?'已完賽':x.status==='inprogress'?'進行中':'未開賽',
+      x.status==='finished'?'ok':x.status==='inprogress'?'blue':'neutral')+
+   '</td></tr>'
+ }).join('');
  const failures=state.sources.filter(x=>x.status==='error').length;
  $('fixtureNotice').classList.toggle('hidden',!state.loading&&failures===0);
  $('mFixtures').textContent=state.sources.length?state.fixtures.length:'—';
@@ -145,8 +309,10 @@ function renderPredictions(){
  $('showOriginal').disabled=!state.report;
  $('predictionsGrid').innerHTML=rows.map(p=>
  '<article class="prediction"><div class="pred-top"><span>第 '+p.order+' 關　'+escapeHtml(p.time)+'　·　'+escapeHtml(p.league)+(p.round?' · '+escapeHtml(p.round):'')+'</span>'+(p.group&&p.group!=='串關單'?'<span>'+escapeHtml(p.group)+'</span>':'')+'</div>'+
- '<div class="pred-teams">'+escapeHtml(p.home)+'<span>VS</span>'+escapeHtml(p.away)+'</div>'+
- '<div class="pred-zh">'+escapeHtml(p.homeZh)+'　／　'+escapeHtml(p.awayZh)+'</div>'+
+ '<div class="pred-team-stack">'+
+  teamLine('home',p.home,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.homeLogo,p.homeZh)+
+  teamLine('away',p.away,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.awayLogo,p.awayZh)+
+ '</div>'+
  '<div class="pred-choice"><strong>'+escapeHtml(p.market)+'</strong>'+(p.probability!==null&&Number.isFinite(p.probability)?'<span class="probability">'+p.probability+'%<small>估計'+escapeHtml(p.probabilityType)+'機率</small></span>':'')+'</div></article>'
  ).join('');
  const total=state.report?.matches.length||0;
@@ -159,12 +325,40 @@ function settlementPill(p){
  return statusPill(p.settlement||'待核實','neutral')
 }
 function renderReview(){
- const rows=predsForView();
+ const rows=predsForView(),available=state.reviewFixtures.concat(state.fixtures);
  $('reviewCount').textContent=rows.length;$('reviewEmpty').classList.toggle('hidden',rows.length>0);
- $('reviewTable').innerHTML=rows.map(p=>
- '<tr><td><strong>'+escapeHtml(p.time)+'</strong></td><td class="reviewmatch">'+escapeHtml(p.home)+' VS '+escapeHtml(p.away)+'<small>'+escapeHtml(p.league)+'</small></td>'+
- '<td>'+escapeHtml(p.market)+'</td><td><strong>'+(p.homeScore!==null&&p.awayScore!==null?escapeHtml(p.homeScore)+' : '+escapeHtml(p.awayScore):'—')+'</strong></td>'+
- '<td>'+settlementPill(p)+'</td><td>'+statusPill(p.verified?'雙來源已核實':p.status||'待核對',p.verified?'ok':'warn')+'</td></tr>').join('');
+ const checked=state.reviewUpdatedAt?fTaiwan(state.reviewUpdatedAt).time:'';
+ $('reviewFreshness').textContent=state.reviewLoading?'查詢最新比分中…':
+  checked?'ESPN 比分查詢 '+checked+(state.reviewErrors.length?' · 部分失敗':''):'尚未查詢即時比分';
+ $('reviewTable').innerHTML=rows.map(p=>{
+  const live=eventForPrediction(p,available),
+    liveScore=live&&(live.status==='finished'||live.status==='inprogress')&&
+      live.scoreHome!==null&&live.scoreHome!==undefined&&live.scoreAway!==null&&live.scoreAway!==undefined;
+  const recorded=p.homeScore!==null&&p.awayScore!==null;
+  const inconsistent=p.verified&&recorded&&liveScore&&
+    (Number(live.scoreHome)!==p.homeScore||Number(live.scoreAway)!==p.awayScore);
+  const h=p.verified&&recorded?p.homeScore:liveScore?Number(live.scoreHome):recorded?p.homeScore:null;
+  const a=p.verified&&recorded?p.awayScore:liveScore?Number(live.scoreAway):recorded?p.awayScore:null;
+  const extraTime=Boolean(live&&/penalty|penalties|extra time|\bAET\b|PEN/i.test(live.stateName||''));
+  const ref=(!p.verified&&live&&live.status==='finished'&&liveScore&&!extraTime)?
+    referenceResult(p,Number(live.scoreHome),Number(live.scoreAway)):'';
+  const outcome=p.verified?settlementPill(p):ref?statusPill(ref,'warn'):settlementPill(p);
+  let status='';
+  if(inconsistent)status=statusPill('比分有差異，需重核','bad');
+  else if(p.verified)status=statusPill('雙來源已核實','ok');
+  else if(live&&live.status==='finished')status=statusPill(extraTime?'含加時／點球，待核':'ESPN 已完賽·待覆核','warn');
+  else if(live&&live.status==='inprogress')status=statusPill('ESPN 比賽中','blue');
+  else status=statusPill(recorded?(p.status||'待覆核'):(state.reviewLoading?'正在查詢':'待核對'),'neutral');
+  return '<tr><td class="review-time"><strong>'+escapeHtml(p.time)+'</strong></td>'+
+    '<td class="review-match"><div class="review-teams">'+
+    teamLine('home',p.home,'',live?.homeLogo,p.homeZh)+
+    teamLine('away',p.away,'',live?.awayLogo,p.awayZh)+
+    '</div><small>'+escapeHtml(p.league)+'</small></td>'+
+    '<td class="review-market">'+escapeHtml(p.market)+'</td>'+
+    '<td class="review-score"><strong>'+(h!==null&&a!==null?escapeHtml(h)+' : '+escapeHtml(a):'—')+'</strong>'+
+    (!p.verified&&liveScore?'<small>ESPN 參考</small>':'')+'</td>'+
+    '<td>'+outcome+'</td><td>'+status+'</td></tr>';
+ }).join('');
  const all=state.report?.matches||[];
  const verified=all.filter(x=>x.verified).length;
  $('mVerified').textContent=verified;
@@ -206,7 +400,11 @@ function getDailyExport(){
 }
 function init(){
  try{const saved=JSON.parse(localStorage.getItem('football-dashboard-leagues')||'null');if(Array.isArray(saved)&&saved.length)state.leagues=new Set(saved.filter(x=>KN[x]))}catch{}
- document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{state.view=b.dataset.view;render()}));
+ document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
+   state.view=b.dataset.view;render();
+   if(state.view==='reviews')loadReviewScores(false);
+   else if(state.view==='schedule')loadFixtures(false);
+ }));
  $('selectedDay').onchange=e=>pickDay(e.target.value);
  $('prevDay').onclick=()=>pickDay(addDay(state.day,-1));
  $('nextDay').onclick=()=>pickDay(addDay(state.day,1));
@@ -222,10 +420,27 @@ function init(){
  document.querySelectorAll('[data-modal-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b.closest('.modalback').id)));
  document.querySelectorAll('.modalback').forEach(m=>m.onclick=e=>{if(e.target===m)closeModal(m.id)});
  $('reloadFixtures').onclick=()=>loadFixtures(true);
- $('refreshAll').onclick=async()=>{await loadFeed();await loadFixtures(true);toast('公開資料已重新整理')};
+ $('refreshAll').onclick=async()=>{
+   await loadFeed();
+   if(state.view==='reviews')await loadReviewScores(true);else await loadFixtures(true);
+   toast('資料已重新查詢，比分未經覆核前僅供參考');
+ };
+ $('refreshReview').onclick=async()=>{
+   await loadFeed();await loadReviewScores(true);
+   toast('已重新查詢 ESPN 終場比分；正式結算以雙來源核實為準');
+ };
+ // Refresh the visible review for recent matches without exceeding free API quotas.
+ setInterval(()=>{
+  if(document.visibilityState==='hidden'||state.reviewLoading||state.loading)return;
+  const days=Math.round((Date.parse(todayTaiwan()+'T00:00:00Z')-Date.parse(state.day+'T00:00:00Z'))/86400000);
+  if(state.view==='reviews'&&days>=-1&&days<=3)loadReviewScores(false);
+ },180000);
  $('exportDaily').onclick=getDailyExport;
  $('showOriginal').onclick=()=>{if(!state.report)return;$('originalDate').textContent=state.report.date;$('originalArticle').textContent=state.report.article||'當天未提供可公開原始全文';openModal('originalModal')};
  $('historyRows').onclick=e=>{const b=e.target.closest('[data-load-day]');if(!b)return;pickDay(b.dataset.loadDay);state.view='predictions';render()};
  state.day=todayTaiwan();loadFeed().then(()=>loadFixtures(false));render();
+ $('fixtureTable').addEventListener('error',onLogoError,true);
+ $('predictionsGrid').addEventListener('error',onLogoError,true);
+ $('reviewTable').addEventListener('error',onLogoError,true);
 }
 document.addEventListener('DOMContentLoaded',init);
