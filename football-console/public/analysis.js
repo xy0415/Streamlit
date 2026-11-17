@@ -366,7 +366,9 @@ async function loadFifaRanks(fixtures){
 }
 
 function teamLine(side,full,short,logo,translated,league='',abbr=''){
- const name=localizedTeamName(full,translated);
+ const original=String(full||'').trim();
+ const fallback=original&&!/[�\uFFFD]/.test(original)?original:short;
+ const name=localizedTeamName(fallback,translated);
  const sub=sourceTeamName(full,short,name);
  return '<div class="match-team '+(side==='home'?'home-team':'away-team')+'">'+
   '<span class="team-position '+side+'">'+(side==='home'?'主':'客')+'</span>'+
