@@ -479,7 +479,7 @@ function parseScore(item){
 async function loadFixtures(force){
  if(state.loading){state.scheduleQueued=true;return}
  const key=cacheKey(), day=state.day;
- if(!force&&state.cache.has(key)&&Date.now()<state.cache.get(key).expiresAt){const cached=state.cache.get(key);state.fixtures=cached.fixtures;state.sources=cached.sources;render();return}
+ if(!force&&state.cache.has(key)&&Date.now()<state.cache.get(key).expiresAt){const cached=state.cache.get(key);state.fixtures=cached.fixtures;state.sources=cached.sources;render();loadFifaRanks(cached.fixtures);pollLiveMatches();return}
  if(state.leagues.size===0){state.fixtures=[];state.sources=[];render();toast('請至少選擇一個查核聯賽');return}
  state.loading=true;$('reloadFixtures').disabled=true;$('refreshAll').disabled=true;
  $('fixtureNotice').textContent='正在取得賽程資料…';$('fixtureNotice').classList.remove('hidden');
@@ -511,7 +511,7 @@ async function loadFixtures(force){
  const active=state.day===day&&cacheKey()===key;
  if(active){state.fixtures=fixtures;state.sources=sources}
  state.loading=false;$('reloadFixtures').disabled=false;$('refreshAll').disabled=false;
- if(active)render();
+ if(active){render();loadFifaRanks(fixtures);pollLiveMatches()}
  if(state.scheduleQueued||!active){
    state.scheduleQueued=false;
    if(state.view==='schedule')loadFixtures(false);
@@ -892,6 +892,8 @@ function init(){
    await loadFeed();await loadReviewScores(true);
    toast('已重新查詢 ESPN 終場比分；正式結算以雙來源核實為準');
  };
+ // Live-only ESPN summary refresh; source-reported match minute is not locally fabricated.
+ setInterval(()=>pollLiveMatches(),35000);
  // Refresh the visible review for recent matches without exceeding free API quotas.
  setInterval(()=>{
   if(document.visibilityState==='hidden'||state.reviewLoading||state.loading)return;
@@ -908,7 +910,7 @@ function init(){
  },120000);
  document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState!=='visible')return;
-  if(state.view==='schedule')loadFixtures(false);
+  if(state.view==='schedule'){loadFixtures(false);pollLiveMatches()}
   if(state.view==='reviews')loadReviewScores(false);
  });
  $('exportDaily').onclick=getDailyExport;
