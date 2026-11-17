@@ -59,6 +59,15 @@
 </main></div>
 <div class="modalback hidden" id="leaguesModal"><div class="modal"><div class="modalhead"><h2>查核聯賽設定</h2><button data-modal-close class="cross">×</button></div><p class="modaldesc">免費 ESPN 公開介面。未選取的聯賽不會查詢，也不會視為無賽程。</p><div class="leagueoptions" id="leagueOptions"></div><div class="modalfoot"><button class="btn secondary" data-modal-close>取消</button><button class="btn primary" id="saveLeagues">儲存設定</button></div></div></div>
 <div class="modalback hidden" id="originalModal"><div class="modal wide"><div class="modalhead"><div><h2>正式預測全文</h2><small id="originalDate"></small></div><button data-modal-close class="cross">×</button></div><pre id="originalArticle"></pre><div class="modalfoot"><button class="btn secondary" data-modal-close>關閉</button></div></div></div>
+<div class="modalback hidden" id="matchModal">
+ <section class="modal match-dialog" role="dialog" aria-modal="true" aria-labelledby="matchDetailTitle">
+  <div class="match-dialog-head">
+   <div><div class="match-dialog-overline" id="matchDetailLeague">賽事詳情</div><h2 id="matchDetailTitle">比賽詳情</h2></div>
+   <button class="cross" id="matchCloseBtn" aria-label="關閉比賽詳情">×</button>
+  </div>
+  <div id="matchDetailBody" aria-live="polite"></div>
+ </section>
+</div>
 <div class="snackbar hidden" id="snackbar"></div>
 <script src="/team-names-zh.js" defer></script>
 <script src="/analysis.js" defer></script>
