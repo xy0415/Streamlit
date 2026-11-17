@@ -507,7 +507,14 @@ function renderSchedule(){
    '</td></tr>'
  }).join('');
  const failures=state.sources.filter(x=>x.status==='error').length;
- $('fixtureNotice').classList.toggle('hidden',!state.loading&&failures===0);
+ const staleCount=state.fixtures.filter(x=>['stale','pending','conflict'].includes(elapsedStatus(x))).length;
+ if(!state.loading){
+   $('fixtureNotice').textContent=[
+     failures?failures+' 筆賽程來源查詢失敗':'',
+     staleCount?staleCount+' 場已過開賽時間、賽況或比分仍待核對':''
+   ].filter(Boolean).join('；');
+ }
+ $('fixtureNotice').classList.toggle('hidden',!state.loading&&failures===0&&staleCount===0);
  $('mFixtures').textContent=state.sources.length?state.fixtures.length:'—';
  $('mFixturesHelp').textContent=state.sources.length?'已查詢 '+state.sources.length+' 筆 · 異常 '+failures:'等待免費賽程來源';
  if(!state.loading)$('sourceSummary').textContent=state.sources.length?'ESPN · '+(state.sources.length-failures)+' / '+state.sources.length+' 請求成功':'尚未查詢賽程';
@@ -554,7 +561,7 @@ function renderReview(){
     referenceResult(p,Number(live.scoreHome),Number(live.scoreAway)):'';
   const outcome=p.verified?settlementPill(p):ref?statusPill(ref,'warn'):settlementPill(p);
   let status='';
-  if(inconsistent)status=statusPill('比分有差異，需重核','bad');
+  if(inconsistent||live?.scoreConflict)status=statusPill('比分有差異，需重核','bad');
   else if(p.verified)status=statusPill('雙來源已核實','ok');
   else if(live&&live.status==='finished')status=statusPill(extraTime?'含加時／點球，待核':live.scoreVerified?'雙來源比分一致':'終場比分待覆核',live.scoreVerified?'ok':'warn');
   else if(live&&live.status==='inprogress')status=statusPill('比賽進行中','blue');
