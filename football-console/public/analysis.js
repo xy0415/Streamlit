@@ -72,21 +72,73 @@ function predictionForEvent(f){
  const matches=rows.filter(p=>sameTeam(f.home,p.home)&&sameTeam(f.away,p.away)&&compareEventTime(p,f));
  return matches.length?matches[0]:null;
 }
+
+// All displayed team names are normalized to Taiwan Traditional Chinese.
+// English ESPN/Gmail identifiers stay unmodified for event matching.
+const TEAM_NAME_ENTRIES=Object.entries(window.FOOTBALL_TEAM_NAMES_ZH||{});
+const TEAM_ZH_LOOKUP=new Map(TEAM_NAME_ENTRIES.map(([key,value])=>[nameKey(key),value]));
+const TEAM_FLAG_ISO={
+ 'estonia':'EE','bulgaria':'BG','north macedonia':'MK','slovenia':'SI',
+ 'switzerland':'CH','scotland':'GB','tahiti':'PF','cook islands':'CK',
+ 'malaysia':'MY','yemen':'YE','singapore':'SG','brazil':'BR','china':'CN',
+ 'bahrain':'BH','kyrgyz republic':'KG','kyrgyzstan':'KG','vietnam':'VN',
+ 'lebanon':'LB','palestine':'PS','japan':'JP','paraguay':'PY','qatar':'QA',
+ 'south korea':'KR','korea republic':'KR','united arab emirates':'AE',
+ 'saudi arabia':'SA','uzbekistan':'UZ','serbia':'RS','germany':'DE',
+ 'france':'FR','spain':'ES','netherlands':'NL','portugal':'PT',
+ 'italy':'IT','england':'GB','northern ireland':'GB','wales':'GB',
+ 'ireland':'IE','republic of ireland':'IE','hungary':'HU','denmark':'DK',
+ 'norway':'NO','belgium':'BE','austria':'AT','finland':'FI','sweden':'SE',
+ 'poland':'PL','czechia':'CZ','czech republic':'CZ','croatia':'HR',
+ 'argentina':'AR','uruguay':'UY','australia':'AU','new zealand':'NZ',
+ 'united states':'US','usa':'US','canada':'CA','mexico':'MX',
+ 'taiwan':'TW','chinese taipei':'TW'
+};
+function readableChinese(value){
+ const name=String(value||'').trim();
+ return /[\u3400-\u9fff]/.test(name)&&!/[�\uFFFD]/.test(name)&&!/\?{2,}/.test(name);
+}
+function localizedTeamName(source,providedZh=''){
+ const english=String(source||'').trim();
+ const alias=TEAM_ZH_LOOKUP.get(nameKey(english));
+ if(alias&&readableChinese(alias))return alias;
+ if(readableChinese(providedZh))return String(providedZh).trim();
+ if(readableChinese(english))return english;
+ return '中文隊名待核對';
+}
+function sourceTeamName(english,short,primary){
+ const full=String(english||'').trim();
+ if(full&&full!==primary&&!/[�\uFFFD]/.test(full))return full;
+ const abbreviated=String(short||'').trim();
+ if(abbreviated&&abbreviated!==primary&&!/[�\uFFFD]/.test(abbreviated))return abbreviated;
+ return '';
+}
+function teamFlag(name){
+ const code=TEAM_FLAG_ISO[nameKey(name)]||'';
+ if(!/^[A-Z]{2}$/.test(code))return '';
+ return String.fromCodePoint(...code.split('').map(c=>127397+c.charCodeAt(0)));
+}
+function displayCleanText(text){
+ // Keep the archived original unchanged; correct known damaged display strings only.
+ return String(text||'').replace(/保加利令[�\uFFFD?]+/g,'保加利亞')
+   .replace(/埃沙尼亞/g,'愛沙尼亞');
+}
+
 function onLogoError(event){
  if(event.target instanceof HTMLImageElement && event.target.closest('.team-crest'))
    event.target.classList.add('logo-unavailable');
 }
 function teamLogo(logo,name){
- const src=safeLogo(logo),letter=String(name||'?').trim().charAt(0)||'?';
- return '<span class="team-crest"><span class="crest-fallback">'+escapeHtml(letter.toUpperCase())+'</span>'+
+ const src=safeLogo(logo),flag=teamFlag(name)||'⚽';
+ return '<span class="team-crest"><span class="crest-fallback">'+escapeHtml(flag)+'</span>'+
   (src?'<img src="'+escapeHtml(src)+'" alt="" loading="lazy" decoding="async">':'')+'</span>';
 }
 function teamLine(side,full,short,logo,translated){
- const name=translated||full;
- const sub=translated&&full!==translated?full:(short&&short!==full?short:'');
+ const name=localizedTeamName(full,translated);
+ const sub=sourceTeamName(full,short,name);
  return '<div class="match-team '+(side==='home'?'home-team':'away-team')+'">'+
   '<span class="team-position '+side+'">'+(side==='home'?'主':'客')+'</span>'+
-  teamLogo(logo,full)+'<span class="team-names"><strong>'+escapeHtml(name||'隊名未提供')+'</strong>'+
+  teamLogo(logo,full)+'<span class="team-names"><strong>'+escapeHtml(name)+'</strong>'+
   (sub?'<small>'+escapeHtml(sub)+'</small>':'')+'</span></div>';
 }
 async function readScoreboard(league,date,force){
@@ -326,7 +378,7 @@ function renderPredictions(){
   teamLine('home',p.home,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.homeLogo,p.homeZh)+
   teamLine('away',p.away,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.awayLogo,p.awayZh)+
  '</div>'+
- '<div class="pred-choice"><strong>'+escapeHtml(p.market)+'</strong>'+(p.probability!==null&&Number.isFinite(p.probability)?'<span class="probability">'+p.probability+'%<small>估計'+escapeHtml(p.probabilityType)+'機率</small></span>':'')+'</div></article>'
+ '<div class="pred-choice"><strong>'+escapeHtml(displayCleanText(p.market))+'</strong>'+(p.probability!==null&&Number.isFinite(p.probability)?'<span class="probability">'+p.probability+'%<small>估計'+escapeHtml(p.probabilityType)+'機率</small></span>':'')+'</div></article>'
  ).join('');
  const total=state.report?.matches.length||0;
  $('mPreds').textContent=total;$('mPredsHelp').textContent=state.report?'正式報告 '+state.report.date:'當日無正式報告';
@@ -367,7 +419,7 @@ function renderReview(){
     teamLine('home',p.home,'',live?.homeLogo,p.homeZh)+
     teamLine('away',p.away,'',live?.awayLogo,p.awayZh)+
     '</div><small>'+escapeHtml(p.league)+'</small></td>'+
-    '<td class="review-market">'+escapeHtml(p.market)+'</td>'+
+    '<td class="review-market">'+escapeHtml(displayCleanText(p.market))+'</td>'+
     '<td class="review-score"><strong>'+(h!==null&&a!==null?escapeHtml(h)+' : '+escapeHtml(a):'—')+'</strong>'+
     (!p.verified&&liveScore?'<small>ESPN 參考</small>':'')+'</td>'+
     '<td>'+outcome+'</td><td>'+status+'</td></tr>';
@@ -451,7 +503,7 @@ function init(){
   }
  },180000);
  $('exportDaily').onclick=getDailyExport;
- $('showOriginal').onclick=()=>{if(!state.report)return;$('originalDate').textContent=state.report.date;$('originalArticle').textContent=state.report.article||'當天未提供可公開原始全文';openModal('originalModal')};
+ $('showOriginal').onclick=()=>{if(!state.report)return;$('originalDate').textContent=state.report.date;$('originalArticle').textContent=displayCleanText(state.report.article||'當天未提供可公開原始全文');openModal('originalModal')};
  $('historyRows').onclick=e=>{const b=e.target.closest('[data-load-day]');if(!b)return;pickDay(b.dataset.loadDay);state.view='predictions';render()};
  state.day=todayTaiwan();loadFeed().then(()=>loadFixtures(false));render();
  $('fixtureTable').addEventListener('error',onLogoError,true);
