@@ -113,6 +113,21 @@ async function api(req,res,route){
    return send(res,200,sanitized);
   }catch(error){return send(res,200,fallbackReports(error))}
  }
+ if(route.pathname==='/api/match-lookup'&&req.method==='GET'){
+   const date=route.searchParams.get('date'),home=String(route.searchParams.get('home')||''),away=String(route.searchParams.get('away')||'');
+   // Fixed upstream hostname and strict bounded input; no arbitrary user URL.
+   const safeName=x=>/^[\p{L}\p{M}\p{N} .&'’\-]{2,80}$/u.test(x)&&!/[<>]/.test(x);
+   if(!dateOk(date)||!safeName(home)||!safeName(away))return send(res,400,{error:'查詢日期或球隊名稱無效'});
+   const fixtureName=home.trim().replace(/\s+/g,'_')+'_vs_'+away.trim().replace(/\s+/g,'_');
+   const target='https://www.thesportsdb.com/api/v1/json/123/searchevents.php?e='+encodeURIComponent(fixtureName)+'&d='+encodeURIComponent(date);
+   try{
+     const up=await remoteGet(target);
+     return send(res,up.status===200?200:502,{
+       provider:'tsdb_search',upstreamStatus:up.status,requestUrl:target,
+       receivedAt:new Date().toISOString(),data:up.data
+     });
+   }catch(e){return send(res,502,{provider:'tsdb_search',error:String(e.message||e)})}
+ }
  if(route.pathname==='/api/fixtures'&&req.method==='GET'){
    const provider=route.searchParams.get('provider'),league=route.searchParams.get('league'),date=route.searchParams.get('date');
    if(!dateOk(date))return send(res,400,{error:'日期無效'});
