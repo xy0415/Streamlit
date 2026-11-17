@@ -11,28 +11,38 @@ const ALLOWED = new Set(['eng.1','eng.2','eng.fa','esp.1','ger.1','ita.1','fra.1
 const FD_ALLOWED = new Set(['PL','ELC','PD','BL1','SA','FL1','DED','PPL','BSA','CL','WC']);
 const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const counters = new Map();
-const FIFA_RANK_CACHE = new Map();
-const FIFA_RANK_POSITIVE_TTL = 12*60*60*1000;
-const FIFA_RANK_NEGATIVE_TTL = 30*60*1000;
-async function fetchFifaCountryRank(code){
- const cache=FIFA_RANK_CACHE.get(code);
- if(cache && cache.expires > Date.now()) return cache.result;
- const target='https://api.fifa.com/api/v3/rankings/byCountry/'+code+'?gender=1&language=en';
- let result=null;
- try{
-  const up=await remoteGet(target);
-  if(up.status===200 && up.data && Array.isArray(up.data.Results)){
-   const entries=up.data.Results.filter(e=>Number.isInteger(Number(e.Rank)) &&
-      Number(e.Rank)>=1 && Number(e.Rank)<=250 &&
-      (!e.IdCountry || String(e.IdCountry).toUpperCase()===code))
-      .map(e=>({rank:Number(e.Rank),date:String(e.PubDate||e.PublicationDate||'').slice(0,10)}))
-      .filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.date) && e.date<=new Date().toISOString().slice(0,10))
-      .sort((a,b)=>b.date.localeCompare(a.date));
-   if(entries.length)result=entries[0];
-  }
- }catch(err){console.warn('[fifa] Official country ranking unavailable for',code,String(err.message||err))}
- FIFA_RANK_CACHE.set(code,{result,expires:Date.now()+(result?FIFA_RANK_POSITIVE_TTL:FIFA_RANK_NEGATIVE_TTL)});
- return result;
+const FIFA_RANK_SNAPSHOT={data:null,expires:0};
+async function currentFifaRankingSnapshot(){
+ if(FIFA_RANK_SNAPSHOT.data && FIFA_RANK_SNAPSHOT.expires>Date.now())return FIFA_RANK_SNAPSHOT.data;
+ // FotMob reproduces FIFA's published men's ranking and includes period + team rank.
+ // FIFA's older per-country public endpoint can lag behind published editions.
+ const periods=await remoteGet('https://www.fotmob.com/api/data/fifarankings/period?gender=men');
+ if(periods.status!==200||!Array.isArray(periods.data))
+  throw Error('免費 FIFA 排名期別來源暫時無法取得');
+ const current=Number(new Date().toISOString().slice(0,10).replace(/-/g,''));
+ const editions=periods.data.filter(x=>/^\d{8}$/.test(String(x.periodId||''))&&
+   Number(x.periodId)<=current).sort((a,b)=>Number(b.periodId)-Number(a.periodId));
+ if(!editions.length)throw Error('找不到已公布的 FIFA 男子排名期別');
+ const edition=String(editions[0].periodId);
+ const asOf=edition.slice(0,4)+'-'+edition.slice(4,6)+'-'+edition.slice(6,8);
+ // Do not silently label a many-month-old ranking as current.
+ if(Date.now()-Date.parse(asOf+'T00:00:00Z')>125*86400000)
+  throw Error('最新可用 FIFA 排名期別過舊，需等待來源更新');
+ const ranks=await remoteGet('https://www.fotmob.com/api/data/fifarankings/ranking?gender=men&periodId='+edition);
+ if(ranks.status!==200||!Array.isArray(ranks.data))
+  throw Error('免費 FIFA 排名表暫時無法取得');
+ const rows=ranks.data
+  .filter(x=>typeof x.name==='string'&&x.name.length<90&&Number.isInteger(Number(x.rank))&&
+     Number(x.rank)>=1&&Number(x.rank)<=250)
+  .slice(0,250).map(x=>({name:x.name,rank:Number(x.rank)}));
+ if(rows.length<150)throw Error('FIFA 排名資料筆數不足，避免呈現不完整名次');
+ const snapshot={source:'FotMob — FIFA Men World Ranking',asOf,edition,rows,
+  checkedAt:new Date().toISOString()};
+ FIFA_RANK_SNAPSHOT.data=snapshot;
+ FIFA_RANK_SNAPSHOT.expires=Date.now()+6*60*60*1000;
+ console.log('[fifa] current ranking period:',asOf,'teams:',rows.length,
+   'top:',rows[0].name,rows[0].rank);
+ return snapshot;
 }
 
 const FEED_CACHE = { time:0, data:null };
@@ -153,25 +163,9 @@ async function api(req,res,route){
    }catch(e){return send(res,502,{provider:'tsdb_search',error:String(e.message||e)})}
  }
  if(route.pathname==='/api/fifa-rankings'&&req.method==='GET'){
-  const raw=String(route.searchParams.get('codes')||'');
-  const codes=[...new Set(raw.toUpperCase().split(',').filter(Boolean))];
-  if(!codes.length || codes.length>18 || codes.some(c=>!/^[A-Z]{3}$/.test(c)))
-   return send(res,400,{error:'需要 1～18 個有效的 FIFA 三碼國家代碼'});
-  const ranks={},unavailable=[];
-  let i=0;
-  async function worker(){
-   while(i<codes.length){
-    const code=codes[i++];
-    const result=await fetchFifaCountryRank(code);
-    if(result)ranks[code]=result;else unavailable.push(code);
-   }
-  }
-  await Promise.all(Array.from({length:Math.min(3,codes.length)},worker));
-  return send(res,200,{
-   source:'FIFA official public ranking API',
-   asOf:null,
-   ranks,unavailable,checkedAt:new Date().toISOString()
-  });
+  try{return send(res,200,await currentFifaRankingSnapshot())}
+  catch(error){return send(res,503,{error:String(error.message||error),
+    source:'FotMob — FIFA Men World Ranking',ranksUnavailable:true})}
  }
  if(route.pathname==='/api/match-summary'&&req.method==='GET'){
    const league=route.searchParams.get('league');
@@ -220,28 +214,8 @@ const server=http.createServer(async(req,res)=>{
 });
 server.listen(PORT,'0.0.0.0',()=>{
  console.log('Fixture console listening on '+PORT);
- fetchFifaCountryRank('JPN').then(rank=>console.log('[fifa] official rank source check:',rank?JSON.stringify({code:'JPN',rank:rank.rank,date:rank.date}):'unavailable')).catch(err=>console.warn('[fifa] rank API check failed:',String(err.message||err)));
-
- for(const endpoint of [
-  'https://www.fotmob.com/api/data/fifarankings/period?gender=men',
-  'https://www.fotmob.com/api/data/fifarankings/ranking?periodId=20261007&gender=men'
- ]){
-  remoteGet(endpoint).then(response=>{
-   const data=response.data;
-   const list=Array.isArray(data)?data:Array.isArray(data?.data)?data.data:Array.isArray(data?.rows)?data.rows:[];
-   console.log('[fifa] FotMob public-ranking endpoint inspection:',
-    JSON.stringify({path:new URL(endpoint).pathname,http:response.status,keys:Object.keys(data||{}).slice(0,12),count:list.length,first:list[0]||null}).slice(0,1600));
-  }).catch(err=>console.warn('[fifa] FotMob source not accessible:',String(err.message||err)));
- }
-
- remoteGet('https://api.fifa.com/api/v3/rankingschedules/all?type=0&gender=1')
-  .then(response=>{
-   const data=response.data,items=Array.isArray(data?.Results)?data.Results:[];
-   console.log('[fifa] ranking schedule inspection:',JSON.stringify({
-    http:response.status,keys:Object.keys(data||{}).slice(0,15),
-    count:items.length,first:items[0]||null,last:items[items.length-1]||null
-   }).slice(0,4500))
-  }).catch(err=>console.warn('[fifa] schedule listing unavailable:',String(err.message||err)));
+ currentFifaRankingSnapshot().catch(err=>
+  console.warn('[fifa] ranking data unavailable:',String(err.message||err)));
  const feed=String(process.env.FOOTBALL_REPORT_FEED_URL||'').trim();
  if(feed&&/^https:\/\/script\.google\.com\/macros\/s\/[-\w]+\/exec(?:\?.*)?$/.test(feed)){
   fetchScriptJson(feed).then(data=>{
