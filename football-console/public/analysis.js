@@ -440,7 +440,10 @@ async function loadReviewScores(force=false){
  }
  state.reviewLoading=false;$('refreshReview').disabled=false;
  renderReview();
- enrichScoreResults(fixtures,force,false).then(()=>{
+ Promise.allSettled([
+  enrichScoreResults(fixtures,force,false),
+  includeMissingClubPredictions(fixtures,force,day,false)
+ ]).then(()=>{
   if(state.day===day&&state.view==='reviews')renderReview();
  }).catch(err=>console.warn('Review score cross-check failed:',String(err.message||err)));
  if(state.day!==day&&state.view==='reviews')loadReviewScores(false);
@@ -1021,13 +1024,13 @@ async function loadHistoryResults(force=false){
  }
 }
 
-async function includeMissingClubPredictions(fixtures,force=false,selectedDay=state.day){
+async function includeMissingClubPredictions(fixtures,force=false,selectedDay=state.day,requireSelection=true){
  const matches=(state.feed?.reports?.find(r=>r.date===selectedDay)?.matches)||[];
  const known=new Set(fixtures.map(f=>String(f.id)));
  let looked=0,added=0;
  for(const p of matches){
   const league=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
-  if(p.date!==selectedDay||!league||!state.leagues.has(league)||LIVE?.NATIONAL_LEAGUES?.has(league))continue;
+  if(p.date!==selectedDay||!league||(requireSelection&&!state.leagues.has(league))||LIVE?.NATIONAL_LEAGUES?.has(league))continue;
   if(eventForPrediction(p,fixtures)||looked>=12)continue;
   looked++;
   const seed={date:p.date,time:p.time,leagueCode:league,home:p.home,away:p.away};
