@@ -147,7 +147,12 @@ function providerFetch(path,secret){
     let body=null;try{body=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{}
     if(res.statusCode!==200)return reject(Error('API-FOOTBALL HTTP '+res.statusCode));
     if(!body||!Array.isArray(body.response))return reject(Error('API-FOOTBALL returned unavailable response'));
-    if(body.errors&&Object.keys(body.errors).length)return reject(Error('API-FOOTBALL reported an error'));
+    if(body.errors&&Object.keys(body.errors).length){
+     const plan=String(body.errors.plan||'');
+     const reason=/Free plan|Free plans|season|subscription/i.test(plan)?
+       '免費方案可能不支援所查賽季':'API-FOOTBALL 上游回報查詢限制';
+     return reject(Error(reason));
+    }
     resolve(body.response);
    });
   });
