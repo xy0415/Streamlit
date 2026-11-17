@@ -38,6 +38,40 @@ function fetchScriptJson(url,remaining=4) {
   request.on('error',reject);
  });
 }
+function canonicalReportDate(value,article){
+ const fromArticle=String(article||'').match(/分析日期[：:]\s*(\d{4}-\d{2}-\d{2})/);
+ if(fromArticle)return fromArticle[1];
+ const str=String(value==null?'':value).trim();
+ if(/^\d{4}-\d{2}-\d{2}$/.test(str))return str;
+ let match=str.match(/^(\d{4})[\/.](\d{1,2})[\/.](\d{1,2})$/);
+ if(match)return match[1]+'-'+match[2].padStart(2,'0')+'-'+match[3].padStart(2,'0');
+ match=str.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/);
+ if(match)return match[3]+'-'+match[1].padStart(2,'0')+'-'+match[2].padStart(2,'0');
+ if(/^\d{5}(\.\d+)?$/.test(str)){
+  const d=new Date(Date.UTC(1899,11,30)+Number(str)*86400000);
+  if(Number.isFinite(d.getTime()))return d.toISOString().slice(0,10);
+ }
+ return '';
+}
+function canonicalClock(value){
+ const str=String(value==null?'':value).trim();
+ const match=str.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+ if(match)return match[1].padStart(2,'0')+':'+match[2];
+ if(/^0?\.\d+$/.test(str)){
+  const minutes=Math.round(Number(str)*24*60);
+  if(minutes>=0&&minutes<1440)return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
+ }
+ return str;
+}
+function sanitizePublicReports(payload){
+ const reports=payload.reports.slice(0,120).map(report=>{
+  const date=canonicalReportDate(report.date,report.article);
+  if(!date)return null;
+  const matches=Array.isArray(report.matches)?report.matches.map(m=>({...m,date,time:canonicalClock(m.time)})):[];
+  return {...report,date,matches};
+ }).filter(Boolean).sort((a,b)=>b.date.localeCompare(a.date));
+ return {version:1,connected:true,syncedAt:payload.syncedAt||'',scoresCheckedAt:payload.scoresCheckedAt||'',reports};
+}
 function fallbackReports(error){
  let payload={version:1,reports:[]};
  try{payload=JSON.parse(fs.readFileSync(path.join(BASE,'data','predictions.json'),'utf8'))}catch{}
@@ -74,7 +108,7 @@ async function api(req,res,route){
   try{
    const payload=await fetchScriptJson(target);
    if(!payload||!Array.isArray(payload.reports)||payload.connected!==true)throw Error(payload&&payload.error||'來源未完成初始化');
-   const sanitized={version:1,connected:true,syncedAt:payload.syncedAt||'',scoresCheckedAt:payload.scoresCheckedAt||'',reports:payload.reports.slice(0,120)};
+   const sanitized=sanitizePublicReports(payload);
    FEED_CACHE.time=Date.now();FEED_CACHE.data=sanitized;
    return send(res,200,sanitized);
   }catch(error){return send(res,200,fallbackReports(error))}
@@ -108,4 +142,15 @@ const server=http.createServer(async(req,res)=>{
   fs.readFile(file,(err,buf)=>{if(err)return send(res,404,{error:'Not found'});res.writeHead(200,{'content-type':MIME[path.extname(file)]||'application/octet-stream','x-content-type-options':'nosniff','referrer-policy':'no-referrer','cache-control':'public, max-age=180'});res.end(buf)});
  }catch(e){send(res,500,{error:'伺服器處理失敗',detail:String(e.message||e)})}
 });
-server.listen(PORT,'0.0.0.0',()=>console.log('Fixture console listening on '+PORT));
+server.listen(PORT,'0.0.0.0',()=>{
+ console.log('Fixture console listening on '+PORT);
+ const feed=String(process.env.FOOTBALL_REPORT_FEED_URL||'').trim();
+ if(feed&&/^https:\/\/script\.google\.com\/macros\/s\/[-\w]+\/exec(?:\?.*)?$/.test(feed)){
+  fetchScriptJson(feed).then(data=>{
+   if(!data||data.connected!==true||!Array.isArray(data.reports))throw Error(data&&data.error||'同步回應未通過驗證');
+   const normalized=sanitizePublicReports(data);
+   FEED_CACHE.time=Date.now();FEED_CACHE.data=normalized;
+   console.log('[football] Google Apps Script sync confirmed:',JSON.stringify({reports:normalized.reports.length,matches:normalized.reports.reduce((n,r)=>n+r.matches.length,0),newestDate:normalized.reports[0]?.date||null}));
+  }).catch(err=>console.warn('[football] Google Apps Script sync not confirmed:',String(err.message||err)));
+ }
+});
