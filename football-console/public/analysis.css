@@ -496,3 +496,23 @@ tbody tr:hover{background:#fcfdff}
  .schedule-table .league-token{font-size:11px;padding:5px 6px}
  .schedule-table .fixture-outcome .pill{font-size:9.5px}
 }
+
+
+/* Consistent Traditional Chinese primary / original-language secondary labels */
+.team-crest .crest-fallback{
+ font-size:19px;
+ line-height:1;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ width:100%;
+ height:100%;
+}
+.team-names{align-items:baseline;gap:7px}
+.team-names strong{color:#1e3552;font-weight:800}
+.team-names small{color:#8292a8;font-weight:500}
+@media(max-width:700px){
+ .team-crest .crest-fallback{font-size:17px}
+ .team-names strong{font-size:15px}
+ .team-names small{font-size:11.5px}
+}
