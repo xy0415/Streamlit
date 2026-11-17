@@ -35,7 +35,8 @@
       const predicted=/(是|有)/.test(yesNo[1]);
       return (h>0&&a>0)===predicted?'win':'loss';
     }
-    const total=raw.match(/(?:全場)?(?:總進球|進球數)?(大|小)(\d+(?:\.\d+)?)/);
+    const total=raw.match(/^(?:全場)?(?:總進球|進球數)(大|小)(\d+(?:\.\d+)?)$/)||
+      raw.match(/^全場(大|小)(\d+(?:\.\d+)?)$/);
     if(total){
       const line=Number(total[2]),direction=total[1];
       return resolveDiff(direction==='大'?h+a:-(h+a),direction==='大'?-line:line);
