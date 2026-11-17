@@ -265,13 +265,58 @@ function teamLogo(logo,name){
  return '<span class="team-crest"><span class="crest-fallback">'+escapeHtml(flag)+'</span>'+
   (src?'<img src="'+escapeHtml(src)+'" alt="" loading="lazy" decoding="async">':'')+'</span>';
 }
-function teamLine(side,full,short,logo,translated){
+
+function nationalLeagueCode(league){
+ return LIVE?.NATIONAL_LEAGUES?.has(league)===true;
+}
+function rankCode(league,name,abbr){
+ if(!nationalLeagueCode(league)||!LIVE?.fifaCode)return null;
+ return LIVE.fifaCode(name,abbr);
+}
+function fifaRankMarkup(league,name,abbr){
+ const code=rankCode(league,name,abbr);
+ if(!code)return '';
+ const entry=state.fifaRanks.get(code),valid=entry&&Number.isInteger(entry.rank);
+ const title=valid?'FIFA 男子世界排名 · 發布日期 '+entry.date+' · 官方資料':'FIFA 官方排名資料尚未取得';
+ return '<span class="fifa-rank" title="'+escapeHtml(title)+'">'+(valid?'FIFA '+entry.rank:'FIFA —')+'</span>';
+}
+async function loadFifaRanks(fixtures){
+ if(state.fifaRanksBusy||!LIVE)return;
+ const codes=[...new Set((fixtures||[]).flatMap(f=>[
+  rankCode(f.leagueCode,f.home,f.homeAbbr),
+  rankCode(f.leagueCode,f.away,f.awayAbbr)
+ ]).filter(Boolean))].filter(code=>!state.fifaRanks.has(code));
+ if(!codes.length)return;
+ state.fifaRanksBusy=true;
+ try{
+  for(let start=0;start<codes.length;start+=12){
+   const chunk=codes.slice(start,start+12);
+   try{
+    const response=await fetch('/api/fifa-rankings?codes='+encodeURIComponent(chunk.join(',')),{cache:'no-store'});
+    if(!response.ok)throw Error('FIFA 官方 API 無法回應');
+    const data=await response.json();
+    for(const code of chunk){
+     const entry=data.ranks?.[code];
+     state.fifaRanks.set(code,entry&&Number.isInteger(Number(entry.rank))&&entry.date?
+       {rank:Number(entry.rank),date:entry.date}:null);
+    }
+   }catch(err){
+    for(const code of chunk)state.fifaRanks.set(code,null);
+    console.warn('FIFA rankings currently unavailable:',String(err.message||err));
+   }
+   if(state.view==='schedule')renderSchedule();
+  }
+ }finally{state.fifaRanksBusy=false}
+}
+
+function teamLine(side,full,short,logo,translated,league='',abbr=''){
  const name=localizedTeamName(full,translated);
  const sub=sourceTeamName(full,short,name);
  return '<div class="match-team '+(side==='home'?'home-team':'away-team')+'">'+
   '<span class="team-position '+side+'">'+(side==='home'?'主':'客')+'</span>'+
   teamLogo(logo,full)+'<span class="team-names"><strong>'+escapeHtml(name)+'</strong>'+
-  (sub?'<small>'+escapeHtml(sub)+'</small>':'')+'</span></div>';
+  (sub?'<small>'+escapeHtml(sub)+'</small>':'')+
+  fifaRankMarkup(league,full,abbr)+'</span></div>';
 }
 async function readScoreboard(league,date,force){
  const key=league+'|'+date,old=state.scoreboardCache.get(key);
@@ -629,8 +674,8 @@ function renderSchedule(){
   return '<tr class="clickable-match" tabindex="0" role="button" aria-label="查看'+escapeHtml(localizedTeamName(x.home))+'對'+escapeHtml(localizedTeamName(x.away))+'的比賽詳情" data-match-index="'+i+'"><td class="fixture-time"><span class="fixture-day">'+escapeHtml(when)+'</span><strong>'+escapeHtml(x.time)+'</strong></td>'+
    '<td class="fixture-league"><span class="league-token">'+escapeHtml(x.league)+'</span></td>'+
    '<td class="fixture-match"><div class="teams-stack">'+
-   teamLine('home',x.home,x.homeShort,x.homeLogo,p?.homeZh)+
-   teamLine('away',x.away,x.awayShort,x.awayLogo,p?.awayZh)+
+   teamLine('home',x.home,x.homeShort,x.homeLogo,p?.homeZh,x.leagueCode,x.homeAbbr)+
+   teamLine('away',x.away,x.awayShort,x.awayLogo,p?.awayZh,x.leagueCode,x.awayAbbr)+
    '</div></td>'+
    '<td class="fixture-outcome"><div>'+score+'</div>'+
    statusPill(effective.text,effective.tone)+
@@ -657,8 +702,8 @@ function renderPredictions(){
  $('predictionsGrid').innerHTML=rows.map(p=>
  '<article class="prediction"><div class="pred-top"><span>第 '+p.order+' 關　'+escapeHtml(p.time)+'　·　'+escapeHtml(p.league)+(p.round?' · '+escapeHtml(p.round):'')+'</span>'+(p.group&&p.group!=='串關單'?'<span>'+escapeHtml(p.group)+'</span>':'')+'</div>'+
  '<div class="pred-team-stack">'+
-  teamLine('home',p.home,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.homeLogo,p.homeZh)+
-  teamLine('away',p.away,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.awayLogo,p.awayZh)+
+  teamLine('home',p.home,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.homeLogo,p.homeZh,PRED_LEAGUE_CODES[p.league]||'')+
+  teamLine('away',p.away,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.awayLogo,p.awayZh,PRED_LEAGUE_CODES[p.league]||'')+
  '</div>'+
  '<div class="pred-choice"><strong>'+escapeHtml(displayCleanText(p.market))+'</strong>'+(p.probability!==null&&Number.isFinite(p.probability)?'<span class="probability">'+p.probability+'%<small>估計'+escapeHtml(p.probabilityType)+'機率</small></span>':'')+'</div></article>'
  ).join('');
@@ -700,8 +745,8 @@ function renderReview(){
   else status=statusPill(recorded?(p.status||'待覆核'):(state.reviewLoading?'正在查詢':'待核對'),'neutral');
   return '<tr><td class="review-time"><strong>'+escapeHtml(p.time)+'</strong></td>'+
     '<td class="review-match"><div class="review-teams">'+
-    teamLine('home',p.home,'',live?.homeLogo,p.homeZh)+
-    teamLine('away',p.away,'',live?.awayLogo,p.awayZh)+
+    teamLine('home',p.home,'',live?.homeLogo,p.homeZh,PRED_LEAGUE_CODES[p.league]||'',live?.homeAbbr||'')+
+    teamLine('away',p.away,'',live?.awayLogo,p.awayZh,PRED_LEAGUE_CODES[p.league]||'',live?.awayAbbr||'')+
     '</div><small>'+escapeHtml(p.league)+'</small></td>'+
     '<td class="review-market">'+escapeHtml(displayCleanText(p.market))+'</td>'+
     '<td class="review-score"><strong>'+(h!==null&&a!==null?escapeHtml(h)+' : '+escapeHtml(a):'—')+'</strong>'+
