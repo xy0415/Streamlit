@@ -396,6 +396,7 @@ function parseScore(item){
  const homeLogo=home.team?.logo||home.team?.logos?.[0]?.href||'';
  const awayLogo=away.team?.logo||away.team?.logos?.[0]?.href||'';
  const homeShort=home.team?.shortDisplayName||'',awayShort=away.team?.shortDisplayName||'';
+ const homeId=String(home.team?.id||''),awayId=String(away.team?.id||'');
  const stamp=fTaiwan(item.date||competition.date),type=item.status?.type||{};
  if(!stamp||!titleHome||!titleAway)return null;
  const statusRaw=String(type.name||'')+' '+String(type.description||'')+' '+String(type.shortDetail||'');
@@ -411,7 +412,7 @@ function parseScore(item){
  if(!Number.isFinite(Number(awayScore))||String(awayScore).trim()==='')awayScore=null;
  return {id:String(item.id||''),date:stamp.date,time:stamp.time,
   leagueCode:item._league||'',league:KN[item._league]||item._league||'',
-  home:titleHome,away:titleAway,homeLogo,awayLogo,homeShort,awayShort,
+  home:titleHome,away:titleAway,homeLogo,awayLogo,homeShort,awayShort,homeId,awayId,
   scoreHome:completed||progress?homeScore:null,scoreAway:completed||progress?awayScore:null,
   status:cancelled?'cancelled':postponed?'postponed':completed?'finished':progress?'inprogress':'scheduled',
   stateName:type.description||type.name||'',source:'ESPN',url:item.links?.[0]?.href||''};
@@ -487,16 +488,131 @@ function updateFilter(){
  l.innerHTML='<option value="">所有聯賽</option>'+[...opts].map(x=>'<option value="'+escapeHtml(x[0])+'">'+escapeHtml(x[1])+'</option>').join('');
  l.value=opts.has(old)?old:'';
 }
+const MATCH_SUMMARY_CACHE_MS=5*60*1000;
+const summaryCache=new Map();
+let matchDialogRequest=0;
+let matchReturnFocus=null;
+
+function matchHero(f){
+ const p=predictionForEvent(f);
+ const home=localizedTeamName(f.home,p?.homeZh);
+ const away=localizedTeamName(f.away,p?.awayZh);
+ const fullScore=(f.status==='finished'||f.status==='inprogress')&&
+  Number.isInteger(Number(f.scoreHome))&&f.scoreHome!==null&&
+  Number.isInteger(Number(f.scoreAway))&&f.scoreAway!==null;
+ const score=fullScore?escapeHtml(f.scoreHome)+' <span class="hero-dash">–</span> '+escapeHtml(f.scoreAway):'— <span class="hero-dash">–</span> —';
+ const status=displayFixtureStatus(f);
+ const nameBlock=(side,label,english,logo)=>'<div class="hero-team '+side+'">'+
+  '<div class="hero-crest">'+teamLogo(logo,english)+'</div>'+
+  '<strong>'+escapeHtml(label)+'</strong>'+
+  '<span class="hero-english">'+escapeHtml(english===label?'':english)+'</span>'+
+  '<span class="hero-side">'+(side==='home'?'主隊':'客隊')+'</span></div>';
+ const statusClass=['ok','warn','bad','blue','neutral'].includes(status.tone)?status.tone:'neutral';
+ return '<div class="match-hero">'+
+  nameBlock('home',home,f.home,f.homeLogo)+
+  '<div class="hero-center"><div class="hero-score">'+score+'</div>'+
+  '<div class="hero-status '+statusClass+'">'+escapeHtml(status.text)+'</div>'+
+  '<div class="hero-time">'+escapeHtml(f.date.replaceAll('-','/'))+'　'+escapeHtml(f.time)+'　台灣時間</div></div>'+
+  nameBlock('away',away,f.away,f.awayLogo)+
+  '</div>';
+}
+function goalEventsFromSummary(payload,fixture){
+ if(!payload||typeof payload!=='object')return [];
+ const details=payload.header?.competitions?.[0]?.details;
+ const sources=[payload.scoringPlays,details,payload.plays,payload.keyEvents,payload.details];
+ const events=sources.find(a=>Array.isArray(a)&&a.some(isGoalPlay))||[];
+ const accepted=[],dedup=new Set();
+ for(const e of events){
+  if(!isGoalPlay(e))continue;
+  const player=String(e.athletesInvolved?.[0]?.displayName||
+    e.participants?.[0]?.athlete?.displayName||e.athlete?.displayName||
+    e.player?.displayName||e.scorer?.displayName||'').trim();
+  if(!player)continue;
+  const time=String(e.clock?.displayValue||e.time?.displayValue||e.minute||'').trim();
+  const id=String(e.team?.id||e.teamId||e.team?.uid?.split('~').pop()||'').trim();
+  const side=id&&fixture.homeId&&id===fixture.homeId?'home':
+    id&&fixture.awayId&&id===fixture.awayId?'away':null;
+  if(!side)continue;
+  const kind=String(e.type?.text||e.type?.name||e.type?.displayName||'');
+  const ownGoal=/own.?goal|烏龍/.test(kind.toLowerCase())||e.ownGoal===true;
+  const identity=[side,player,time,ownGoal].join('|');
+  if(dedup.has(identity))continue;
+  dedup.add(identity);
+  accepted.push({side,player,time,ownGoal});
+ }
+ return accepted.slice(0,20);
+}
+function isGoalPlay(e){
+ if(!e||typeof e!=='object')return false;
+ if(e.scoringPlay===true&&e.type?.text){
+  return /(^|[\s_-])(goal|own goal|penalty goal)([\s_-]|$)/i.test(String(e.type.text))&&!/disallow|no goal|goal kick/i.test(String(e.type.text));
+ }
+ const type=String(e.type?.text||e.type?.name||e.type?.displayName||e.playType?.text||'');
+ return /(^|[\s_-])(goal|own goal|penalty goal)([\s_-]|$)/i.test(type)&&
+  !/disallow|cancel|no goal|goal kick/i.test(type);
+}
+async function fetchMatchSummary(f){
+ if(!/^\d{4,14}$/.test(String(f.id||''))||!f.leagueCode)return null;
+ const key=f.leagueCode+'|'+f.id,older=summaryCache.get(key);
+ if(older&&Date.now()<older.expires)return older.promise;
+ const promise=(async()=>{
+   const url='/api/match-summary?league='+encodeURIComponent(f.leagueCode)+'&event='+encodeURIComponent(f.id);
+   const resp=await fetch(url,{cache:'no-store'}),json=await resp.json();
+   if(!resp.ok||json.upstreamStatus!==200||!json.data)throw Error('ESPN 此場沒有可用的進球事件');
+   return json.data;
+ })();
+ summaryCache.set(key,{expires:Date.now()+MATCH_SUMMARY_CACHE_MS,promise});
+ try{return await promise}catch(err){summaryCache.delete(key);throw err}
+}
+function goalDetailMarkup(goals){
+ if(!goals.length)return '<div class="match-detail-empty">免費資料來源尚未提供可核實的進球者與分鐘。</div>';
+ const home=goals.filter(g=>g.side==='home'),away=goals.filter(g=>g.side==='away');
+ const format=(entries)=>entries.map(g=>'<div class="scorer">'+
+  '<span class="scorer-ball">⚽</span>'+
+  '<span class="scorer-person">'+escapeHtml(g.player)+(g.ownGoal?' <span class="scorer-og">烏龍球</span>':'')+'</span>'+
+  '<strong>'+escapeHtml(g.time?g.time+(g.time.includes("'")?'':"'"):'—')+'</strong></div>').join('');
+ return '<div class="goal-columns"><div class="goal-side">'+(format(home)||'<span class="no-goal-events">—</span>')+
+  '</div><div class="goal-side">'+(format(away)||'<span class="no-goal-events">—</span>')+'</div></div>';
+}
+async function openMatchDetail(f){
+ if(!f)return;
+ const request=++matchDialogRequest;
+ matchReturnFocus=document.activeElement;
+ $('matchDetailLeague').textContent=f.league||'比賽詳情';
+ $('matchDetailTitle').textContent='比賽詳情';
+ $('matchDetailBody').innerHTML=matchHero(f)+
+  '<div class="match-details-section"><h3>進球紀錄</h3>'+
+  '<div id="matchGoals" class="match-goals"><div class="match-detail-empty">正在查詢進球資料…</div></div></div>'+
+  '<div class="match-source-footer">比分：'+escapeHtml(f.source||'ESPN')+
+  (f.scoreVerified?' · 已比對獨立來源':' · 未必經第二來源確認')+'</div>';
+ openModal('matchModal');
+ $('matchCloseBtn').focus();
+ let summary;
+ try{summary=await fetchMatchSummary(f)}catch{
+  if(request!==matchDialogRequest||$('matchModal').classList.contains('hidden'))return;
+  $('matchGoals').innerHTML='<div class="match-detail-empty">目前沒有可信的進球者與分鐘資料。</div>';
+  return;
+ }
+ if(request!==matchDialogRequest||$('matchModal').classList.contains('hidden'))return;
+ $('matchGoals').innerHTML=goalDetailMarkup(goalEventsFromSummary(summary,f));
+}
+function closeMatchDetail(){
+ ++matchDialogRequest;
+ closeModal('matchModal');
+ if(matchReturnFocus&&typeof matchReturnFocus.focus==='function')matchReturnFocus.focus();
+ matchReturnFocus=null;
+}
+
 function renderSchedule(){
  const rows=fixturesForView();$('fixtureCount').textContent=rows.length;$('fixtureEmpty').classList.toggle('hidden',rows.length>0);
- $('fixtureTable').innerHTML=rows.map(x=>{
+ $('fixtureTable').innerHTML=rows.map((x,i)=>{
   const p=predictionForEvent(x),when=state.day.slice(5).replace('-','/'),
    effective=displayFixtureStatus(x),
    score=(x.status==='finished'||x.status==='inprogress')&&
         x.scoreHome!==null&&x.scoreHome!==undefined&&x.scoreAway!==null&&x.scoreAway!==undefined
       ?'<span class="match-score">'+escapeHtml(x.scoreHome)+' : '+escapeHtml(x.scoreAway)+'</span>'
       :elapsedStatus(x)==='scheduled'?'<span class="schedule-vs">VS</span>':'<span class="schedule-vs">— : —</span>';
-  return '<tr><td class="fixture-time"><span class="fixture-day">'+escapeHtml(when)+'</span><strong>'+escapeHtml(x.time)+'</strong></td>'+
+  return '<tr class="clickable-match" tabindex="0" role="button" aria-label="查看'+escapeHtml(localizedTeamName(x.home))+'對'+escapeHtml(localizedTeamName(x.away))+'的比賽詳情" data-match-index="'+i+'"><td class="fixture-time"><span class="fixture-day">'+escapeHtml(when)+'</span><strong>'+escapeHtml(x.time)+'</strong></td>'+
    '<td class="fixture-league"><span class="league-token">'+escapeHtml(x.league)+'</span></td>'+
    '<td class="fixture-match"><div class="teams-stack">'+
    teamLine('home',x.home,x.homeShort,x.homeLogo,p?.homeZh)+
@@ -677,6 +793,27 @@ function init(){
  $('showOriginal').onclick=()=>{if(!state.report)return;$('originalDate').textContent=state.report.date;$('originalArticle').textContent=displayCleanText(state.report.article||'當天未提供可公開原始全文');openModal('originalModal')};
  $('historyRows').onclick=e=>{const b=e.target.closest('[data-load-day]');if(!b)return;pickDay(b.dataset.loadDay);state.view='predictions';render()};
  state.day=todayTaiwan();loadFeed().then(()=>loadFixtures(false));render();
+ $('fixtureTable').addEventListener('click',event=>{
+  const row=event.target.closest('tr[data-match-index]');
+  if(!row)return;
+  const f=fixturesForView()[Number(row.dataset.matchIndex)];
+  if(f)openMatchDetail(f);
+ });
+ $('fixtureTable').addEventListener('keydown',event=>{
+  if(event.key!=='Enter'&&event.key!==' ')return;
+  const row=event.target.closest('tr[data-match-index]');
+  if(!row)return;
+  event.preventDefault();
+  const f=fixturesForView()[Number(row.dataset.matchIndex)];
+  if(f)openMatchDetail(f);
+ });
+ $('matchCloseBtn').addEventListener('click',closeMatchDetail);
+ $('matchModal').addEventListener('click',event=>{
+   if(event.target===$('matchModal'))closeMatchDetail();
+ });
+ document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&!$('matchModal').classList.contains('hidden'))closeMatchDetail();
+ });
  $('fixtureTable').addEventListener('error',onLogoError,true);
  $('predictionsGrid').addEventListener('error',onLogoError,true);
  $('reviewTable').addEventListener('error',onLogoError,true);
