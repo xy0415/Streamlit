@@ -330,13 +330,18 @@ async function loadReviewScores(force=false){
   }
  }
  await Promise.all(Array.from({length:Math.min(3,todo.length)},worker));
+ const byId=new Map();matched.forEach(f=>byId.set(f.id||f.leagueCode+'|'+f.home+'|'+f.away+'|'+f.time,f));
+ const fixtures=[...byId.values()];
+ await enrichScoreResults(fixtures,force,true);
  if(state.day===day){
-  const byId=new Map();matched.forEach(f=>byId.set(f.id||f.leagueCode+'|'+f.home+'|'+f.away+'|'+f.time,f));
-  state.reviewFixtures=[...byId.values()];
+  state.reviewFixtures=fixtures;
   state.reviewErrors=errors;state.reviewUpdatedAt=Date.now();state.reviewDate=day;
  }
  state.reviewLoading=false;$('refreshReview').disabled=false;
  renderReview();
+ enrichScoreResults(fixtures,force,false).then(()=>{
+  if(state.day===day&&state.view==='reviews')renderReview();
+ }).catch(err=>console.warn('Review score cross-check failed:',String(err.message||err)));
  if(state.day!==day&&state.view==='reviews')loadReviewScores(false);
 }
 
@@ -551,8 +556,10 @@ function renderReview(){
   let status='';
   if(inconsistent)status=statusPill('比分有差異，需重核','bad');
   else if(p.verified)status=statusPill('雙來源已核實','ok');
-  else if(live&&live.status==='finished')status=statusPill(extraTime?'含加時／點球，待核':'ESPN 已完賽·待覆核','warn');
-  else if(live&&live.status==='inprogress')status=statusPill('ESPN 比賽中','blue');
+  else if(live&&live.status==='finished')status=statusPill(extraTime?'含加時／點球，待核':live.scoreVerified?'雙來源比分一致':'終場比分待覆核',live.scoreVerified?'ok':'warn');
+  else if(live&&live.status==='inprogress')status=statusPill('比賽進行中','blue');
+  else if(live&&['stale','pending','conflict'].includes(elapsedStatus(live)))
+   status=statusPill(elapsedStatus(live)==='conflict'?'比分衝突，待核對':'賽況待更新','warn');
   else status=statusPill(recorded?(p.status||'待覆核'):(state.reviewLoading?'正在查詢':'待核對'),'neutral');
   return '<tr><td class="review-time"><strong>'+escapeHtml(p.time)+'</strong></td>'+
     '<td class="review-match"><div class="review-teams">'+
@@ -561,7 +568,7 @@ function renderReview(){
     '</div><small>'+escapeHtml(p.league)+'</small></td>'+
     '<td class="review-market">'+escapeHtml(displayCleanText(p.market))+'</td>'+
     '<td class="review-score"><strong>'+(h!==null&&a!==null?escapeHtml(h)+' : '+escapeHtml(a):'—')+'</strong>'+
-    (!p.verified&&liveScore?'<small>ESPN 參考</small>':'')+'</td>'+
+    (!p.verified&&liveScore?'<small>'+escapeHtml(live.scoreVerified?'兩來源核對':'單一來源參考')+'</small>':'')+'</td>'+
     '<td>'+outcome+'</td><td>'+status+'</td></tr>';
  }).join('');
  const all=state.report?.matches||[];
@@ -644,10 +651,21 @@ function init(){
  setInterval(()=>{
   if(document.visibilityState==='hidden'||state.reviewLoading||state.loading)return;
   const days=Math.round((Date.parse(todayTaiwan()+'T00:00:00Z')-Date.parse(state.day+'T00:00:00Z'))/86400000);
-  if(state.view==='reviews'&&days>=-1&&days<=3){
-   loadFeed().then(()=>loadReviewScores(false)).catch(()=>loadReviewScores(false));
+  if(days>=-1&&days<=3){
+   if(state.view==='reviews'){
+    loadFeed().then(()=>loadReviewScores(false)).catch(()=>loadReviewScores(false));
+   }else if(state.view==='schedule'){
+    loadFixtures(false);
+   }
   }
- },180000);
+  // Always recalculate elapsed statuses even if an upstream is unavailable.
+  if(state.view==='schedule')renderSchedule();
+ },120000);
+ document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible')return;
+  if(state.view==='schedule')loadFixtures(false);
+  if(state.view==='reviews')loadReviewScores(false);
+ });
  $('exportDaily').onclick=getDailyExport;
  $('showOriginal').onclick=()=>{if(!state.report)return;$('originalDate').textContent=state.report.date;$('originalArticle').textContent=displayCleanText(state.report.article||'當天未提供可公開原始全文');openModal('originalModal')};
  $('historyRows').onclick=e=>{const b=e.target.closest('[data-load-day]');if(!b)return;pickDay(b.dataset.loadDay);state.view='predictions';render()};
