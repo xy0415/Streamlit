@@ -91,7 +91,9 @@ async function getIndependentMatchInfo(f,force=false){
  const key=matchLookupKey(f),old=state.resultLookupCache.get(key);
  if(!force&&old&&old.expiresAt>Date.now())return old.promise;
  const promise=(async()=>{
-  const url='/api/match-lookup?date='+encodeURIComponent(f.date)+
+  const kickoff=scheduledKickoff(f);
+  const lookupDate=Number.isFinite(kickoff)?new Date(kickoff).toISOString().slice(0,10):f.date;
+  const url='/api/match-lookup?date='+encodeURIComponent(lookupDate)+
    '&home='+encodeURIComponent(f.home)+'&away='+encodeURIComponent(f.away);
   const response=await fetch(url,{cache:'no-store'}),payload=await response.json();
   if(!response.ok||payload.upstreamStatus!==200)throw Error(payload.error||'備援資料來源暫時無法回應');
@@ -106,7 +108,8 @@ async function getIndependentMatchInfo(f,force=false){
     // No timestamp: do not trust for score settlement, but logos can still be
     // associated with exact team identities from the requested date.
     const d=String(x.dateEvent||'');
-    if(d&&Math.abs(Date.parse(d+'T00:00:00Z')-Date.parse(f.date+'T00:00:00Z'))>86400000)return false;
+    const utcDate=Number.isFinite(scheduledKickoff(f))?new Date(scheduledKickoff(f)).toISOString().slice(0,10):f.date;
+    if(d&&Math.abs(Date.parse(d+'T00:00:00Z')-Date.parse(utcDate+'T00:00:00Z'))>86400000)return false;
    }
    return true;
   });
