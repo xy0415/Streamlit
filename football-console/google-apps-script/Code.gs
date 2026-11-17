@@ -123,6 +123,7 @@ function syncPredictions(){
  }finally{lock.releaseLock()}
 }
 const LEAGUE_CODES={'歐國聯':'uefa.nations','歐洲國家聯賽':'uefa.nations','國際友誼賽':'fifa.friendly',
+'非洲盃':'caf.nations','非洲國家盃':'caf.nations','非洲盃資格賽':'caf.nations_qual','非洲國家盃資格賽':'caf.nations_qual','AFCON':'caf.nations','AFCON資格賽':'caf.nations_qual',
 '英超':'eng.1','英冠':'eng.2','西甲':'esp.1','德甲':'ger.1','義甲':'ita.1','法甲':'fra.1',
 '歐冠':'uefa.champions','歐霸':'uefa.europa','荷甲':'ned.1','葡超':'por.1',
 '巴甲':'bra.1','美職聯':'usa.1','沙職':'ksa.1','阿甲':'arg.1','日職':'jpn.1','韓職':'kor.1',
