@@ -210,7 +210,7 @@ function safeLogo(url){
  try{
   if(!url)return '';
   const u=new URL(String(url));
-  if(u.protocol!=='https:'||!(u.hostname==='espncdn.com'||u.hostname.endsWith('.espncdn.com')||u.hostname==='r2.thesportsdb.com'||u.hostname==='www.thesportsdb.com'||u.hostname==='thesportsdb.com'))return '';
+  if(u.protocol!=='https:'||!(u.hostname==='espncdn.com'||u.hostname.endsWith('.espncdn.com')||u.hostname==='r2.thesportsdb.com'||u.hostname==='www.thesportsdb.com'||u.hostname==='thesportsdb.com'||u.hostname==='media.api-sports.io'))return '';
   return u.href;
  }catch{return ''}
 }
@@ -383,6 +383,96 @@ async function readScoreboard(league,date,force){
  state.scoreboardCache.set(key,{expiresAt:Date.now()+SCOREBOARD_TTL,promise});
  try{return await promise}catch(e){state.scoreboardCache.delete(key);throw e}
 }
+
+const API_FOOTBALL_RECENCY_MS=18*86400000;
+const apiFootballFetchedDays=new Map();
+function apiFootballAllowedDay(date){
+ const parsed=Date.parse(date+'T00:00:00Z');
+ return Number.isFinite(parsed)&&Math.abs(Date.now()-parsed)<=API_FOOTBALL_RECENCY_MS;
+}
+function apiFootballTime(data){
+ return String(data.date||'')+'T'+String(data.time||'')+':00+08:00';
+}
+function apiSourceLogo(s){
+ return safeLogo(s||'');
+}
+function apiFixtureView(item){
+ if(!item||!KN[item.leagueCode]||!state.leagues.has(item.leagueCode))return null;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(item.date||'')||!item.home||!item.away)return null;
+ const status=['scheduled','inprogress','halftime','finished','postponed','cancelled'].includes(item.status)?item.status:'scheduled';
+ const id=Number(item.apiFixtureId);
+ if(!Number.isInteger(id)||id<1)return null;
+ return {
+  id:'api-'+id,apiFixtureId:id,leagueCode:item.leagueCode,league:KN[item.leagueCode]||'',
+  date:item.date,time:item.time,home:item.home,away:item.away,homeShort:'',awayShort:'',
+  homeLogo:apiSourceLogo(item.homeLogo),awayLogo:apiSourceLogo(item.awayLogo),
+  homeId:String(item.homeTeamId||''),awayId:String(item.awayTeamId||''),
+  homeAbbr:'',awayAbbr:'',status,
+  scoreHome:Number.isInteger(item.scoreHome)?item.scoreHome:null,
+  scoreAway:Number.isInteger(item.scoreAway)?item.scoreAway:null,
+  statusClock:Number.isInteger(item.minute)?item.minute+'′':'',liveClock:Number.isInteger(item.minute)?item.minute+'′':'',
+  source:'API-FOOTBALL',scoreSource:'API-FOOTBALL',scoreVerified:false,
+  sourceStatus:{type:{name:item.sourceStatus||'',description:item.statusText||''}},
+  stateName:item.statusText||'',hasExtraTime:Boolean(item.hasExtraTime)
+ }
+}
+function matchingFixture(primary,additional){
+ const matches=primary.filter(f=>{
+  if(f.leagueCode!==additional.leagueCode||f.date!==additional.date)return false;
+  const timeDiff=Math.abs(scheduledKickoff(f)-scheduledKickoff(additional));
+  const sameName=(a,b)=>sameTeam(a,b)||localizedTeamName(a)!=='中文隊名待核對'&&
+    localizedTeamName(a)===localizedTeamName(b);
+  return Number.isFinite(timeDiff)&&timeDiff<=90*60000&&
+   sameName(f.home,additional.home)&&sameName(f.away,additional.away);
+ });
+ return matches.length===1?matches[0]:null;
+}
+function mergeApiFootballFixtures(existing,received,selectedDay){
+ let added=0,merged=0,conflicts=0;
+ for(const item of received||[]){
+  const a=apiFixtureView(item);
+  if(!a||a.date!==selectedDay)continue;
+  const old=matchingFixture(existing,a);
+  if(!old){existing.push(a);added++;continue}
+  old.apiFixtureId=a.apiFixtureId;
+  if(!safeLogo(old.homeLogo)&&a.homeLogo)old.homeLogo=a.homeLogo;
+  if(!safeLogo(old.awayLogo)&&a.awayLogo)old.awayLogo=a.awayLogo;
+  const bothHaveFinal=old.status==='finished'&&a.status==='finished'&&
+   Number.isInteger(Number(old.scoreHome))&&Number.isInteger(Number(old.scoreAway))&&
+   old.scoreHome!==null&&old.scoreAway!==null&&a.scoreHome!==null&&a.scoreAway!==null;
+  if(bothHaveFinal&&(Number(old.scoreHome)!==a.scoreHome||Number(old.scoreAway)!==a.scoreAway)){
+   old.scoreConflict=true;old.scoreVerified=false;old.status='conflict';old.source='ESPN / API-FOOTBALL 差異';old.scoreHome=null;old.scoreAway=null;
+   conflicts++;continue
+  }
+  if((old.status==='scheduled'||old.status==='pending'||old.status==='inprogress'||old.status==='halftime')&&
+     (a.status==='finished'||a.status==='inprogress'||a.status==='halftime')){
+   old.status=a.status;
+   if(a.scoreHome!==null&&a.scoreAway!==null){old.scoreHome=a.scoreHome;old.scoreAway=a.scoreAway}
+   old.scoreSource='API-FOOTBALL';
+  }
+  if(a.liveClock&&(old.status==='inprogress'||old.status==='halftime'))old.liveClock=a.liveClock;
+  if(a.hasExtraTime)old.hasExtraTime=true;
+  merged++;
+ }
+ existing.sort((x,y)=>x.time.localeCompare(y.time)||x.league.localeCompare(y.league,'zh-Hant'));
+ return {added,merged,conflicts};
+}
+async function supplementFromApiFootball(fixtures,day,force=false,{requireSelected=true}={}){
+ if(!apiFootballAllowedDay(day))return {added:0,merged:0,conflicts:0,skipped:'outside recent-date range'};
+ const memo=apiFootballFetchedDays.get(day);
+ if(!force&&memo&&memo.expires>Date.now()){
+  return mergeApiFootballFixtures(fixtures,memo.fixtures,day)
+ }
+ const response=await fetch('/api/api-football/fixtures?date='+encodeURIComponent(day),{cache:'no-store'});
+ const json=await response.json();
+ if(!response.ok||!json.ok||!Array.isArray(json.fixtures)){
+  return {added:0,merged:0,conflicts:0,skipped:json.reason||json.error||'API-FOOTBALL unavailable'};
+ }
+ apiFootballFetchedDays.set(day,{fixtures:json.fixtures,expires:Date.now()+8*60*1000});
+ const merged=mergeApiFootballFixtures(fixtures,json.fixtures,day);
+ return {...merged,source:'API-FOOTBALL',count:json.fixtures.length};
+}
+
 function referenceResult(p,h,a){
  if(!Number.isInteger(h)||!Number.isInteger(a))return '';
  const market=String(p.market||'').replace(/\s+/g,''),total=h+a;
