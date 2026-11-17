@@ -12,7 +12,7 @@ const KN=Object.fromEntries(LEAGUES);
 const defaultLeagues=['uefa.nations','caf.nations','caf.nations_qual','fifa.friendly','eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','bra.1','usa.1','ksa.1'];
 const $=id=>document.getElementById(id);
 const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[],loading:false,
-  leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),scheduleQueued:false,
+  leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),resultLookupCache:new Map(),verifiedResultsPromise:null,scheduleQueued:false,
   reviewFixtures:[],reviewErrors:[],reviewLoading:false,reviewUpdatedAt:0,reviewDate:''};
 
 const SCOREBOARD_TTL=120000; // 2 minute browser cache for active fixtures and review
@@ -28,6 +28,125 @@ const PRED_LEAGUE_CODES={
  '世界盃':'fifa.world','世歐預':'fifa.worldq.uefa','世南預':'fifa.worldq.conmebol',
  '亞冠':'afc.champions','中北美冠軍盃':'concacaf.champions'
 };
+const MATCH_GRACE_MS=15*60*1000;
+const FINAL_GRACE_MS=135*60*1000;
+const DAY_CACHE_MS=120000;
+function scheduledKickoff(f){
+ if(!f?.date||!/^\d{2}:\d{2}$/.test(f.time||''))return NaN;
+ return Date.parse(f.date+'T'+f.time+':00+08:00');
+}
+function elapsedStatus(f,now=Date.now()){
+ if(!f||f.status==='finished'||f.status==='inprogress'||f.status==='cancelled'||f.status==='postponed')return f?.status||'pending';
+ const kickoff=scheduledKickoff(f);
+ if(!Number.isFinite(kickoff))return 'pending';
+ const elapsed=now-kickoff;
+ if(elapsed>=FINAL_GRACE_MS)return 'stale';
+ if(elapsed>=MATCH_GRACE_MS)return 'pending';
+ return 'scheduled';
+}
+function displayFixtureStatus(f,now=Date.now()){
+ const status=elapsedStatus(f,now);
+ if(status==='finished'){
+  if(f.scoreConflict)return {text:'比分衝突，待核對',tone:'bad'};
+  if(f.scoreVerified)return {text:'已完賽·已核實',tone:'ok'};
+  if(f.scoreSource==='TheSportsDB')return {text:'已完賽·待覆核',tone:'warn'};
+  return {text:'已完賽',tone:'ok'};
+ }
+ if(status==='inprogress')return {text:'進行中',tone:'blue'};
+ if(status==='cancelled')return {text:'已取消',tone:'bad'};
+ if(status==='postponed')return {text:'已延期',tone:'warn'};
+ if(status==='stale')return {text:'比分待更新',tone:'warn'};
+ if(status==='pending')return {text:'賽況待確認',tone:'warn'};
+ return {text:'未開賽',tone:'neutral'};
+}
+async function getVerifiedResults(){
+ if(!state.verifiedResultsPromise){
+  state.verifiedResultsPromise=fetch('/data/verified-results.json',{cache:'no-store'})
+   .then(r=>{if(!r.ok)throw Error('核對結果檔案無法讀取');return r.json()})
+   .then(d=>Array.isArray(d.results)?d.results:[])
+   .catch(()=>[]);
+ }
+ return state.verifiedResultsPromise;
+}
+function verifiedCorrection(f,rows){
+ const hits=rows.filter(r=>r.date===f.date && r.league===f.leagueCode &&
+   sameTeam(r.home,f.home)&&sameTeam(r.away,f.away)&&
+   (!r.observedKickoffTaipei||Math.abs(Date.parse(r.date+'T'+r.observedKickoffTaipei+':00+08:00')-scheduledKickoff(f))<=2*3600000));
+ return hits.length===1&&hits[0].verified===true&&Array.isArray(hits[0].sources)&&hits[0].sources.length>=2?hits[0]:null;
+}
+function matchLookupKey(f){return [f.date,f.home,f.away].join('|')}
+async function getIndependentScore(f,force=false){
+ const key=matchLookupKey(f),old=state.resultLookupCache.get(key);
+ if(!force&&old&&old.expiresAt>Date.now())return old.promise;
+ const promise=(async()=>{
+  const url='/api/match-lookup?date='+encodeURIComponent(f.date)+
+   '&home='+encodeURIComponent(f.home)+'&away='+encodeURIComponent(f.away);
+  const response=await fetch(url,{cache:'no-store'}),payload=await response.json();
+  if(!response.ok||payload.upstreamStatus!==200)throw Error(payload.error||'比對來源暫時無法回應');
+  const candidates=payload.data?.event||payload.data?.events||[];
+  if(!Array.isArray(candidates))throw Error('比對來源資料格式異常');
+  const matched=candidates.filter(x=>{
+   if(!sameTeam(x.strHomeTeam,f.home)||!sameTeam(x.strAwayTeam,f.away))return false;
+   if(x.strTimestamp){
+    const stamp=Date.parse(x.strTimestamp);
+    if(Number.isFinite(stamp)&&Math.abs(stamp-scheduledKickoff(f))>3*3600000)return false;
+   }else if(x.dateEvent&&Math.abs(Date.parse(x.dateEvent+'T00:00:00Z')-Date.parse(f.date+'T00:00:00Z'))>86400000)return false;
+   return true
+  });
+  if(matched.length!==1)return null;
+  const e=matched[0];
+  const status=String(e.strStatus||'').toLowerCase();
+  const final=/\b(finished|final|full.?time|ft|match ended|match finished|completed)\b/.test(status)&&!/aet|penalt|extra time/.test(status);
+  const h=Number(e.intHomeScore),a=Number(e.intAwayScore);
+  if(!final||e.intHomeScore===null||e.intHomeScore===''||e.intAwayScore===null||e.intAwayScore===''||
+    !Number.isInteger(h)||!Number.isInteger(a)||h<0||a<0)return null;
+  return {h,a,id:String(e.idEvent||''),source:'TheSportsDB',receivedAt:payload.receivedAt||'',url:'https://www.thesportsdb.com/event/'+String(e.idEvent||'')}
+ })();
+ state.resultLookupCache.set(key,{expiresAt:Date.now()+DAY_CACHE_MS,promise});
+ try{return await promise}catch(err){state.resultLookupCache.delete(key);throw err}
+}
+async function enrichScoreResults(fixtures,force=false){
+ const verified=await getVerifiedResults();
+ const unresolved=[];
+ for(const f of fixtures){
+  const correction=verifiedCorrection(f,verified);
+  if(correction){
+   const conflict=f.status==='finished'&&(Number(f.scoreHome)!==correction.homeScore||Number(f.scoreAway)!==correction.awayScore);
+   if(conflict){
+    f.scoreConflict=true;f.scoreVerified=false;f.source='比分來源不一致';
+    f.status='conflict';
+    f.scoreHome=null;f.scoreAway=null;
+   }else{
+    f.status='finished';f.scoreHome=correction.homeScore;f.scoreAway=correction.awayScore;
+    f.scoreVerified=true;f.scoreSource='獨立來源核對';
+    f.source='兩來源核對';f.sourceLinks=correction.sources;
+   }
+   continue;
+  }
+  if(elapsedStatus(f)==='stale'||elapsedStatus(f)==='pending'){
+   if(!f.scoreVerified)unresolved.push(f)
+  }
+ }
+ // Free individual queries are bounded and only used for outdated or ambiguous cases.
+ let cursor=0;
+ const targets=unresolved.slice(0,12);
+ async function worker(){
+  for(;;){
+   const i=cursor++;if(i>=targets.length)break;
+   const f=targets[i];try{
+    const confirmed=await getIndependentScore(f,force);
+    if(confirmed){
+     f.status='finished';f.scoreHome=confirmed.h;f.scoreAway=confirmed.a;
+     f.scoreSource='TheSportsDB';f.source='TheSportsDB（參考）';
+     f.scoreVerified=false;f.sourceLinks=[{name:'TheSportsDB',url:confirmed.url}];
+    }
+   }catch(err){f.lookupError=String(err.message||err)}
+  }
+ }
+ await Promise.all(Array.from({length:Math.min(2,targets.length)},worker));
+ return fixtures;
+}
+
 function safeLogo(url){
  try{
   if(!url)return '';
