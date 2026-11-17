@@ -37,7 +37,7 @@ const LEAGUES=[
 const LN=Object.fromEntries(LEAGUES.map(x=>[x.id,x]));
 const PROVIDERS={espn:'ESPN',tsdb:'TheSportsDB',fd:'football-data.org',import:'匯入資料'};
 const STORE='football-console-v1';
-const defaults=['eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','uefa.champions','uefa.nations','fifa.friendly','bra.1','usa.1','ksa.1'];
+const defaults=['caf.nations','caf.nations_qual','eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','uefa.champions','uefa.nations','fifa.friendly','bra.1','usa.1','ksa.1'];
 let selected=new Set(defaults);
 let draftSelected=new Set();
 let page='fixtures',running=false,stopped=false,dirty=false;
@@ -333,6 +333,10 @@ function init(){
  const today=taiwanToday(),tomorrow=dayAdd(today,1);$('dateFrom').value=tomorrow;$('dateTo').value=tomorrow;
  $('todayLabel').textContent=stampDate(today);
  try{const saved=JSON.parse(localStorage.getItem(STORE)||'null');if(saved){state.history=saved.history||[];if(Array.isArray(saved.selected))selected=new Set(saved.selected);restoreHistory(state.history[0]);}}catch{}
+ try{if(localStorage.getItem('football-audit-afcon-migration-v1')!=='done'){
+   selected.add('caf.nations');selected.add('caf.nations_qual');
+   localStorage.setItem('football-audit-afcon-migration-v1','done');
+ }}catch{}
  $('rangePreset').value='custom';
  document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>{page=n.dataset.page;render()}));
  $('leaguePicker').onclick=initLeagues;$('leagueSearch').oninput=renderLeagueList;
