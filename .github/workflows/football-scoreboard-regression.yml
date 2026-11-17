@@ -24,6 +24,7 @@ jobs:
       - name: Validate service and dashboard syntax
         run: |
           node --check football-console/server.js
+          node --check football-console/api-football.js
           node --check football-console/public/analysis.js
           node --check football-console/public/app.js
       - name: Run match-status regression tests
