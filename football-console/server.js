@@ -11,6 +11,38 @@ const ALLOWED = new Set(['eng.1','eng.2','eng.fa','esp.1','ger.1','ita.1','fra.1
 const FD_ALLOWED = new Set(['PL','ELC','PD','BL1','SA','FL1','DED','PPL','BSA','CL','WC']);
 const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const counters = new Map();
+const FEED_CACHE = { time:0, data:null };
+const ALLOWED_FEED_REDIRECT_HOSTS = new Set(['script.google.com','script.googleusercontent.com']);
+function fetchScriptJson(url,remaining=4) {
+ return new Promise((resolve,reject)=>{
+  const u=new URL(url);
+  if(u.protocol!=='https:' || !ALLOWED_FEED_REDIRECT_HOSTS.has(u.hostname))return reject(Error('Google Apps Script 來源不在允許清單'));
+  const request=https.get(u,{headers:{accept:'application/json','user-agent':'FootballAnalyticsConsole/1.0'},timeout:14000},response=>{
+    if(response.statusCode>=300&&response.statusCode<400&&response.headers.location){
+      response.resume();
+      if(!remaining)return reject(Error('Google Apps Script 轉址次數過多'));
+      const location=new URL(response.headers.location,u).toString();
+      return fetchScriptJson(location,remaining-1).then(resolve,reject);
+    }
+    let buf='',size=0;
+    response.on('data',chunk=>{
+      size+=chunk.length;if(size>3*1024*1024){request.destroy(Error('資料來源回應過大'));return}
+      buf+=chunk.toString('utf8');
+    });
+    response.on('end',()=>{
+      if(response.statusCode!==200)return reject(Error('Google Apps Script HTTP '+response.statusCode));
+      try{resolve(JSON.parse(buf))}catch{return reject(Error('Google Apps Script 回傳非 JSON'))}
+    });
+  });
+  request.on('timeout',()=>request.destroy(Error('Apps Script 連線逾時')));
+  request.on('error',reject);
+ });
+}
+function fallbackReports(error){
+ let payload={version:1,reports:[]};
+ try{payload=JSON.parse(fs.readFileSync(path.join(BASE,'data','predictions.json'),'utf8'))}catch{}
+ return {...payload,connected:false,syncedAt:'',scoresCheckedAt:'', ...(error?{syncError:String(error.message||error)}:{})};
+}
 function send(res,code,data,extra={}) {res.writeHead(code,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff',...extra}); res.end(JSON.stringify(data));}
 function dateOk(v){return /^\d{4}-\d{2}-\d{2}$/.test(v||'') && !Number.isNaN(Date.parse(v+'T00:00:00Z'));}
 function rateOk(req) {
@@ -31,7 +63,22 @@ function remoteGet(target, headers={}) {
 }
 async function api(req,res,route){
  if(!rateOk(req))return send(res,429,{error:'請求過於頻繁，請稍後再試'});
- if(route.pathname==='/api/health')return send(res,200,{ok:true,serverTime:new Date().toISOString(),sources:['ESPN','TheSportsDB','football-data.org']});
+ if(route.pathname==='/api/health')return send(res,200,{ok:true,serverTime:new Date().toISOString(),sources:['ESPN','TheSportsDB','football-data.org'],reportSyncConfigured:Boolean(process.env.FOOTBALL_REPORT_FEED_URL)});
+ if(route.pathname==='/api/reports'&&req.method==='GET'){
+  const target=String(process.env.FOOTBALL_REPORT_FEED_URL||'').trim();
+  if(!target)return send(res,200,fallbackReports());
+  if(FEED_CACHE.data&&Date.now()-FEED_CACHE.time<300000)return send(res,200,FEED_CACHE.data);
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[-\w]+\/exec(?:\?.*)?$/.test(target)){
+   return send(res,200,fallbackReports('Google Apps Script 部署網址格式不正確'));
+  }
+  try{
+   const payload=await fetchScriptJson(target);
+   if(!payload||!Array.isArray(payload.reports)||payload.connected!==true)throw Error(payload&&payload.error||'來源未完成初始化');
+   const sanitized={version:1,connected:true,syncedAt:payload.syncedAt||'',scoresCheckedAt:payload.scoresCheckedAt||'',reports:payload.reports.slice(0,120)};
+   FEED_CACHE.time=Date.now();FEED_CACHE.data=sanitized;
+   return send(res,200,sanitized);
+  }catch(error){return send(res,200,fallbackReports(error))}
+ }
  if(route.pathname==='/api/fixtures'&&req.method==='GET'){
    const provider=route.searchParams.get('provider'),league=route.searchParams.get('league'),date=route.searchParams.get('date');
    if(!dateOk(date))return send(res,400,{error:'日期無效'});
@@ -56,7 +103,7 @@ const server=http.createServer(async(req,res)=>{
   if(url.pathname.startsWith('/api/'))return await api(req,res,url);
   if(req.method!=='GET')return send(res,405,{error:'Method not allowed'});
   const safePath=path.normalize(decodeURIComponent(url.pathname)).replace(/^([/\\]*\.\.[/\\])+/, '');
-  const file=path.resolve(BASE,'.'+(safePath==='/'?'/index.html':safePath));
+  const file=path.resolve(BASE,'.'+(safePath==='/'?'/analysis.html':safePath));
   if(!file.startsWith(BASE+path.sep))return send(res,403,{error:'Forbidden'});
   fs.readFile(file,(err,buf)=>{if(err)return send(res,404,{error:'Not found'});res.writeHead(200,{'content-type':MIME[path.extname(file)]||'application/octet-stream','x-content-type-options':'nosniff','referrer-policy':'no-referrer','cache-control':'public, max-age=180'});res.end(buf)});
  }catch(e){send(res,500,{error:'伺服器處理失敗',detail:String(e.message||e)})}
