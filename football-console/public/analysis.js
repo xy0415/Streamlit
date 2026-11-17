@@ -279,12 +279,16 @@ function readableChinese(value){
  return /[\u3400-\u9fff]/.test(name)&&!/[�\uFFFD]/.test(name)&&!/\?{2,}/.test(name);
 }
 function localizedTeamName(source,providedZh=''){
- const english=String(source||'').trim();
- const alias=TEAM_ZH_LOOKUP.get(nameKey(english));
+ const original=String(source||'').trim();
+ const alias=TEAM_ZH_LOOKUP.get(nameKey(original));
  if(alias&&readableChinese(alias))return alias;
  if(readableChinese(providedZh))return String(providedZh).trim();
- if(readableChinese(english))return english;
- return '中文隊名待核對';
+ if(readableChinese(original))return original;
+ // An unknown team keeps its actual English source name; never invent a Chinese translation.
+ if(original&&!/[�\uFFFD]/.test(original))return original;
+ const alternative=String(providedZh||'').trim();
+ if(alternative&&!/[�\uFFFD]/.test(alternative))return alternative;
+ return '隊名未提供';
 }
 function sourceTeamName(english,short,primary){
  const full=String(english||'').trim();
@@ -420,8 +424,8 @@ function matchingFixture(primary,additional){
  const matches=primary.filter(f=>{
   if(f.leagueCode!==additional.leagueCode||f.date!==additional.date)return false;
   const timeDiff=Math.abs(scheduledKickoff(f)-scheduledKickoff(additional));
-  const sameName=(a,b)=>sameTeam(a,b)||localizedTeamName(a)!=='中文隊名待核對'&&
-    localizedTeamName(a)===localizedTeamName(b);
+  const sameName=(a,b)=>sameTeam(a,b)||
+    (readableChinese(localizedTeamName(a))&&localizedTeamName(a)===localizedTeamName(b));
   return Number.isFinite(timeDiff)&&timeDiff<=90*60000&&
    sameName(f.home,additional.home)&&sameName(f.away,additional.away);
  });
