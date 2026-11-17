@@ -124,7 +124,7 @@ async function getIndependentMatchInfo(f,force=false){
    awayLogo:safeLogo(e.strAwayTeamBadge||''),
    id:String(e.idEvent||''),source:'TheSportsDB',
    receivedAt:payload.receivedAt||'',url:'https://www.thesportsdb.com/event/'+encodeURIComponent(String(e.idEvent||'')),
-   exactKickoff:!!e.strTimestamp
+   exactKickoff:!!e.strTimestamp,eventTimestamp:String(e.strTimestamp||'')
   };
  })();
  state.resultLookupCache.set(key,{expiresAt:Date.now()+12*60*1000,promise});
@@ -565,9 +565,16 @@ async function loadFixtures(force){
    return;
  }
  // Do not block the fixtures list while individual free source lookups are slow.
- enrichScoreResults(fixtures,force,false).then(()=>{
-   if(state.day===day&&cacheKey()===key)render();
- }).catch(err=>console.warn('Result cross-check failed:',String(err.message||err)));
+ Promise.allSettled([
+   enrichScoreResults(fixtures,force,false),
+   includeMissingClubPredictions(fixtures,force)
+ ]).then(()=>{
+   if(state.day===day&&cacheKey()===key){
+     state.fixtures=fixtures;
+     state.cache.set(key,{fixtures,sources,expiresAt:Date.now()+DAY_CACHE_MS});
+     render();
+   }
+ }).catch(err=>console.warn('Fixture cross-check failed:',String(err.message||err)));
  const err=sources.filter(s=>s.status==='error').length;
  $('fixtureNotice').textContent=err?('有 '+err+' 筆資料來源查詢失敗，賽程可能不完整。請查看資料驗證。'):'';
  $('fixtureNotice').classList.toggle('hidden',err===0);
@@ -1005,6 +1012,39 @@ async function loadHistoryResults(force=false){
  }finally{
   if(batch===state.historyBatch){state.historyLoading=false;renderHistory()}
  }
+}
+
+async function includeMissingClubPredictions(fixtures,force=false){
+ const matches=state.report?.matches||[];
+ const known=new Set(fixtures.map(f=>String(f.id)));
+ let looked=0,added=0;
+ for(const p of matches){
+  const league=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
+  if(!league||!state.leagues.has(league)||LIVE?.NATIONAL_LEAGUES?.has(league))continue;
+  if(eventForPrediction(p,fixtures)||looked>=12)continue;
+  looked++;
+  const seed={date:p.date,time:p.time,leagueCode:league,home:p.home,away:p.away};
+  try{
+   const backup=await getIndependentMatchInfo(seed,force);
+   if(!backup?.exactKickoff||!backup.id)continue;
+   const actual=fTaiwan(backup.eventTimestamp);
+   if(!actual||actual.date!==p.date)continue;
+   const id='tsdb-'+backup.id;
+   if(known.has(id))continue;
+   const fixture={
+    id,date:actual.date,time:actual.time,leagueCode:league,league:KN[league]||p.league,
+    home:p.home,away:p.away,homeShort:'',awayShort:'',
+    homeLogo:backup.homeLogo,awayLogo:backup.awayLogo,homeAbbr:'',awayAbbr:'',
+    status:backup.final?'finished':'scheduled',scoreHome:backup.final?backup.h:null,
+    scoreAway:backup.final?backup.a:null,
+    scoreSource:'TheSportsDB',source:'TheSportsDB',scoreVerified:false,
+    sourceLinks:[{name:'TheSportsDB',url:backup.url}]
+   };
+   known.add(id);fixtures.push(fixture);added++;
+  }catch(error){console.warn('俱樂部賽事備援失敗:',p.home,p.away,String(error.message||error))}
+ }
+ if(added)fixtures.sort((a,b)=>a.time.localeCompare(b.time)||a.league.localeCompare(b.league,'zh-Hant'));
+ return added;
 }
 
 function renderHistory(){
