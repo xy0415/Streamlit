@@ -86,35 +86,71 @@ function verifiedCorrection(f,rows){
  return hits.length===1&&hits[0].verified===true&&Array.isArray(hits[0].sources)&&hits[0].sources.length>=2?hits[0]:null;
 }
 function matchLookupKey(f){return [f.date,f.home,f.away].join('|')}
-async function getIndependentScore(f,force=false){
+async function getIndependentMatchInfo(f,force=false){
  const key=matchLookupKey(f),old=state.resultLookupCache.get(key);
  if(!force&&old&&old.expiresAt>Date.now())return old.promise;
  const promise=(async()=>{
   const url='/api/match-lookup?date='+encodeURIComponent(f.date)+
    '&home='+encodeURIComponent(f.home)+'&away='+encodeURIComponent(f.away);
   const response=await fetch(url,{cache:'no-store'}),payload=await response.json();
-  if(!response.ok||payload.upstreamStatus!==200)throw Error(payload.error||'比對來源暫時無法回應');
+  if(!response.ok||payload.upstreamStatus!==200)throw Error(payload.error||'備援資料來源暫時無法回應');
   const candidates=payload.data?.event||payload.data?.events||[];
-  if(!Array.isArray(candidates))throw Error('比對來源資料格式異常');
+  if(!Array.isArray(candidates))throw Error('備援來源資料格式異常');
   const matched=candidates.filter(x=>{
    if(!sameTeam(x.strHomeTeam,f.home)||!sameTeam(x.strAwayTeam,f.away))return false;
    if(x.strTimestamp){
     const stamp=Date.parse(x.strTimestamp);
-    if(Number.isFinite(stamp)&&Math.abs(stamp-scheduledKickoff(f))>3*3600000)return false;
-   }else if(x.dateEvent&&Math.abs(Date.parse(x.dateEvent+'T00:00:00Z')-Date.parse(f.date+'T00:00:00Z'))>86400000)return false;
-   return true
+    if(!Number.isFinite(stamp)||Math.abs(stamp-scheduledKickoff(f))>3*3600000)return false;
+   }else{
+    // No timestamp: do not trust for score settlement, but logos can still be
+    // associated with exact team identities from the requested date.
+    const d=String(x.dateEvent||'');
+    if(d&&Math.abs(Date.parse(d+'T00:00:00Z')-Date.parse(f.date+'T00:00:00Z'))>86400000)return false;
+   }
+   return true;
   });
   if(matched.length!==1)return null;
-  const e=matched[0];
-  const status=String(e.strStatus||'').toLowerCase();
-  const final=/\b(finished|final|full.?time|ft|match ended|match finished|completed)\b/.test(status)&&!/aet|penalt|extra time/.test(status);
-  const h=Number(e.intHomeScore),a=Number(e.intAwayScore);
-  if(!final||e.intHomeScore===null||e.intHomeScore===''||e.intAwayScore===null||e.intAwayScore===''||
-    !Number.isInteger(h)||!Number.isInteger(a)||h<0||a<0)return null;
-  return {h,a,id:String(e.idEvent||''),source:'TheSportsDB',receivedAt:payload.receivedAt||'',url:'https://www.thesportsdb.com/event/'+String(e.idEvent||'')}
+  const e=matched[0],status=String(e.strStatus||'').toLowerCase();
+  const finished=/\b(finished|final|full.?time|ft|match ended|match finished|completed)\b/.test(status)&&
+    !/aet|penalt|extra time/.test(status);
+  const h=e.intHomeScore==null||e.intHomeScore===''?null:Number(e.intHomeScore);
+  const a=e.intAwayScore==null||e.intAwayScore===''?null:Number(e.intAwayScore);
+  const scoreValid=Number.isInteger(h)&&Number.isInteger(a)&&h>=0&&a>=0;
+  return {
+   final:finished&&scoreValid&&!!e.strTimestamp,
+   h:scoreValid?h:null,a:scoreValid?a:null,
+   homeLogo:safeLogo(e.strHomeTeamBadge||''),
+   awayLogo:safeLogo(e.strAwayTeamBadge||''),
+   id:String(e.idEvent||''),source:'TheSportsDB',
+   receivedAt:payload.receivedAt||'',url:'https://www.thesportsdb.com/event/'+encodeURIComponent(String(e.idEvent||'')),
+   exactKickoff:!!e.strTimestamp
+  };
  })();
- state.resultLookupCache.set(key,{expiresAt:Date.now()+DAY_CACHE_MS,promise});
+ state.resultLookupCache.set(key,{expiresAt:Date.now()+12*60*1000,promise});
  try{return await promise}catch(err){state.resultLookupCache.delete(key);throw err}
+}
+async function getIndependentScore(f,force=false){
+ const item=await getIndependentMatchInfo(f,force);
+ return item?.final?item:null;
+}
+function applyMatchBackup(f,backup){
+ if(!backup)return false;
+ let changed=false;
+ if(!safeLogo(f.homeLogo)&&backup.homeLogo){f.homeLogo=backup.homeLogo;changed=true}
+ if(!safeLogo(f.awayLogo)&&backup.awayLogo){f.awayLogo=backup.awayLogo;changed=true}
+ if(!backup.final||f.scoreVerified)return changed;
+ if(f.status==='finished'&&f.scoreHome!==null&&f.scoreAway!==null){
+  if(Number(f.scoreHome)!==backup.h||Number(f.scoreAway)!==backup.a){
+   f.scoreConflict=true;f.status='conflict';f.scoreHome=null;f.scoreAway=null;
+   changed=true;
+  }else{
+   f.scoreVerified=true;f.source='ESPN + TheSportsDB';changed=true;
+  }
+ }else if(f.status!=='conflict'){
+  f.status='finished';f.scoreHome=backup.h;f.scoreAway=backup.a;
+  f.scoreSource='TheSportsDB';f.source='TheSportsDB';changed=true;
+ }
+ return changed;
 }
 async function enrichScoreResults(fixtures,force=false,skipLookups=false){
  const verified=await getVerifiedResults();
@@ -134,24 +170,23 @@ async function enrichScoreResults(fixtures,force=false,skipLookups=false){
    }
    continue;
   }
-  if(elapsedStatus(f)==='stale'||elapsedStatus(f)==='pending'){
-   if(!f.scoreVerified)unresolved.push(f)
-  }
+  if((elapsedStatus(f)==='stale'||elapsedStatus(f)==='pending'||(
+    !LIVE?.NATIONAL_LEAGUES?.has(f.leagueCode)&&(!safeLogo(f.homeLogo)||!safeLogo(f.awayLogo))))
+    &&!f.scoreVerified)unresolved.push(f);
  }
  // Verified snapshots are displayed immediately; independent live lookups follow asynchronously.
  if(skipLookups)return fixtures;
  // Free individual queries are bounded and only used for outdated or ambiguous cases.
  let cursor=0;
- const targets=unresolved.slice(0,8);
+ const targets=unresolved.slice(0,12);
  async function worker(){
   for(;;){
    const i=cursor++;if(i>=targets.length)break;
    const f=targets[i];try{
-    const confirmed=await getIndependentScore(f,force);
-    if(confirmed){
-     f.status='finished';f.scoreHome=confirmed.h;f.scoreAway=confirmed.a;
-     f.scoreSource='TheSportsDB';f.source='TheSportsDB（參考）';
-     f.scoreVerified=false;f.sourceLinks=[{name:'TheSportsDB',url:confirmed.url}];
+    const backup=await getIndependentMatchInfo(f,force);
+    if(backup){
+     applyMatchBackup(f,backup);
+     f.sourceLinks=[{name:'TheSportsDB',url:backup.url}];
     }
    }catch(err){f.lookupError=String(err.message||err)}
   }
@@ -164,7 +199,7 @@ function safeLogo(url){
  try{
   if(!url)return '';
   const u=new URL(String(url));
-  if(u.protocol!=='https:'||!(u.hostname==='espncdn.com'||u.hostname.endsWith('.espncdn.com')))return '';
+  if(u.protocol!=='https:'||!(u.hostname==='espncdn.com'||u.hostname.endsWith('.espncdn.com')||u.hostname==='r2.thesportsdb.com'||u.hostname==='www.thesportsdb.com'||u.hostname==='thesportsdb.com'))return '';
   return u.href;
  }catch{return ''}
 }
