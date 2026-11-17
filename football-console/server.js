@@ -128,6 +128,22 @@ async function api(req,res,route){
      });
    }catch(e){return send(res,502,{provider:'tsdb_search',error:String(e.message||e)})}
  }
+ if(route.pathname==='/api/match-summary'&&req.method==='GET'){
+   const league=route.searchParams.get('league');
+   const event=String(route.searchParams.get('event')||'');
+   if(!ALLOWED.has(league)||!/^\d{4,14}$/.test(event))
+     return send(res,400,{error:'賽事識別碼或聯賽代碼不正確'});
+   const target='https://site.api.espn.com/apis/site/v2/sports/soccer/'+encodeURIComponent(league)+'/summary?event='+event;
+   try{
+     const up=await remoteGet(target);
+     return send(res,up.status===200?200:502,{
+       provider:'ESPN',upstreamStatus:up.status,receivedAt:new Date().toISOString(),
+       data:up.data
+     });
+   }catch(error){
+     return send(res,502,{provider:'ESPN',error:String(error.message||error)});
+   }
+ }
  if(route.pathname==='/api/fixtures'&&req.method==='GET'){
    const provider=route.searchParams.get('provider'),league=route.searchParams.get('league'),date=route.searchParams.get('date');
    if(!dateOk(date))return send(res,400,{error:'日期無效'});
