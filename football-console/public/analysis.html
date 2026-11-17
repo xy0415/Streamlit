@@ -44,9 +44,9 @@
       
       <div class="tablewrap"><table class="review-table"><thead><tr><th>開賽</th><th>對戰球隊（主／客）</th><th>原始選項</th><th>比分</th><th>結算</th></tr></thead><tbody id="reviewTable"></tbody></table></div><div class="empty" id="reviewEmpty"><strong>沒有可顯示的復盤紀錄</strong><small>需要已公開的原始預測及可核對終場結果</small></div>
    </section>
-   <section id="historyPanel" class="panel mainsection"><div class="sectionhead"><div><h2>歷史績效</h2></div><span class="sectionhint">以正式版本與可驗證結果為準</span></div>
-    <div class="statgrid"><div><label>歷史預測場次</label><strong id="historyTotal">0</strong></div><div><label>已核實場次</label><strong id="historyVerified">0</strong></div><div><label>全贏／半贏</label><strong id="historyWin">—</strong></div><div><label>命中率</label><strong id="historyRate">—</strong></div></div>
-    <div class="history-table"><div id="historyRows"></div></div>
+   <section id="historyPanel" class="panel mainsection"><div class="sectionhead"><div><h2>歷史績效</h2></div><div class="sectionactions"><span class="sectionhint" id="historyProgress">歷史比分等待查核</span><button class="linkbtn" id="historyRefresh">↻ 重新核對歷史</button></div></div>
+    <div class="statgrid"><div><label>歷史預測場次</label><strong id="historyTotal">0</strong></div><div><label>已結算選項</label><strong id="historyVerified">0</strong></div><div><label>贏的選項</label><strong id="historyWin">—</strong></div><div><label>命中率</label><strong id="historyRate">—</strong></div></div>
+    <p class="history-explain">命中率依已取得可信終場比分的選項計算；走盤不列分母、半贏計 0.5，沒有盤口賠率不計算收益率。</p><div class="history-table"><div id="historyRows"></div></div>
    </section>
    <div class="footer"><span id="dataFooter">資料來源：公開賽程與已寄出之正式預測</span><span>Asia/Taipei · 90 分鐘賽果須核實</span></div>
  </div>
@@ -65,5 +65,6 @@
 <div class="snackbar hidden" id="snackbar"></div>
 <script src="/team-names-zh.js" defer></script>
 <script src="/live-details.js" defer></script>
+<script src="/history-engine.js" defer></script>
 <script src="/analysis.js" defer></script>
 </body></html>
