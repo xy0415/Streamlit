@@ -58,7 +58,7 @@ const server=http.createServer(async(req,res)=>{
   const safePath=path.normalize(decodeURIComponent(url.pathname)).replace(/^([/\\]*\.\.[/\\])+/, '');
   const file=path.resolve(BASE,'.'+(safePath==='/'?'/index.html':safePath));
   if(!file.startsWith(BASE+path.sep))return send(res,403,{error:'Forbidden'});
-  fs.readFile(file,(err,buf)=>{if(err)return send(res,404,{error:'Not found'});res.writeHead(200,{'content-type':MIME[path.extname(file)]||'application/octet-stream','x-content-type-options':'nosniff','referrer-policy':'no-referrer','cache-control':'public, max-age=180','content-security-policy':"frame-ancestors 'self' https://sites.google.com https://*.google.com"});res.end(buf)});
+  fs.readFile(file,(err,buf)=>{if(err)return send(res,404,{error:'Not found'});res.writeHead(200,{'content-type':MIME[path.extname(file)]||'application/octet-stream','x-content-type-options':'nosniff','referrer-policy':'no-referrer','cache-control':'public, max-age=180'});res.end(buf)});
  }catch(e){send(res,500,{error:'伺服器處理失敗',detail:String(e.message||e)})}
 });
 server.listen(PORT,'0.0.0.0',()=>console.log('Fixture console listening on '+PORT));
