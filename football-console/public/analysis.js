@@ -79,7 +79,7 @@ async function loadFixtures(force){
  if(!force&&state.cache.has(key)){const cached=state.cache.get(key);state.fixtures=cached.fixtures;state.sources=cached.sources;render();return}
  if(state.leagues.size===0){state.fixtures=[];state.sources=[];render();toast('請至少選擇一個查核聯賽');return}
  state.loading=true;$('reloadFixtures').disabled=true;$('refreshAll').disabled=true;
- $('fixtureNotice').textContent='正在查詢 ESPN 免費賽程介面；若來源失敗將保留來源異常，不視為沒有比賽。';
+ $('fixtureNotice').textContent='正在取得賽程資料…';$('fixtureNotice').classList.remove('hidden');
  const queries=[];
  for(const league of state.leagues)for(const date of [addDay(state.day,-1),state.day])queries.push({league,date});
  let cursor=0,finished=0;const results=[],sources=[];
@@ -110,8 +110,8 @@ async function loadFixtures(force){
  state.loading=false;$('reloadFixtures').disabled=false;$('refreshAll').disabled=false;
  render();
  const err=sources.filter(s=>s.status==='error').length;
- $('fixtureNotice').textContent=err?('成功 '+(sources.length-err)+' / '+sources.length+' 筆查詢，失敗 '+err+' 筆；賽事覆蓋可能不完整。'):
-  ('已完成 '+sources.length+' 筆來源請求；僅代表選取聯賽與免費 API 的回傳範圍。');
+ $('fixtureNotice').textContent=err?('有 '+err+' 筆資料來源查詢失敗，賽程可能不完整。請查看資料驗證。'):'';
+ $('fixtureNotice').classList.toggle('hidden',err===0);
 }
 function fixturesForView(){
  const lc=$('leagueFilter').value,st=$('statusFilter').value;
@@ -133,6 +133,7 @@ function renderSchedule(){
  const rows=fixturesForView();$('fixtureCount').textContent=rows.length;$('fixtureEmpty').classList.toggle('hidden',rows.length>0);
  $('fixtureTable').innerHTML=rows.map(x=>'<tr><td><strong>'+escapeHtml(x.time)+'</strong></td><td class="comp">'+escapeHtml(x.league)+'</td><td class="fixture-home">'+escapeHtml(x.home)+'</td><td class="vscol"><span class="score '+(x.status==='scheduled'?'vs':'')+'">'+(x.status==='scheduled'?'VS':escapeHtml(x.scoreHome)+' : '+escapeHtml(x.scoreAway))+'</span></td><td class="fixture-away">'+escapeHtml(x.away)+'</td><td>'+statusPill(x.status==='finished'?'已完賽':x.status==='inprogress'?'進行中':'未開賽',x.status==='finished'?'ok':x.status==='inprogress'?'blue':'neutral')+'</td><td>'+escapeHtml(x.source)+'</td></tr>').join('');
  const failures=state.sources.filter(x=>x.status==='error').length;
+ $('fixtureNotice').classList.toggle('hidden',!state.loading&&failures===0);
  $('mFixtures').textContent=state.sources.length?state.fixtures.length:'—';
  $('mFixturesHelp').textContent=state.sources.length?'已查詢 '+state.sources.length+' 筆 · 異常 '+failures:'等待免費賽程來源';
  if(!state.loading)$('sourceSummary').textContent=state.sources.length?'ESPN · '+(state.sources.length-failures)+' / '+state.sources.length+' 請求成功':'尚未查詢賽程';
@@ -143,7 +144,7 @@ function renderPredictions(){
  $('publishedStamp').textContent=state.report?.cutoff?'資料截止：'+state.report.cutoff:'僅採已正式寄出的預測';
  $('showOriginal').disabled=!state.report;
  $('predictionsGrid').innerHTML=rows.map(p=>
- '<article class="prediction"><div class="pred-top"><span>第 '+p.order+' 關 · '+escapeHtml(p.time)+' · '+escapeHtml(p.league)+(p.round?' · '+escapeHtml(p.round):'')+'</span><span>'+escapeHtml(p.group)+'</span></div>'+
+ '<article class="prediction"><div class="pred-top"><span>第 '+p.order+' 關　'+escapeHtml(p.time)+'　·　'+escapeHtml(p.league)+(p.round?' · '+escapeHtml(p.round):'')+'</span>'+(p.group&&p.group!=='串關單'?'<span>'+escapeHtml(p.group)+'</span>':'')+'</div>'+
  '<div class="pred-teams">'+escapeHtml(p.home)+'<span>VS</span>'+escapeHtml(p.away)+'</div>'+
  '<div class="pred-zh">'+escapeHtml(p.homeZh)+'　／　'+escapeHtml(p.awayZh)+'</div>'+
  '<div class="pred-choice"><strong>'+escapeHtml(p.market)+'</strong>'+(p.probability!==null&&Number.isFinite(p.probability)?'<span class="probability">'+p.probability+'%<small>估計'+escapeHtml(p.probabilityType)+'機率</small></span>':'')+'</div></article>'
@@ -182,8 +183,8 @@ function renderHistory(){
 }
 function render(){
  $('nowDate').textContent=todayTaiwan().replaceAll('-','/');
- const names={schedule:['每日賽程','每日賽程','台灣日期・賽程、正式預測與資料狀態'],predictions:['分析預測','正式預測','已寄出正式串關・原始機率與選項'],reviews:['賽後復盤','賽後復盤','比分核對・結算與資料缺漏'],history:['歷史統計','歷史統計','正式紀錄・已核實結算統計']};
- const t=names[state.view];$('viewTitle').textContent=t[0];$('breadcrumb').textContent=t[1];$('viewSubtitle').textContent=t[2];
+ const names={schedule:['每日賽程','每日賽程'],predictions:['分析預測','正式預測'],reviews:['賽後復盤','賽後復盤'],history:['歷史統計','歷史統計']};
+ const t=names[state.view];$('viewTitle').textContent=t[0];$('breadcrumb').textContent=t[1];
  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===state.view));
  $('schedulePanel').classList.toggle('hidden',state.view!=='schedule');
  $('predictionsPanel').classList.toggle('hidden',!['schedule','predictions'].includes(state.view));
