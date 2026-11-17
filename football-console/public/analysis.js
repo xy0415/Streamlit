@@ -17,7 +17,7 @@ const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[]
   fifaRanks:new Map(),fifaRanksBusy:false,fifaRankPubDate:'',livePolling:false,
   summaryCache:new Map(),activeMatchId:'',matchDetailPayload:null,
   historyScores:new Map(),historyLoading:false,historyChecks:0,historyErrors:0,
-  historyRequired:0,historyCheckedAt:0,historyBatch:0};
+  historyRequired:0,historyCheckedAt:0,historyBatch:0,tsdbNextRequestAt:0};
 
 const SCOREBOARD_TTL=120000; // Standard full-day rechecks; live-only match summaries refresh faster
 const LIVE=typeof window!=='undefined'?window.FootballLive:null;
@@ -95,6 +95,10 @@ async function getIndependentMatchInfo(f,force=false){
   const lookupDate=Number.isFinite(kickoff)?new Date(kickoff).toISOString().slice(0,10):f.date;
   const url='/api/match-lookup?date='+encodeURIComponent(lookupDate)+
    '&home='+encodeURIComponent(f.home)+'&away='+encodeURIComponent(f.away);
+  // Share one pacing gate across schedule, history and review on this browser.
+  const now=Date.now(),sendAfter=Math.max(now,state.tsdbNextRequestAt);
+  state.tsdbNextRequestAt=sendAfter+2200;
+  if(sendAfter>now)await new Promise(resolve=>setTimeout(resolve,sendAfter-now));
   const response=await fetch(url,{cache:'no-store'}),payload=await response.json();
   if(!response.ok||payload.upstreamStatus!==200)throw Error(payload.error||'備援資料來源暫時無法回應');
   const candidates=payload.data?.event||payload.data?.events||[];
