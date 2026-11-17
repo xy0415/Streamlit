@@ -36,7 +36,7 @@ function scheduledKickoff(f){
  return Date.parse(f.date+'T'+f.time+':00+08:00');
 }
 function elapsedStatus(f,now=Date.now()){
- if(!f||f.status==='finished'||f.status==='inprogress'||f.status==='cancelled'||f.status==='postponed')return f?.status||'pending';
+ if(!f||f.status==='finished'||f.status==='inprogress'||f.status==='cancelled'||f.status==='postponed'||f.status==='conflict')return f?.status||'pending';
  const kickoff=scheduledKickoff(f);
  if(!Number.isFinite(kickoff))return 'pending';
  const elapsed=now-kickoff;
@@ -46,6 +46,7 @@ function elapsedStatus(f,now=Date.now()){
 }
 function displayFixtureStatus(f,now=Date.now()){
  const status=elapsedStatus(f,now);
+ if(status==='conflict')return {text:'比分衝突，待核對',tone:'bad'};
  if(status==='finished'){
   if(f.scoreConflict)return {text:'比分衝突，待核對',tone:'bad'};
   if(f.scoreVerified)return {text:'已完賽·已核實',tone:'ok'};
@@ -390,8 +391,12 @@ function parseScore(item){
  const homeShort=home.team?.shortDisplayName||'',awayShort=away.team?.shortDisplayName||'';
  const stamp=fTaiwan(item.date||competition.date),type=item.status?.type||{};
  if(!stamp||!titleHome||!titleAway)return null;
- const completed=type.completed===true||/final|full.?time/i.test(String(type.name||''));
- const progress=!completed&&(/in|live|half/i.test(String(type.state||''))||type.state==='in');
+ const statusRaw=String(type.name||'')+' '+String(type.description||'')+' '+String(type.shortDetail||'');
+ const rawState=String(type.state||'').toLowerCase();
+ const postponed=/postpon|suspend|delay/i.test(statusRaw);
+ const cancelled=/cancel/i.test(statusRaw);
+ const completed=type.completed===true||rawState==='post'||/final|full.?time|status_final/i.test(statusRaw);
+ const progress=!completed&&(rawState==='in'||/in progress|halftime|half.?time|live/i.test(statusRaw));
  let homeScore=home.score,awayScore=away.score;
  if(typeof homeScore==='object')homeScore=homeScore?.value;
  if(typeof awayScore==='object')awayScore=awayScore?.value;
@@ -401,13 +406,13 @@ function parseScore(item){
   leagueCode:item._league||'',league:KN[item._league]||item._league||'',
   home:titleHome,away:titleAway,homeLogo,awayLogo,homeShort,awayShort,
   scoreHome:completed||progress?homeScore:null,scoreAway:completed||progress?awayScore:null,
-  status:completed?'finished':progress?'inprogress':'scheduled',
+  status:cancelled?'cancelled':postponed?'postponed':completed?'finished':progress?'inprogress':'scheduled',
   stateName:type.description||type.name||'',source:'ESPN',url:item.links?.[0]?.href||''};
 }
 async function loadFixtures(force){
  if(state.loading){state.scheduleQueued=true;return}
  const key=cacheKey(), day=state.day;
- if(!force&&state.cache.has(key)){const cached=state.cache.get(key);state.fixtures=cached.fixtures;state.sources=cached.sources;render();return}
+ if(!force&&state.cache.has(key)&&Date.now()<state.cache.get(key).expiresAt){const cached=state.cache.get(key);state.fixtures=cached.fixtures;state.sources=cached.sources;render();return}
  if(state.leagues.size===0){state.fixtures=[];state.sources=[];render();toast('請至少選擇一個查核聯賽');return}
  state.loading=true;$('reloadFixtures').disabled=true;$('refreshAll').disabled=true;
  $('fixtureNotice').textContent='正在取得賽程資料…';$('fixtureNotice').classList.remove('hidden');
@@ -434,7 +439,8 @@ async function loadFixtures(force){
   if(!seen.has(identity))seen.set(identity,f);
  }
  const fixtures=[...seen.values()].sort((a,b)=>a.time.localeCompare(b.time)||a.league.localeCompare(b.league,'zh-Hant'));
- state.cache.set(key,{fixtures,sources});
+ await enrichScoreResults(fixtures,force);
+ state.cache.set(key,{fixtures,sources,expiresAt:Date.now()+DAY_CACHE_MS});
  const active=state.day===day&&cacheKey()===key;
  if(active){state.fixtures=fixtures;state.sources=sources}
  state.loading=false;$('reloadFixtures').disabled=false;$('refreshAll').disabled=false;
@@ -450,7 +456,12 @@ async function loadFixtures(force){
 }
 function fixturesForView(){
  const lc=$('leagueFilter').value,st=$('statusFilter').value;
- return state.fixtures.filter(x=>(!lc||x.leagueCode===lc||x.league===lc)&&(!st||st==='unverified'||x.status===st));
+ return state.fixtures.filter(x=>{
+  const effective=elapsedStatus(x);
+  return (!lc||x.leagueCode===lc||x.league===lc)&&
+   (!st||st==='unverified'?(!x.scoreVerified&&['stale','pending','conflict'].includes(effective)):
+    st==='scheduled'?effective==='scheduled':st==='finished'?effective==='finished':effective===st);
+ });
 }
 function predsForView(){
  const lc=$('leagueFilter').value,st=$('statusFilter').value;
@@ -468,9 +479,11 @@ function renderSchedule(){
  const rows=fixturesForView();$('fixtureCount').textContent=rows.length;$('fixtureEmpty').classList.toggle('hidden',rows.length>0);
  $('fixtureTable').innerHTML=rows.map(x=>{
   const p=predictionForEvent(x),when=state.day.slice(5).replace('-','/'),
-   score=(x.status==='scheduled'||x.scoreHome===null||x.scoreHome===undefined||x.scoreAway===null||x.scoreAway===undefined)
-      ?'<span class="schedule-vs">VS</span>'
-      :'<span class="match-score">'+escapeHtml(x.scoreHome)+' : '+escapeHtml(x.scoreAway)+'</span>';
+   effective=displayFixtureStatus(x),
+   score=(x.status==='finished'||x.status==='inprogress')&&
+        x.scoreHome!==null&&x.scoreHome!==undefined&&x.scoreAway!==null&&x.scoreAway!==undefined
+      ?'<span class="match-score">'+escapeHtml(x.scoreHome)+' : '+escapeHtml(x.scoreAway)+'</span>'
+      :elapsedStatus(x)==='scheduled'?'<span class="schedule-vs">VS</span>':'<span class="schedule-vs">— : —</span>';
   return '<tr><td class="fixture-time"><span class="fixture-day">'+escapeHtml(when)+'</span><strong>'+escapeHtml(x.time)+'</strong></td>'+
    '<td class="fixture-league"><span class="league-token">'+escapeHtml(x.league)+'</span></td>'+
    '<td class="fixture-match"><div class="teams-stack">'+
@@ -478,8 +491,7 @@ function renderSchedule(){
    teamLine('away',x.away,x.awayShort,x.awayLogo,p?.awayZh)+
    '</div></td>'+
    '<td class="fixture-outcome"><div>'+score+'</div>'+
-   statusPill(x.status==='finished'?'已完賽':x.status==='inprogress'?'進行中':'未開賽',
-      x.status==='finished'?'ok':x.status==='inprogress'?'blue':'neutral')+
+   statusPill(effective.text,effective.tone)+
    '</td></tr>'
  }).join('');
  const failures=state.sources.filter(x=>x.status==='error').length;
