@@ -27,4 +27,4 @@ jobs:
           node --check football-console/public/analysis.js
           node --check football-console/public/app.js
       - name: Run match-status regression tests
-        run: node --test football-console/tests/scoreboard-regression.test.js
+        run: node --test football-console/tests/*.test.js
