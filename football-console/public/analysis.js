@@ -736,6 +736,24 @@ function matchHero(f){
   '</div>';
 }
 function goalEventsFromSummary(payload,fixture){
+ if(Array.isArray(payload?.apiFootballEvents)){
+  const out=[];
+  const homeId=Number(fixture?.homeId),awayId=Number(fixture?.awayId);
+  for(const e of payload.apiFootballEvents){
+   if(!/^goal$/i.test(String(e.type||'')))continue;
+   if(/miss|cancel|disallow|overturn/i.test(String(e.detail||'')+' '+String(e.comments||'')))continue;
+   const team=String(e.team||''),id=Number(e.teamId);
+   const side=id&&homeId&&id===homeId?'home':id&&awayId&&id===awayId?'away':
+     sameTeam(team,fixture.home)?'home':sameTeam(team,fixture.away)?'away':'unknown';
+   const minute=Number(e.minute),extra=Number(e.extra);
+   const time=Number.isInteger(minute)&&minute>0?
+     String(minute)+(Number.isInteger(extra)&&extra>0?'+'+extra:'')+'′':'—';
+   out.push({side,player:e.player||'進球者未提供',time,
+    ownGoal:/own goal/i.test(String(e.detail||'')),
+    kind:/penalty/i.test(String(e.detail||''))?'十二碼進球':'進球'});
+  }
+  return out.slice(0,30);
+ }
  if(!LIVE?.collectGoalEvents)return [];
  let plays=LIVE.collectGoalEvents(payload);
  if(!plays.length&&fixture?.rawDetails?.length)plays=LIVE.collectGoalEvents({details:fixture.rawDetails});
@@ -763,20 +781,32 @@ function isGoalPlay(e){
   !/disallow|cancel|no goal|goal kick/i.test(type);
 }
 async function fetchMatchSummary(f){
- if(!/^\d{4,14}$/.test(String(f.id||''))||!f.leagueCode)return null;
- const key=f.leagueCode+'|'+f.id,older=summaryCache.get(key);
+ const isEspn=/^\d{4,14}$/.test(String(f.id||''))&&!!f.leagueCode;
+ const isApi=Number.isInteger(Number(f.apiFixtureId))&&Number(f.apiFixtureId)>0;
+ if(!isEspn&&!isApi)return null;
+ const key=isEspn?'espn|'+f.leagueCode+'|'+f.id:'api-football|'+f.apiFixtureId,older=summaryCache.get(key);
  if(older&&Date.now()<older.expires)return older.promise;
  const promise=(async()=>{
-   const url='/api/match-summary?league='+encodeURIComponent(f.leagueCode)+'&event='+encodeURIComponent(f.id);
-   const resp=await fetch(url,{cache:'no-store'}),json=await resp.json();
-   if(!resp.ok||json.upstreamStatus!==200||!json.data)throw Error('ESPN 此場沒有可用的進球事件');
-   return json.data;
+  if(isEspn){
+   try{
+    const url='/api/match-summary?league='+encodeURIComponent(f.leagueCode)+'&event='+encodeURIComponent(f.id);
+    const resp=await fetch(url,{cache:'no-store'}),json=await resp.json();
+    if(resp.ok&&json.upstreamStatus===200&&json.data)return json.data;
+   }catch(err){console.warn('ESPN match events unavailable:',String(err.message||err))}
+  }
+  if(isApi){
+   const url='/api/api-football/events?fixture='+Number(f.apiFixtureId);
+   const response=await fetch(url,{cache:'no-store'}),data=await response.json();
+   if(response.ok&&data.ok&&Array.isArray(data.events))
+    return {apiFootballEvents:data.events,source:'API-FOOTBALL'};
+  }
+  throw Error('目前沒有可用的進球事件');
  })();
  summaryCache.set(key,{expires:Date.now()+MATCH_SUMMARY_CACHE_MS,promise});
  try{return await promise}catch(err){summaryCache.delete(key);throw err}
 }
 function goalDetailMarkup(goals){
- if(!goals.length)return '<div class="match-detail-empty">ESPN 尚未提供這場比賽的可辨識進球事件；不代表沒有進球。</div>';
+ if(!goals.length)return '<div class="match-detail-empty">資料來源尚未提供可辨識的進球事件；不代表沒有進球。</div>';
  const home=goals.filter(g=>g.side==='home'),
   away=goals.filter(g=>g.side==='away'),unknown=goals.filter(g=>g.side==='unknown');
  const format=entries=>entries.map(g=>'<div class="scorer">'+
@@ -789,7 +819,7 @@ function goalDetailMarkup(goals){
   '<div class="goal-side"><div class="goal-column-label">客隊</div>'+
   (format(away)||'<span class="no-goal-events">—</span>')+'</div></div>'+
   (unknown.length?'<div class="goal-unassigned"><span>隊伍待核對</span>'+format(unknown)+'</div>':'')+
-  '<p class="goal-source-hint">進球者與分鐘依 ESPN 賽事事件；來源缺漏時不補造資料。</p>';
+  '<p class="goal-source-hint">進球者與分鐘依實際賽事事件；來源缺漏時不補造資料。</p>';
 }
 function htmlToNode(markup){
  const wrap=document.createElement('div');
@@ -859,7 +889,7 @@ async function openMatchDetail(f){
  $('matchDetailBody').innerHTML=matchHero(f)+
   '<div class="match-details-section"><h3>進球紀錄</h3>'+
   '<div id="matchGoals" class="match-goals"><div class="match-detail-empty">正在查詢進球資料…</div></div></div>'+
-  '<div class="match-source-footer">比分：'+escapeHtml(f.source||'ESPN')+
+  '<div class="match-source-footer">比分：'+escapeHtml(f.source||'賽事來源')+
   (f.scoreVerified?' · 已比對獨立來源':' · 未必經第二來源確認')+'</div>';
  openModal('matchModal');
  $('matchCloseBtn').focus();
