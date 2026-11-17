@@ -1149,7 +1149,13 @@ function init(){
  $('reloadFixtures').onclick=()=>loadFixtures(true);
  $('refreshAll').onclick=async()=>{
    await loadFeed();
-   if(state.view==='reviews')await loadReviewScores(true);else await loadFixtures(true);
+   if(state.view==='history'){
+     if(!state.historyLoading)await loadHistoryResults(true);
+   }else if(state.view==='reviews'){
+     await loadReviewScores(true);
+   }else{
+     await loadFixtures(true);
+   }
    toast('資料已重新查詢');
  };
  $('historyRefresh').onclick=()=>loadHistoryResults(true);
