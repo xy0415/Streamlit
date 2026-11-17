@@ -1,0 +1,57 @@
+<!doctype html><html lang="zh-Hant"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fff">
+<meta name="description" content="每日賽程、正式足球預測、賽後復盤與歷史統計">
+<title>足球賽程與分析｜Football Analytics</title>
+<link rel="stylesheet" href="/analysis.css"></head>
+<body><div class="layout">
+<aside class="sidebar">
+ <a class="brand" href="/"><span class="brandmark">◈</span><span><strong>FOOTBALL</strong><small>ANALYTICS</small></span></a>
+ <div class="navtitle">WORKSPACE</div>
+ <nav class="sidenav">
+  <button class="navitem active" data-view="schedule"><span>▦</span>每日賽程</button>
+  <button class="navitem" data-view="predictions"><span>◎</span>分析預測</button>
+  <button class="navitem" data-view="reviews"><span>✓</span>賽後復盤</button>
+  <button class="navitem" data-view="history"><span>▤</span>歷史統計</button>
+ </nav>
+ <div class="navtitle second">DATA TOOLS</div>
+ <a class="navitem" href="/index.html"><span>⇄</span>賽程資料驗證 <span class="arrow">↗</span></a>
+ <div class="sidebarfoot"><div class="syncdot"></div><div><strong id="sideSync">正式預測檔案已載入</strong><small id="sideTime">等待同步</small></div></div>
+</aside>
+<main class="main">
+ <header class="topbar"><div class="crumb">足球數據 <span>/</span> <strong id="breadcrumb">每日賽程</strong></div><div class="topmeta"><span id="nowDate"></span><span class="clock">TAIPEI · UTC+08</span></div></header>
+ <div class="content">
+   <div class="heading"><div><p class="overline">FOOTBALL / DATA & RESEARCH</p><h1 id="viewTitle">每日賽程</h1><p class="subtitle" id="viewSubtitle">台灣日期・賽程、正式預測與資料狀態</p></div><div class="actions"><button class="btn secondary" id="exportDaily">匯出當日資料 ↗</button><button class="btn primary" id="refreshAll">↻ 更新資料</button></div></div>
+   <div class="controls panel">
+    <div class="inputset"><label for="selectedDay">台灣日期</label><div class="date-row"><button class="direction" id="prevDay" title="前一天">‹</button><input id="selectedDay" type="date"><button class="direction" id="nextDay" title="後一天">›</button></div></div>
+    <div class="inputset league-select"><label for="leagueFilter">聯賽</label><select id="leagueFilter"><option value="">所有聯賽</option></select></div>
+    <div class="inputset status-select"><label for="statusFilter">狀態</label><select id="statusFilter"><option value="">所有狀態</option><option value="scheduled">未開賽</option><option value="inprogress">進行中</option><option value="finished">已完賽</option><option value="unverified">待核實</option></select></div>
+    <div class="grow"></div><div class="data-provider"><span class="live-light"></span><span id="sourceSummary">查核資料等待更新</span></div>
+   </div>
+   <div class="metrics">
+    <section class="metric panel"><span class="metric-top">賽程場次 <span>▦</span></span><strong id="mFixtures">—</strong><small id="mFixturesHelp">等待免費資料來源</small></section>
+    <section class="metric panel"><span class="metric-top">正式推薦 <span>◎</span></span><strong id="mPreds">0</strong><small id="mPredsHelp">依正式發布內容</small></section>
+    <section class="metric panel"><span class="metric-top">已核實結算 <span>✓</span></span><strong id="mVerified">0</strong><small>排除未核實與走盤</small></section>
+    <section class="metric panel"><span class="metric-top">資料待核 <span>!</span></span><strong id="mPending">0</strong><small>缺漏、尚未確認與待結算</small></section>
+   </div>
+   <section id="schedulePanel" class="panel mainsection"><div class="sectionhead"><div><span class="index">01</span><h2>當日賽程</h2><span class="bubble" id="fixtureCount">0</span></div><div class="sectionactions"><button class="linkbtn" id="leagueChooserBtn">查核聯賽設定 ⚙</button><button class="linkbtn" id="reloadFixtures">重新抓取 ↻</button></div></div>
+   <div class="notice" id="fixtureNotice">賽程只顯示實際取得的資料；來源無法確認的項目不視為沒有比賽。</div>
+   <div class="tablewrap"><table><thead><tr><th>台灣時間</th><th>聯賽</th><th>主隊</th><th class="vscol">比分 / VS</th><th>客隊</th><th>資料狀態</th><th>來源</th></tr></thead><tbody id="fixtureTable"></tbody></table></div><div id="fixtureEmpty" class="empty"><span class="emptyicon">▦</span><strong>尚未取得賽程</strong><small>選取日期並按「重新抓取」</small></div></section>
+   <section id="predictionsPanel" class="panel mainsection"><div class="sectionhead"><div><span class="index">02</span><h2>正式分析預測</h2><span class="bubble" id="predictionCount">0</span></div><div class="sectionactions"><span class="sectionhint" id="publishedStamp">僅採已正式寄出的預測</span><button class="linkbtn" id="showOriginal">查看原始全文 ↗</button></div></div>
+     <div id="predictionsGrid" class="predictiongrid"></div><div class="empty" id="predictionEmpty"><span class="emptyicon">◎</span><strong>沒有這天的正式預測紀錄</strong><small>已寄出的預測會保留原始日期、方向與機率</small></div>
+   </section>
+   <section id="reviewPanel" class="panel mainsection"><div class="sectionhead"><div><span class="index">03</span><h2>賽後復盤</h2><span class="bubble" id="reviewCount">0</span></div><div class="sectionactions"><span class="sectionhint">只計算已核實的正式賽事結果</span></div></div>
+      <div class="notice">單一比分來源可作為參考，不會標示成「已核實」。待核賽事不列入命中率。</div>
+      <div class="tablewrap"><table><thead><tr><th>開賽</th><th>對戰</th><th>原始選項</th><th>比分</th><th>結算</th><th>核對狀態</th></tr></thead><tbody id="reviewTable"></tbody></table></div><div class="empty" id="reviewEmpty"><span class="emptyicon">✓</span><strong>沒有可顯示的復盤紀錄</strong><small>需要已公開的原始預測及可核對終場結果</small></div>
+   </section>
+   <section id="historyPanel" class="panel mainsection"><div class="sectionhead"><div><span class="index">04</span><h2>歷史績效</h2></div><span class="sectionhint">以正式版本與可驗證結果為準</span></div>
+    <div class="statgrid"><div><label>歷史預測場次</label><strong id="historyTotal">0</strong></div><div><label>已核實場次</label><strong id="historyVerified">0</strong></div><div><label>全贏／半贏</label><strong id="historyWin">—</strong></div><div><label>命中率</label><strong id="historyRate">—</strong></div></div>
+    <div class="history-table"><div class="history-heading">按分析日</div><div id="historyRows"></div></div>
+   </section>
+   <div class="footer"><span id="dataFooter">資料來源：公開賽程與已寄出之正式預測</span><span>Asia/Taipei · 90 分鐘賽果須核實</span></div>
+ </div>
+</main></div>
+<div class="modalback hidden" id="leaguesModal"><div class="modal"><div class="modalhead"><h2>查核聯賽設定</h2><button data-modal-close class="cross">×</button></div><p class="modaldesc">免費 ESPN 公開介面。未選取的聯賽不會查詢，也不會視為無賽程。</p><div class="leagueoptions" id="leagueOptions"></div><div class="modalfoot"><button class="btn secondary" data-modal-close>取消</button><button class="btn primary" id="saveLeagues">儲存設定</button></div></div></div>
+<div class="modalback hidden" id="originalModal"><div class="modal wide"><div class="modalhead"><div><h2>正式預測全文</h2><small id="originalDate"></small></div><button data-modal-close class="cross">×</button></div><pre id="originalArticle"></pre><div class="modalfoot"><button class="btn secondary" data-modal-close>關閉</button></div></div></div>
+<div class="snackbar hidden" id="snackbar"></div>
+<script src="/analysis.js" defer></script>
+</body></html>
