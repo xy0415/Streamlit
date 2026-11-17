@@ -446,7 +446,9 @@ function init(){
  setInterval(()=>{
   if(document.visibilityState==='hidden'||state.reviewLoading||state.loading)return;
   const days=Math.round((Date.parse(todayTaiwan()+'T00:00:00Z')-Date.parse(state.day+'T00:00:00Z'))/86400000);
-  if(state.view==='reviews'&&days>=-1&&days<=3)loadReviewScores(false);
+  if(state.view==='reviews'&&days>=-1&&days<=3){
+   loadFeed().then(()=>loadReviewScores(false)).catch(()=>loadReviewScores(false));
+  }
  },180000);
  $('exportDaily').onclick=getDailyExport;
  $('showOriginal').onclick=()=>{if(!state.report)return;$('originalDate').textContent=state.report.date;$('originalArticle').textContent=state.report.article||'當天未提供可公開原始全文';openModal('originalModal')};
