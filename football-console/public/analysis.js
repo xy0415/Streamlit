@@ -13,9 +13,13 @@ const defaultLeagues=['uefa.nations','caf.nations','caf.nations_qual','fifa.frie
 const $=id=>document.getElementById(id);
 const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[],loading:false,
   leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),resultLookupCache:new Map(),verifiedResultsPromise:null,scheduleQueued:false,
-  reviewFixtures:[],reviewErrors:[],reviewLoading:false,reviewUpdatedAt:0,reviewDate:''};
+  reviewFixtures:[],reviewErrors:[],reviewLoading:false,reviewUpdatedAt:0,reviewDate:'',
+  fifaRanks:new Map(),fifaRanksBusy:false,fifaRankPubDate:'',livePolling:false,
+  summaryCache:new Map(),activeMatchId:'',matchDetailPayload:null};
 
-const SCOREBOARD_TTL=120000; // 2 minute browser cache for active fixtures and review
+const SCOREBOARD_TTL=120000; // Standard full-day rechecks; live-only match summaries refresh faster
+const LIVE=typeof window!=='undefined'?window.FootballLive:null;
+const LIVE_DETAIL_TTL=35000;
 const PRED_LEAGUE_CODES={
  '歐國聯':'uefa.nations','歐洲國家聯賽':'uefa.nations','國際友誼賽':'fifa.friendly',
  '非洲國家盃':'caf.nations','非洲盃':'caf.nations','AFCON':'caf.nations',
@@ -36,7 +40,7 @@ function scheduledKickoff(f){
  return Date.parse(f.date+'T'+f.time+':00+08:00');
 }
 function elapsedStatus(f,now=Date.now()){
- if(!f||f.status==='finished'||f.status==='inprogress'||f.status==='cancelled'||f.status==='postponed'||f.status==='conflict')return f?.status||'pending';
+ if(!f||f.status==='finished'||f.status==='inprogress'||f.status==='halftime'||f.status==='cancelled'||f.status==='postponed'||f.status==='conflict')return f?.status||'pending';
  const kickoff=scheduledKickoff(f);
  if(!Number.isFinite(kickoff))return 'pending';
  const elapsed=now-kickoff;
@@ -53,7 +57,11 @@ function displayFixtureStatus(f,now=Date.now()){
   if(f.scoreSource==='TheSportsDB')return {text:'已完賽·待覆核',tone:'warn'};
   return {text:'已完賽',tone:'ok'};
  }
- if(status==='inprogress')return {text:'進行中',tone:'blue'};
+ if(status==='halftime')return {text:'中場休息',tone:'blue'};
+ if(status==='inprogress'){
+  const clock=String(f.liveClock||f.statusClock||'').trim();
+  return {text:clock||'進行中',tone:'blue'};
+ }
  if(status==='cancelled')return {text:'已取消',tone:'bad'};
  if(status==='postponed')return {text:'已延期',tone:'warn'};
  if(status==='stale')return {text:'比分待更新',tone:'warn'};
@@ -396,8 +404,10 @@ function parseScore(item){
  const homeLogo=home.team?.logo||home.team?.logos?.[0]?.href||'';
  const awayLogo=away.team?.logo||away.team?.logos?.[0]?.href||'';
  const homeShort=home.team?.shortDisplayName||'',awayShort=away.team?.shortDisplayName||'';
+ const homeAbbr=String(home.team?.abbreviation||''),awayAbbr=String(away.team?.abbreviation||'');
  const homeId=String(home.team?.id||''),awayId=String(away.team?.id||'');
- const stamp=fTaiwan(item.date||competition.date),type=item.status?.type||{};
+ const stamp=fTaiwan(item.date||competition.date),sourceStatus=item.status||competition.status||{},type=sourceStatus.type||{};
+ const liveStatus=LIVE?.getStatusFields(sourceStatus)||{halftime:false,clock:''};
  if(!stamp||!titleHome||!titleAway)return null;
  const statusRaw=String(type.name||'')+' '+String(type.description||'')+' '+String(type.shortDetail||'');
  const rawState=String(type.state||'').toLowerCase();
@@ -405,6 +415,7 @@ function parseScore(item){
  const cancelled=/cancel/i.test(statusRaw);
  const completed=type.completed===true||rawState==='post'||/final|full.?time|status_final/i.test(statusRaw);
  const progress=!completed&&(rawState==='in'||/in progress|halftime|half.?time|live/i.test(statusRaw));
+ const halftime=liveStatus.halftime||/status_halftime|\bhalf.?time\b|^ht$/i.test(statusRaw.trim());
  let homeScore=home.score,awayScore=away.score;
  if(typeof homeScore==='object')homeScore=homeScore?.value;
  if(typeof awayScore==='object')awayScore=awayScore?.value;
@@ -412,9 +423,12 @@ function parseScore(item){
  if(!Number.isFinite(Number(awayScore))||String(awayScore).trim()==='')awayScore=null;
  return {id:String(item.id||''),date:stamp.date,time:stamp.time,
   leagueCode:item._league||'',league:KN[item._league]||item._league||'',
-  home:titleHome,away:titleAway,homeLogo,awayLogo,homeShort,awayShort,homeId,awayId,
+  home:titleHome,away:titleAway,homeLogo,awayLogo,homeShort,awayShort,homeAbbr,awayAbbr,
+  homeId:String(home.team?.id||''),awayId:String(away.team?.id||''),
+  rawDetails:Array.isArray(competition.details)?competition.details:[],
+  statusClock:liveStatus.clock,liveClock:liveStatus.clock,sourceStatus,homeId,awayId,
   scoreHome:completed||progress?homeScore:null,scoreAway:completed||progress?awayScore:null,
-  status:cancelled?'cancelled':postponed?'postponed':completed?'finished':progress?'inprogress':'scheduled',
+  status:cancelled?'cancelled':postponed?'postponed':completed?'finished':halftime?'halftime':progress?'inprogress':'scheduled',
   stateName:type.description||type.name||'',source:'ESPN',url:item.links?.[0]?.href||''};
 }
 async function loadFixtures(force){
@@ -608,7 +622,7 @@ function renderSchedule(){
  $('fixtureTable').innerHTML=rows.map((x,i)=>{
   const p=predictionForEvent(x),when=state.day.slice(5).replace('-','/'),
    effective=displayFixtureStatus(x),
-   score=(x.status==='finished'||x.status==='inprogress')&&
+   score=(x.status==='finished'||x.status==='inprogress'||x.status==='halftime')&&
         x.scoreHome!==null&&x.scoreHome!==undefined&&x.scoreAway!==null&&x.scoreAway!==undefined
       ?'<span class="match-score">'+escapeHtml(x.scoreHome)+' : '+escapeHtml(x.scoreAway)+'</span>'
       :elapsedStatus(x)==='scheduled'?'<span class="schedule-vs">VS</span>':'<span class="schedule-vs">— : —</span>';
