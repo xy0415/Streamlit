@@ -63,7 +63,9 @@ function eventForPrediction(p,list){
  const code=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
  const matches=(list||[]).filter(f=>
   (!code||f.leagueCode===code)&&sameTeam(f.home,p.home)&&sameTeam(f.away,p.away)&&compareEventTime(p,f));
- return matches.length===1?matches[0]:null;
+ // Selected-league and review checks may return the same ESPN event: count it only once.
+ const distinct=[...new Map(matches.map(f=>[(f.id||f.leagueCode+'|'+f.home+'|'+f.away+'|'+f.time),f])).values()];
+ return distinct.length===1?distinct[0]:null;
 }
 function predictionForEvent(f){
  const rows=state.report?.matches||[];
