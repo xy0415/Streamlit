@@ -34,12 +34,6 @@
     <div class="inputset status-select"><label for="statusFilter">狀態</label><select id="statusFilter"><option value="">所有狀態</option><option value="scheduled">未開賽</option><option value="inprogress">進行中</option><option value="finished">已完賽</option><option value="unverified">待核實</option></select></div>
     <div class="grow"></div><div class="data-provider"><span class="live-light"></span><span id="sourceSummary">查核資料等待更新</span></div>
    </div>
-   <div class="metrics">
-    <section class="metric panel"><span class="metric-top">賽程場次</span><strong id="mFixtures">—</strong><small id="mFixturesHelp">等待免費資料來源</small></section>
-    <section class="metric panel"><span class="metric-top">正式推薦</span><strong id="mPreds">0</strong><small id="mPredsHelp">依正式發布內容</small></section>
-    <section class="metric panel"><span class="metric-top">已核實結算</span><strong id="mVerified">0</strong><small>排除未核實與走盤</small></section>
-    <section class="metric panel"><span class="metric-top">資料待核</span><strong id="mPending">0</strong><small>缺漏、尚未確認與待結算</small></section>
-   </div>
    <section id="schedulePanel" class="panel mainsection"><div class="sectionhead"><div><h2>當日賽程</h2><span class="bubble" id="fixtureCount">0</span></div><div class="sectionactions"><button class="linkbtn" id="leagueChooserBtn">查核聯賽設定 ⚙</button><button class="linkbtn" id="reloadFixtures">重新抓取 ↻</button></div></div>
    <div class="notice hidden" id="fixtureNotice" role="status"></div>
    <div class="tablewrap"><table class="schedule-table"><thead><tr><th>台灣時間</th><th>聯賽</th><th>對戰球隊（主／客）</th><th>比分與狀態</th></tr></thead><tbody id="fixtureTable"></tbody></table></div><div id="fixtureEmpty" class="empty"><strong>尚未取得賽程</strong><small>選取日期並按「重新抓取」</small></div></section>
@@ -47,8 +41,8 @@
      <div id="predictionsGrid" class="predictiongrid"></div><div class="empty" id="predictionEmpty"><strong>沒有這天的正式預測紀錄</strong><small>已寄出的預測會保留原始日期、方向與機率</small></div>
    </section>
    <section id="reviewPanel" class="panel mainsection"><div class="sectionhead"><div><h2>賽後復盤</h2><span class="bubble" id="reviewCount">0</span></div><div class="sectionactions"><span class="sectionhint" id="reviewFreshness">比分待查詢</span><button class="linkbtn" id="refreshReview">↻ 即時更新比分</button></div></div>
-      <div class="review-note">即時比分採 ESPN 參考資料；正式命中率僅計算已核實結果。</div>
-      <div class="tablewrap"><table class="review-table"><thead><tr><th>開賽</th><th>對戰球隊（主／客）</th><th>原始選項</th><th>比分</th><th>結算</th><th>核對狀態</th></tr></thead><tbody id="reviewTable"></tbody></table></div><div class="empty" id="reviewEmpty"><strong>沒有可顯示的復盤紀錄</strong><small>需要已公開的原始預測及可核對終場結果</small></div>
+      
+      <div class="tablewrap"><table class="review-table"><thead><tr><th>開賽</th><th>對戰球隊（主／客）</th><th>原始選項</th><th>比分</th><th>結算</th></tr></thead><tbody id="reviewTable"></tbody></table></div><div class="empty" id="reviewEmpty"><strong>沒有可顯示的復盤紀錄</strong><small>需要已公開的原始預測及可核對終場結果</small></div>
    </section>
    <section id="historyPanel" class="panel mainsection"><div class="sectionhead"><div><h2>歷史績效</h2></div><span class="sectionhint">以正式版本與可驗證結果為準</span></div>
     <div class="statgrid"><div><label>歷史預測場次</label><strong id="historyTotal">0</strong></div><div><label>已核實場次</label><strong id="historyVerified">0</strong></div><div><label>全贏／半贏</label><strong id="historyWin">—</strong></div><div><label>命中率</label><strong id="historyRate">—</strong></div></div>
