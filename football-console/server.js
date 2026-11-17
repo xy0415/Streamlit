@@ -220,6 +220,7 @@ const server=http.createServer(async(req,res)=>{
 });
 server.listen(PORT,'0.0.0.0',()=>{
  console.log('Fixture console listening on '+PORT);
+ fetchFifaCountryRank('JPN').then(rank=>console.log('[fifa] official rank source check:',rank?JSON.stringify({code:'JPN',rank:rank.rank,date:rank.date}):'unavailable')).catch(err=>console.warn('[fifa] rank API check failed:',String(err.message||err)));
  const feed=String(process.env.FOOTBALL_REPORT_FEED_URL||'').trim();
  if(feed&&/^https:\/\/script\.google\.com\/macros\/s\/[-\w]+\/exec(?:\?.*)?$/.test(feed)){
   fetchScriptJson(feed).then(data=>{
