@@ -209,7 +209,7 @@ const TEAM_FLAG_ISO={
  'lebanon':'LB','palestine':'PS','syria':'SY','japan':'JP','paraguay':'PY','qatar':'QA',
  'south korea':'KR','korea republic':'KR','united arab emirates':'AE',
  'saudi arabia':'SA','uzbekistan':'UZ','serbia':'RS','germany':'DE',
- 'france':'FR','spain':'ES','netherlands':'NL','portugal':'PT',
+ 'france':'FR','turkey':'TR','turkiye':'TR','spain':'ES','netherlands':'NL','portugal':'PT',
  'italy':'IT','england':'GB','northern ireland':'GB','wales':'GB',
  'ireland':'IE','republic of ireland':'IE','hungary':'HU','denmark':'DK',
  'norway':'NO','belgium':'BE','austria':'AT','finland':'FI','sweden':'SE',
