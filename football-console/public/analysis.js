@@ -547,7 +547,7 @@ function updateFilter(){
  l.innerHTML='<option value="">所有聯賽</option>'+[...opts].map(x=>'<option value="'+escapeHtml(x[0])+'">'+escapeHtml(x[1])+'</option>').join('');
  l.value=opts.has(old)?old:'';
 }
-const MATCH_SUMMARY_CACHE_MS=5*60*1000;
+const MATCH_SUMMARY_CACHE_MS=LIVE_DETAIL_TTL;
 const summaryCache=new Map();
 let matchDialogRequest=0;
 let matchReturnFocus=null;
@@ -556,7 +556,7 @@ function matchHero(f){
  const p=predictionForEvent(f);
  const home=localizedTeamName(f.home,p?.homeZh);
  const away=localizedTeamName(f.away,p?.awayZh);
- const fullScore=(f.status==='finished'||f.status==='inprogress')&&
+ const fullScore=(f.status==='finished'||f.status==='inprogress'||f.status==='halftime')&&
   Number.isInteger(Number(f.scoreHome))&&f.scoreHome!==null&&
   Number.isInteger(Number(f.scoreAway))&&f.scoreAway!==null;
  const score=fullScore?escapeHtml(f.scoreHome)+' <span class="hero-dash">–</span> '+escapeHtml(f.scoreAway):'— <span class="hero-dash">–</span> —';
@@ -576,30 +576,22 @@ function matchHero(f){
   '</div>';
 }
 function goalEventsFromSummary(payload,fixture){
- if(!payload||typeof payload!=='object')return [];
- const details=payload.header?.competitions?.[0]?.details;
- const sources=[payload.scoringPlays,details,payload.plays,payload.keyEvents,payload.details];
- const events=sources.find(a=>Array.isArray(a)&&a.some(isGoalPlay))||[];
- const accepted=[],dedup=new Set();
- for(const e of events){
-  if(!isGoalPlay(e))continue;
-  const player=String(e.athletesInvolved?.[0]?.displayName||
-    e.participants?.[0]?.athlete?.displayName||e.athlete?.displayName||
-    e.player?.displayName||e.scorer?.displayName||'').trim();
-  if(!player)continue;
-  const time=String(e.clock?.displayValue||e.time?.displayValue||e.minute||'').trim();
-  const id=String(e.team?.id||e.teamId||e.team?.uid?.split('~').pop()||'').trim();
-  const side=id&&fixture.homeId&&id===fixture.homeId?'home':
-    id&&fixture.awayId&&id===fixture.awayId?'away':null;
-  if(!side)continue;
-  const kind=String(e.type?.text||e.type?.name||e.type?.displayName||'');
-  const ownGoal=/own.?goal|烏龍/.test(kind.toLowerCase())||e.ownGoal===true;
-  const identity=[side,player,time,ownGoal].join('|');
-  if(dedup.has(identity))continue;
-  dedup.add(identity);
-  accepted.push({side,player,time,ownGoal});
+ if(!LIVE?.collectGoalEvents)return [];
+ let plays=LIVE.collectGoalEvents(payload);
+ if(!plays.length&&fixture?.rawDetails?.length)plays=LIVE.collectGoalEvents({details:fixture.rawDetails});
+ const accepted=[],seen=new Set();
+ for(const p of plays){
+  const byId=p.teamId&&p.teamId===fixture.homeId?'home':
+   p.teamId&&p.teamId===fixture.awayId?'away':'';
+  const side=byId||(
+   p.teamName&&sameTeam(p.teamName,fixture.home)?'home':
+   p.teamName&&sameTeam(p.teamName,fixture.away)?'away':'unknown');
+  const player=p.scorer||'進球者未提供',time=p.minute||'—';
+  const key=[side,time,player].join('|');
+  if(seen.has(key))continue;seen.add(key);
+  accepted.push({side,player,time,ownGoal:p.kind==='烏龍球',kind:p.kind});
  }
- return accepted.slice(0,20);
+ return accepted.slice(0,24);
 }
 function isGoalPlay(e){
  if(!e||typeof e!=='object')return false;
@@ -624,18 +616,83 @@ async function fetchMatchSummary(f){
  try{return await promise}catch(err){summaryCache.delete(key);throw err}
 }
 function goalDetailMarkup(goals){
- if(!goals.length)return '<div class="match-detail-empty">免費資料來源尚未提供可核實的進球者與分鐘。</div>';
- const home=goals.filter(g=>g.side==='home'),away=goals.filter(g=>g.side==='away');
- const format=(entries)=>entries.map(g=>'<div class="scorer">'+
+ if(!goals.length)return '<div class="match-detail-empty">ESPN 尚未提供這場比賽的可辨識進球事件；不代表沒有進球。</div>';
+ const home=goals.filter(g=>g.side==='home'),
+  away=goals.filter(g=>g.side==='away'),unknown=goals.filter(g=>g.side==='unknown');
+ const format=entries=>entries.map(g=>'<div class="scorer">'+
   '<span class="scorer-ball">⚽</span>'+
-  '<span class="scorer-person">'+escapeHtml(g.player)+(g.ownGoal?' <span class="scorer-og">烏龍球</span>':'')+'</span>'+
-  '<strong>'+escapeHtml(g.time?g.time+(g.time.includes("'")?'':"'"):'—')+'</strong></div>').join('');
- return '<div class="goal-columns"><div class="goal-side">'+(format(home)||'<span class="no-goal-events">—</span>')+
-  '</div><div class="goal-side">'+(format(away)||'<span class="no-goal-events">—</span>')+'</div></div>';
+  '<span class="scorer-person">'+escapeHtml(g.player)+
+  (g.ownGoal?' <span class="scorer-og">烏龍球</span>':g.kind==='十二碼進球'?' <span class="scorer-og">十二碼</span>':'')+
+  '</span><strong>'+escapeHtml(g.time)+'</strong></div>').join('');
+ return '<div class="goal-columns"><div class="goal-side"><div class="goal-column-label">主隊</div>'+
+  (format(home)||'<span class="no-goal-events">—</span>')+'</div>'+
+  '<div class="goal-side"><div class="goal-column-label">客隊</div>'+
+  (format(away)||'<span class="no-goal-events">—</span>')+'</div></div>'+
+  (unknown.length?'<div class="goal-unassigned"><span>隊伍待核對</span>'+format(unknown)+'</div>':'')+
+  '<p class="goal-source-hint">進球者與分鐘依 ESPN 賽事事件；來源缺漏時不補造資料。</p>';
 }
+function htmlToNode(markup){
+ const wrap=document.createElement('div');
+ wrap.innerHTML=markup;
+ return wrap.firstElementChild;
+}
+function applySummaryToFixture(f,summary){
+ if(!LIVE||!summary||!f)return false;
+ const status=LIVE.summaryStatus(summary);
+ const scores=LIVE.summaryScores(summary);
+ let changed=false;
+ if(status){
+  const fields=LIVE.getStatusFields(status);
+  const nextStatus=fields.finished?'finished':fields.halftime?'halftime':fields.playing?'inprogress':null;
+  if(nextStatus&&nextStatus!==f.status){f.status=nextStatus;changed=true}
+  if(fields.clock&&fields.clock!==f.liveClock){f.liveClock=fields.clock;changed=true}
+  if(nextStatus)f.lastLiveFetchedAt=Date.now();
+ }
+ if(scores&&(f.status==='inprogress'||f.status==='halftime'||f.status==='finished')&&!f.scoreVerified&&!f.scoreConflict){
+  if(f.scoreHome!==scores.home||f.scoreAway!==scores.away){
+   f.scoreHome=scores.home;f.scoreAway=scores.away;changed=true;
+  }
+ }
+ return changed;
+}
+async function pollLiveMatches(){
+ if(state.livePolling||state.loading||!LIVE||document.visibilityState==='hidden')return;
+ const day=state.day;
+ const offset=Math.abs(Math.round((Date.parse(todayTaiwan()+'T00:00:00Z')-Date.parse(day+'T00:00:00Z'))/86400000));
+ if(offset>1)return;
+ const active=state.fixtures.filter(f=>{
+  const elapsed=Date.now()-scheduledKickoff(f);
+  return /^\d{4,14}$/.test(String(f.id||''))&&
+    (f.status==='inprogress'||f.status==='halftime'||
+      (elapsedStatus(f)==='pending'&&elapsed>0&&elapsed<=150*60000));
+ }).slice(0,8);
+ if(!active.length)return;
+ state.livePolling=true;
+ let cursor=0;
+ async function worker(){
+  while(cursor<active.length){
+   const f=active[cursor++];try{
+    const summary=await fetchMatchSummary(f);
+    if(state.day!==day)continue;
+    applySummaryToFixture(f,summary);
+    if(state.activeMatchId===f.id && !$('matchModal').classList.contains('hidden')){
+      const hero=$('matchDetailBody').querySelector('.match-hero');
+      if(hero)hero.replaceWith(htmlToNode(matchHero(f)));
+      const goals=$('matchGoals');
+      if(goals)goals.innerHTML=goalDetailMarkup(goalEventsFromSummary(summary,f));
+    }
+   }catch(e){f.liveDetailError=String(e.message||e)}
+  }
+ }
+ await Promise.all(Array.from({length:Math.min(2,active.length)},worker));
+ state.livePolling=false;
+ if(state.view==='schedule'&&state.day===day)renderSchedule();
+}
+
 async function openMatchDetail(f){
  if(!f)return;
  const request=++matchDialogRequest;
+ state.activeMatchId=f.id;
  matchReturnFocus=document.activeElement;
  $('matchDetailLeague').textContent=f.league||'比賽詳情';
  $('matchDetailTitle').textContent='比賽詳情';
@@ -654,9 +711,15 @@ async function openMatchDetail(f){
  }
  if(request!==matchDialogRequest||$('matchModal').classList.contains('hidden'))return;
  $('matchGoals').innerHTML=goalDetailMarkup(goalEventsFromSummary(summary,f));
+ const updated=applySummaryToFixture(f,summary);
+ if(updated){
+   $('matchDetailBody').querySelector('.match-hero')?.replaceWith(htmlToNode(matchHero(f)));
+   renderSchedule();
+ }
 }
 function closeMatchDetail(){
  ++matchDialogRequest;
+ state.activeMatchId='';
  closeModal('matchModal');
  if(matchReturnFocus&&typeof matchReturnFocus.focus==='function')matchReturnFocus.focus();
  matchReturnFocus=null;
