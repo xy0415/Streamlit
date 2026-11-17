@@ -122,11 +122,12 @@ function normalizedFixture(item){
 }
 const cache=new Map();
 const inflight=new Map();
+const seenFixtureIds=new Set();
 const limiter={date:'',count:0,minuteStart:0,minuteCount:0,providerRemaining:null};
 function todayUTC(){return new Date().toISOString().slice(0,10)}
 function budgetPermit(){
  const now=Date.now(),day=todayUTC();
- if(limiter.date!==day){limiter.date=day;limiter.count=0;limiter.minuteCount=0;limiter.minuteStart=now;}
+ if(limiter.date!==day){limiter.date=day;limiter.count=0;limiter.minuteCount=0;limiter.minuteStart=now;limiter.providerRemaining=null;}
  if(now-limiter.minuteStart>=60000){limiter.minuteStart=now;limiter.minuteCount=0}
  if(limiter.providerRemaining!==null&&limiter.providerRemaining<=8)return false;
  if(limiter.count>=MAX_DAY||limiter.minuteCount>=MAX_PER_MIN)return false;
@@ -163,6 +164,8 @@ async function getFixtures(date){
  if(!process.env.API_FOOTBALL_KEY)return {ok:false,reason:'not_configured',fixtures:[],quota:publicQuota()};
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date+'T00:00:00Z')))
   throw Error('Invalid date');
+ const dayOffset=Math.abs(Date.now()-Date.parse(date+'T00:00:00Z'));
+ if(dayOffset>48*86400000)throw Error('Date is outside the limited API backup window');
  const key='fixtures:'+date,now=Date.now();
  if(cache.has(key)&&cache.get(key).until>now)return {...cache.get(key).result,cacheHit:true,quota:publicQuota()};
  if(inflight.has(key))return inflight.get(key);
@@ -170,6 +173,8 @@ async function getFixtures(date){
  const promise=providerFetch('/fixtures?date='+date+'&timezone=Asia%2FTaipei',process.env.API_FOOTBALL_KEY)
   .then(rows=>{
    const fixtures=rows.map(normalizedFixture).filter(Boolean).filter(f=>f.date===date);
+   for(const f of fixtures)seenFixtureIds.add(f.apiFixtureId);
+   if(seenFixtureIds.size>3500)seenFixtureIds.clear();
    const result={ok:true,fixtures,receivedAt:new Date().toISOString(),quota:publicQuota()};
    const past=Date.parse(date+'T00:00:00Z')<Date.now()-DAY_MS;
    cache.set(key,{result,until:Date.now()+(past?HISTORIC_CACHE:ACTIVE_CACHE)});
@@ -185,7 +190,7 @@ async function getFixtures(date){
 }
 async function getEvents(id){
  if(!process.env.API_FOOTBALL_KEY)return {ok:false,reason:'not_configured',events:[]};
- const n=Number(id);if(!Number.isInteger(n)||n<1)throw Error('Invalid fixture ID');
+ const n=Number(id);if(!Number.isInteger(n)||n<1||!seenFixtureIds.has(n))throw Error('Fixture ID is not in the approved competition data');
  const key='events:'+n,old=cache.get(key);
  if(old&&old.until>Date.now())return {...old.result,cacheHit:true,quota:publicQuota()};
  if(inflight.has(key))return inflight.get(key);
