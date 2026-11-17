@@ -567,7 +567,7 @@ async function loadFixtures(force){
  // Do not block the fixtures list while individual free source lookups are slow.
  Promise.allSettled([
    enrichScoreResults(fixtures,force,false),
-   includeMissingClubPredictions(fixtures,force)
+   includeMissingClubPredictions(fixtures,force,day)
  ]).then(()=>{
    if(state.day===day&&cacheKey()===key){
      state.fixtures=fixtures;
@@ -1014,13 +1014,13 @@ async function loadHistoryResults(force=false){
  }
 }
 
-async function includeMissingClubPredictions(fixtures,force=false){
- const matches=state.report?.matches||[];
+async function includeMissingClubPredictions(fixtures,force=false,selectedDay=state.day){
+ const matches=(state.feed?.reports?.find(r=>r.date===selectedDay)?.matches)||[];
  const known=new Set(fixtures.map(f=>String(f.id)));
  let looked=0,added=0;
  for(const p of matches){
   const league=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
-  if(!league||!state.leagues.has(league)||LIVE?.NATIONAL_LEAGUES?.has(league))continue;
+  if(p.date!==selectedDay||!league||!state.leagues.has(league)||LIVE?.NATIONAL_LEAGUES?.has(league))continue;
   if(eventForPrediction(p,fixtures)||looked>=12)continue;
   looked++;
   const seed={date:p.date,time:p.time,leagueCode:league,home:p.home,away:p.away};
