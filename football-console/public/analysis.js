@@ -277,7 +277,7 @@ function fifaRankMarkup(league,name,abbr){
  const code=rankCode(league,name,abbr);
  if(!code)return '';
  const entry=state.fifaRanks.get(code),valid=entry&&Number.isInteger(entry.rank);
- const title=valid?'FIFA 男子世界排名 · 發布日期 '+entry.date+' · 官方資料':'FIFA 官方排名資料尚未取得';
+ const title=valid?'FIFA 男子世界排名 · 發布日期 '+entry.date+' · 資料提供：FotMob（依 FIFA 公布名次）':'FIFA 男子排名尚未查到有效名次';
  return '<span class="fifa-rank" title="'+escapeHtml(title)+'">'+(valid?'FIFA '+entry.rank:'FIFA —')+'</span>';
 }
 async function loadFifaRanks(fixtures){
@@ -289,24 +289,28 @@ async function loadFifaRanks(fixtures){
  if(!codes.length)return;
  state.fifaRanksBusy=true;
  try{
-  for(let start=0;start<codes.length;start+=12){
-   const chunk=codes.slice(start,start+12);
-   try{
-    const response=await fetch('/api/fifa-rankings?codes='+encodeURIComponent(chunk.join(',')),{cache:'no-store'});
-    if(!response.ok)throw Error('FIFA 官方 API 無法回應');
-    const data=await response.json();
-    for(const code of chunk){
-     const entry=data.ranks?.[code];
-     state.fifaRanks.set(code,entry&&Number.isInteger(Number(entry.rank))&&entry.date?
-       {rank:Number(entry.rank),date:entry.date}:null);
-    }
-   }catch(err){
-    for(const code of chunk)state.fifaRanks.set(code,null);
-    console.warn('FIFA rankings currently unavailable:',String(err.message||err));
+  const response=await fetch('/api/fifa-rankings',{cache:'no-store'});
+  if(!response.ok)throw Error('FIFA 排名期別來源暫時無法取得');
+  const data=await response.json();
+  if(!Array.isArray(data.rows)||!/^20\d{2}-\d{2}-\d{2}$/.test(data.asOf||''))
+   throw Error('FIFA 排名資料格式不完整');
+  const byCode=new Map();
+  for(const row of data.rows){
+   const code=LIVE.fifaCode(row.name);
+   const rank=Number(row.rank);
+   if(code&&Number.isInteger(rank)&&rank>=1&&rank<=250){
+    if(!byCode.has(code))byCode.set(code,{rank,date:data.asOf});
    }
-   if(state.view==='schedule')renderSchedule();
   }
- }finally{state.fifaRanksBusy=false}
+  for(const code of codes)state.fifaRanks.set(code,byCode.get(code)||null);
+  state.fifaRankPubDate=data.asOf;
+ }catch(err){
+  for(const code of codes)state.fifaRanks.set(code,null);
+  console.warn('FIFA ranking unavailable:',String(err.message||err));
+ }finally{
+  state.fifaRanksBusy=false;
+  if(state.view==='schedule')renderSchedule();
+ }
 }
 
 function teamLine(side,full,short,logo,translated,league='',abbr=''){
