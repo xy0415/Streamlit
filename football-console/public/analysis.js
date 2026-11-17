@@ -1,6 +1,6 @@
 'use strict';
 const LEAGUES=[
-['uefa.nations','歐國聯'],['fifa.friendly','國際友誼賽'],['eng.1','英超'],['eng.2','英冠'],
+['uefa.nations','歐國聯'],['caf.nations','非洲盃'],['caf.nations_qual','非洲盃資格賽'],['fifa.friendly','國際友誼賽'],['eng.1','英超'],['eng.2','英冠'],
 ['esp.1','西甲'],['ger.1','德甲'],['ita.1','義甲'],['fra.1','法甲'],['ned.1','荷甲'],
 ['por.1','葡超'],['uefa.champions','歐冠'],['uefa.europa','歐霸'],['uefa.europa.conf','歐協聯'],
 ['bra.1','巴甲'],['arg.1','阿甲'],['usa.1','美職聯'],['ksa.1','沙職'],['jpn.1','日職'],
