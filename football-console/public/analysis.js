@@ -106,7 +106,7 @@ async function getIndependentScore(f,force=false){
  state.resultLookupCache.set(key,{expiresAt:Date.now()+DAY_CACHE_MS,promise});
  try{return await promise}catch(err){state.resultLookupCache.delete(key);throw err}
 }
-async function enrichScoreResults(fixtures,force=false){
+async function enrichScoreResults(fixtures,force=false,skipLookups=false){
  const verified=await getVerifiedResults();
  const unresolved=[];
  for(const f of fixtures){
@@ -128,9 +128,11 @@ async function enrichScoreResults(fixtures,force=false){
    if(!f.scoreVerified)unresolved.push(f)
   }
  }
+ // Verified snapshots are displayed immediately; independent live lookups follow asynchronously.
+ if(skipLookups)return fixtures;
  // Free individual queries are bounded and only used for outdated or ambiguous cases.
  let cursor=0;
- const targets=unresolved.slice(0,12);
+ const targets=unresolved.slice(0,8);
  async function worker(){
   for(;;){
    const i=cursor++;if(i>=targets.length)break;
@@ -439,7 +441,7 @@ async function loadFixtures(force){
   if(!seen.has(identity))seen.set(identity,f);
  }
  const fixtures=[...seen.values()].sort((a,b)=>a.time.localeCompare(b.time)||a.league.localeCompare(b.league,'zh-Hant'));
- await enrichScoreResults(fixtures,force);
+ await enrichScoreResults(fixtures,force,true);
  state.cache.set(key,{fixtures,sources,expiresAt:Date.now()+DAY_CACHE_MS});
  const active=state.day===day&&cacheKey()===key;
  if(active){state.fixtures=fixtures;state.sources=sources}
@@ -450,6 +452,10 @@ async function loadFixtures(force){
    if(state.view==='schedule')loadFixtures(false);
    return;
  }
+ // Do not block the fixtures list while individual free source lookups are slow.
+ enrichScoreResults(fixtures,force,false).then(()=>{
+   if(state.day===day&&cacheKey()===key)render();
+ }).catch(err=>console.warn('Result cross-check failed:',String(err.message||err)));
  const err=sources.filter(s=>s.status==='error').length;
  $('fixtureNotice').textContent=err?('有 '+err+' 筆資料來源查詢失敗，賽程可能不完整。請查看資料驗證。'):'';
  $('fixtureNotice').classList.toggle('hidden',err===0);
@@ -457,10 +463,11 @@ async function loadFixtures(force){
 function fixturesForView(){
  const lc=$('leagueFilter').value,st=$('statusFilter').value;
  return state.fixtures.filter(x=>{
+  if(lc&&x.leagueCode!==lc&&x.league!==lc)return false;
+  if(!st)return true;
   const effective=elapsedStatus(x);
-  return (!lc||x.leagueCode===lc||x.league===lc)&&
-   (!st||st==='unverified'?(!x.scoreVerified&&['stale','pending','conflict'].includes(effective)):
-    st==='scheduled'?effective==='scheduled':st==='finished'?effective==='finished':effective===st);
+  if(st==='unverified')return !x.scoreVerified&&['stale','pending','conflict'].includes(effective);
+  return effective===st;
  });
 }
 function predsForView(){
