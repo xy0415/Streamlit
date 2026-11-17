@@ -15,6 +15,8 @@ const LEAGUES=[
 {id:'uefa.europa',name:'歐洲聯賽',short:'歐霸',group:'洲際與國家隊',tsdb:['UEFA Europa League']},
 {id:'uefa.europa.conf',name:'歐洲協會聯賽',short:'歐協',group:'洲際與國家隊',tsdb:['UEFA Europa Conference League','UEFA Conference League']},
 {id:'uefa.nations',name:'歐洲國家聯賽',short:'歐國聯',group:'洲際與國家隊',tsdb:['UEFA Nations League']},
+{id:'caf.nations',name:'非洲國家盃',short:'非洲盃',group:'洲際與國家隊',tsdb:['Africa Cup of Nations','African Nations Cup']},
+{id:'caf.nations_qual',name:'非洲國家盃資格賽',short:'非洲盃資格賽',group:'洲際與國家隊',tsdb:['Africa Cup of Nations Qualification','Africa Cup of Nations Qualifying','African Cup of Nations Qualifying']}, 
 {id:'fifa.worldq.uefa',name:'世界盃歐洲區資格賽',short:'世歐預',group:'洲際與國家隊',tsdb:['FIFA World Cup Qualifying UEFA']},
 {id:'fifa.worldq.conmebol',name:'世界盃南美區資格賽',short:'世南預',group:'洲際與國家隊',tsdb:['FIFA World Cup Qualifying CONMEBOL']},
 {id:'fifa.world',name:'世界盃',short:'世界盃',group:'洲際與國家隊',fd:'WC',tsdb:['FIFA World Cup']},
