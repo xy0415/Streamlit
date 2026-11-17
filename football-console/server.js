@@ -11,6 +11,30 @@ const ALLOWED = new Set(['eng.1','eng.2','eng.fa','esp.1','ger.1','ita.1','fra.1
 const FD_ALLOWED = new Set(['PL','ELC','PD','BL1','SA','FL1','DED','PPL','BSA','CL','WC']);
 const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const counters = new Map();
+const FIFA_RANK_CACHE = new Map();
+const FIFA_RANK_POSITIVE_TTL = 12*60*60*1000;
+const FIFA_RANK_NEGATIVE_TTL = 30*60*1000;
+async function fetchFifaCountryRank(code){
+ const cache=FIFA_RANK_CACHE.get(code);
+ if(cache && cache.expires > Date.now()) return cache.result;
+ const target='https://api.fifa.com/api/v3/rankings/byCountry/'+code+'?gender=1&language=en';
+ let result=null;
+ try{
+  const up=await remoteGet(target);
+  if(up.status===200 && up.data && Array.isArray(up.data.Results)){
+   const entries=up.data.Results.filter(e=>Number.isInteger(Number(e.Rank)) &&
+      Number(e.Rank)>=1 && Number(e.Rank)<=250 &&
+      (!e.IdCountry || String(e.IdCountry).toUpperCase()===code))
+      .map(e=>({rank:Number(e.Rank),date:String(e.PubDate||e.PublicationDate||'').slice(0,10)}))
+      .filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.date) && e.date<=new Date().toISOString().slice(0,10))
+      .sort((a,b)=>b.date.localeCompare(a.date));
+   if(entries.length)result=entries[0];
+  }
+ }catch(err){console.warn('[fifa] Official country ranking unavailable for',code,String(err.message||err))}
+ FIFA_RANK_CACHE.set(code,{result,expires:Date.now()+(result?FIFA_RANK_POSITIVE_TTL:FIFA_RANK_NEGATIVE_TTL)});
+ return result;
+}
+
 const FEED_CACHE = { time:0, data:null };
 const ALLOWED_FEED_REDIRECT_HOSTS = new Set(['script.google.com','script.googleusercontent.com']);
 function fetchScriptJson(url,remaining=4) {
@@ -127,6 +151,27 @@ async function api(req,res,route){
        receivedAt:new Date().toISOString(),data:up.data
      });
    }catch(e){return send(res,502,{provider:'tsdb_search',error:String(e.message||e)})}
+ }
+ if(route.pathname==='/api/fifa-rankings'&&req.method==='GET'){
+  const raw=String(route.searchParams.get('codes')||'');
+  const codes=[...new Set(raw.toUpperCase().split(',').filter(Boolean))];
+  if(!codes.length || codes.length>18 || codes.some(c=>!/^[A-Z]{3}$/.test(c)))
+   return send(res,400,{error:'需要 1～18 個有效的 FIFA 三碼國家代碼'});
+  const ranks={},unavailable=[];
+  let i=0;
+  async function worker(){
+   while(i<codes.length){
+    const code=codes[i++];
+    const result=await fetchFifaCountryRank(code);
+    if(result)ranks[code]=result;else unavailable.push(code);
+   }
+  }
+  await Promise.all(Array.from({length:Math.min(3,codes.length)},worker));
+  return send(res,200,{
+   source:'FIFA official public ranking API',
+   asOf:null,
+   ranks,unavailable,checkedAt:new Date().toISOString()
+  });
  }
  if(route.pathname==='/api/match-summary'&&req.method==='GET'){
    const league=route.searchParams.get('league');
