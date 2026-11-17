@@ -221,6 +221,19 @@ const server=http.createServer(async(req,res)=>{
 server.listen(PORT,'0.0.0.0',()=>{
  console.log('Fixture console listening on '+PORT);
  fetchFifaCountryRank('JPN').then(rank=>console.log('[fifa] official rank source check:',rank?JSON.stringify({code:'JPN',rank:rank.rank,date:rank.date}):'unavailable')).catch(err=>console.warn('[fifa] rank API check failed:',String(err.message||err)));
+
+ for(const endpoint of [
+  'https://www.fotmob.com/api/data/fifarankings/period?gender=men',
+  'https://www.fotmob.com/api/data/fifarankings/ranking?periodId=20261007&gender=men'
+ ]){
+  remoteGet(endpoint).then(response=>{
+   const data=response.data;
+   const list=Array.isArray(data)?data:Array.isArray(data?.data)?data.data:Array.isArray(data?.rows)?data.rows:[];
+   console.log('[fifa] FotMob public-ranking endpoint inspection:',
+    JSON.stringify({path:new URL(endpoint).pathname,http:response.status,keys:Object.keys(data||{}).slice(0,12),count:list.length,first:list[0]||null}).slice(0,1600));
+  }).catch(err=>console.warn('[fifa] FotMob source not accessible:',String(err.message||err)));
+ }
+
  remoteGet('https://api.fifa.com/api/v3/rankingschedules/all?type=0&gender=1')
   .then(response=>{
    const data=response.data,items=Array.isArray(data?.Results)?data.Results:[];
