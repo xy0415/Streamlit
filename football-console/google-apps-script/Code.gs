@@ -181,13 +181,40 @@ function settle_(row,h,a){
  }
  return null;
 }
+function secondSource_(row,event,expectedHome,expectedAway){
+ // TheSportsDB free plan returns only one event per search and may not cover a league.
+ // Never equate an empty response to a loss; only corroborate exact match + 90-minute scores.
+ try{
+  const utcDay=String(event.date||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(utcDay))return null;
+  const query=row.home+'_vs_'+row.away;
+  const url='https://www.thesportsdb.com/api/v1/json/123/searchevents.php?e='+encodeURIComponent(query)+'&d='+utcDay;
+  const response=UrlFetchApp.fetch(url,{muteHttpExceptions:true,followRedirects:true});
+  if(response.getResponseCode()!==200)return null;
+  const json=JSON.parse(response.getContentText()),events=json.event||json.events||[];
+  if(!Array.isArray(events))return null;
+  for(const e of events){
+   if(norm_(e.strHomeTeam)!==norm_(row.home)||norm_(e.strAwayTeam)!==norm_(row.away))continue;
+   if(e.strTimestamp){
+    const diff=Math.abs(new Date(e.strTimestamp).getTime()-new Date(event.date).getTime());
+    if(!Number.isFinite(diff)||diff>120*60000)continue;
+   }
+   const stat=String(e.strStatus||'');
+   if(!/finish|final|full.?time|FT/i.test(stat)||/penalt|extra.?time|AET/i.test(stat))continue;
+   const h=Number(e.intHomeScore),a=Number(e.intAwayScore);
+   if(!Number.isInteger(h)||!Number.isInteger(a))continue;
+   return {h,a,id:e.idEvent||'',url:'https://www.thesportsdb.com/event/'+String(e.idEvent||'')};
+  }
+ }catch(e){}
+ return null;
+}
 function syncResults(){
  ownerCheck_();
  const lock=LockService.getScriptLock();lock.waitLock(25000);
  try{
   const sh=getSheet_('Predictions',CFG.PRED_COLS),rows=loadRows_(sh);
   const today=Utilities.formatDate(new Date(),CFG.TZ,'yyyy-MM-dd');
-  const cache={};let calls=0;
+  const cache={};let calls=0,secondaryCalls=0;
   for(const row of rows){
    if(row.verified==='true'||row.date>today||!row.time||!row.home||!row.away)continue;
    const code=LEAGUE_CODES[row.league];
@@ -228,11 +255,28 @@ function syncResults(){
    row.status='終場比分待第二來源覆核';
    const result=settle_(row,h,a);
    row.settlement=result?'參考'+result:'盤型需人工結算';
-   row.verified='false'; // two independent checks not available yet
+   row.verified='false';
+   // Free independent cross-check. If unavailable, the score stays reference-only.
+   if(secondaryCalls<18 && result){
+     secondaryCalls++;
+     const second=secondSource_(row,found.event,h,a);
+     if(second && second.h===h && second.a===a){
+       row.verified='true';
+       row.status='兩個獨立來源比分一致';
+       row.settlement=result;
+       row.source='ESPN + TheSportsDB';
+       row.sourceUrl=second.url||row.sourceUrl;
+     }else if(second){
+       row.status='兩來源比分不一致，待核實';
+       row.homeScore='';row.awayScore='';
+       row.settlement='待核實';
+     }
+     Utilities.sleep(2200); // TheSportsDB free tier has a minute-level request ceiling.
+   }
   }
   saveRows_(sh,CFG.PRED_COLS,rows);
   PropertiesService.getScriptProperties().setProperty('RESULT_LAST_SYNC',now_());
-  return {rows:rows.length,apiCalls:calls};
+  return {rows:rows.length,apiCalls:calls,secondaryCalls};
  }finally{lock.releaseLock()}
 }
 function doGet(){
