@@ -9,7 +9,7 @@ const LEAGUES=[
 ['mex.1','墨超'],['tur.1','土超'],['bel.1','比甲'],['sco.1','蘇超'],['chn.1','中超']
 ];
 const KN=Object.fromEntries(LEAGUES);
-const defaultLeagues=['uefa.nations','fifa.friendly','eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','bra.1','usa.1','ksa.1'];
+const defaultLeagues=['uefa.nations','caf.nations','caf.nations_qual','fifa.friendly','eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','bra.1','usa.1','ksa.1'];
 const $=id=>document.getElementById(id);
 const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[],loading:false,
   leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),scheduleQueued:false,
@@ -18,6 +18,8 @@ const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[]
 const SCOREBOARD_TTL=120000; // 2 minute browser cache for active fixtures and review
 const PRED_LEAGUE_CODES={
  '歐國聯':'uefa.nations','歐洲國家聯賽':'uefa.nations','國際友誼賽':'fifa.friendly',
+ '非洲國家盃':'caf.nations','非洲盃':'caf.nations','AFCON':'caf.nations',
+ '非洲國家盃資格賽':'caf.nations_qual','非洲盃資格賽':'caf.nations_qual','AFCON資格賽':'caf.nations_qual',
  '英超':'eng.1','英冠':'eng.2','西甲':'esp.1','德甲':'ger.1','義甲':'ita.1','法甲':'fra.1',
  '荷甲':'ned.1','葡超':'por.1','歐冠':'uefa.champions','歐霸':'uefa.europa',
  '歐協聯':'uefa.europa.conf','歐洲協會聯賽':'uefa.europa.conf',
@@ -465,6 +467,12 @@ function getDailyExport(){
 }
 function init(){
  try{const saved=JSON.parse(localStorage.getItem('football-dashboard-leagues')||'null');if(Array.isArray(saved)&&saved.length)state.leagues=new Set(saved.filter(x=>KN[x]))}catch{}
+ // One-time migration: include both AFCON competitions for existing visitors.
+ try{if(localStorage.getItem('football-afcon-migration-v1')!=='done'){
+   state.leagues.add('caf.nations');state.leagues.add('caf.nations_qual');
+   localStorage.setItem('football-dashboard-leagues',JSON.stringify([...state.leagues]));
+   localStorage.setItem('football-afcon-migration-v1','done');
+ }}catch{}
  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
    state.view=b.dataset.view;render();
    if(state.view==='reviews')loadReviewScores(false);
