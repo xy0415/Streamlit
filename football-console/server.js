@@ -231,6 +231,13 @@ const server=http.createServer(async(req,res)=>{
 });
 server.listen(PORT,'0.0.0.0',()=>{
  console.log('Fixture console listening on '+PORT);
+ if(process.env.API_FOOTBALL_KEY){
+  const part=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replaceAll('/','-');
+  apiFootball.getFixtures(part).then(r=>
+   console.log('[api-football] startup coverage check:',JSON.stringify({date:part,ok:r.ok,matchingFixtures:r.fixtures?.length||0,reason:r.reason||null,quotaUsed:r.quota?.usedByServer||0}))
+  ).catch(e=>console.warn('[api-football] startup check failed:',String(e.message||e)));
+ }
+
  currentFifaRankingSnapshot().catch(err=>
   console.warn('[fifa] ranking data unavailable:',String(err.message||err)));
  const feed=String(process.env.FOOTBALL_REPORT_FEED_URL||'').trim();
