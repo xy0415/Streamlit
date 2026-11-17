@@ -12,7 +12,7 @@ const KN=Object.fromEntries(LEAGUES);
 const defaultLeagues=['uefa.nations','fifa.friendly','eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','bra.1','usa.1','ksa.1'];
 const $=id=>document.getElementById(id);
 const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[],loading:false,
-  leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),
+  leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),scheduleQueued:false,
   reviewFixtures:[],reviewErrors:[],reviewLoading:false,reviewUpdatedAt:0,reviewDate:''};
 
 const SCOREBOARD_TTL=120000; // 2 minute browser cache for active fixtures and review
@@ -161,6 +161,7 @@ async function loadReviewScores(force=false){
  }
  state.reviewLoading=false;$('refreshReview').disabled=false;
  renderReview();
+ if(state.day!==day&&state.view==='reviews')loadReviewScores(false);
 }
 
 function escapeHtml(x){return String(x==null?'':x).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;')}
@@ -219,7 +220,10 @@ function parseScore(item){
  const completed=type.completed===true||/final|full.?time/i.test(String(type.name||''));
  const progress=!completed&&(/in|live|half/i.test(String(type.state||''))||type.state==='in');
  let homeScore=home.score,awayScore=away.score;
- if(typeof homeScore==='object')homeScore=homeScore.value;if(typeof awayScore==='object')awayScore=awayScore.value;
+ if(typeof homeScore==='object')homeScore=homeScore?.value;
+ if(typeof awayScore==='object')awayScore=awayScore?.value;
+ if(!Number.isFinite(Number(homeScore))||String(homeScore).trim()==='')homeScore=null;
+ if(!Number.isFinite(Number(awayScore))||String(awayScore).trim()==='')awayScore=null;
  return {id:String(item.id||''),date:stamp.date,time:stamp.time,
   leagueCode:item._league||'',league:KN[item._league]||item._league||'',
   home:titleHome,away:titleAway,homeLogo,awayLogo,homeShort,awayShort,
@@ -228,8 +232,8 @@ function parseScore(item){
   stateName:type.description||type.name||'',source:'ESPN',url:item.links?.[0]?.href||''};
 }
 async function loadFixtures(force){
- if(state.loading)return;
- const key=cacheKey();
+ if(state.loading){state.scheduleQueued=true;return}
+ const key=cacheKey(), day=state.day;
  if(!force&&state.cache.has(key)){const cached=state.cache.get(key);state.fixtures=cached.fixtures;state.sources=cached.sources;render();return}
  if(state.leagues.size===0){state.fixtures=[];state.sources=[];render();toast('請至少選擇一個查核聯賽');return}
  state.loading=true;$('reloadFixtures').disabled=true;$('refreshAll').disabled=true;
@@ -252,14 +256,21 @@ async function loadFixtures(force){
  }
  await Promise.all(Array.from({length:Math.min(3,queries.length)},worker));
  const seen=new Map();
- for(const e of results){const f=parseScore(e);if(!f||f.date!==state.day)continue;
+ for(const e of results){const f=parseScore(e);if(!f||f.date!==day)continue;
   const identity=f.id||f.leagueCode+'|'+f.home+'|'+f.away+'|'+f.time;
   if(!seen.has(identity))seen.set(identity,f);
  }
- state.fixtures=[...seen.values()].sort((a,b)=>a.time.localeCompare(b.time)||a.league.localeCompare(b.league,'zh-Hant'));
- state.sources=sources;state.cache.set(key,{fixtures:state.fixtures,sources});
+ const fixtures=[...seen.values()].sort((a,b)=>a.time.localeCompare(b.time)||a.league.localeCompare(b.league,'zh-Hant'));
+ state.cache.set(key,{fixtures,sources});
+ const active=state.day===day&&cacheKey()===key;
+ if(active){state.fixtures=fixtures;state.sources=sources}
  state.loading=false;$('reloadFixtures').disabled=false;$('refreshAll').disabled=false;
- render();
+ if(active)render();
+ if(state.scheduleQueued||!active){
+   state.scheduleQueued=false;
+   if(state.view==='schedule')loadFixtures(false);
+   return;
+ }
  const err=sources.filter(s=>s.status==='error').length;
  $('fixtureNotice').textContent=err?('有 '+err+' 筆資料來源查詢失敗，賽程可能不完整。請查看資料驗證。'):'';
  $('fixtureNotice').classList.toggle('hidden',err===0);
