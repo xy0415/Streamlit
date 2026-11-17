@@ -757,8 +757,6 @@ function renderSchedule(){
    ].filter(Boolean).join('；');
  }
  $('fixtureNotice').classList.toggle('hidden',!state.loading&&failures===0&&staleCount===0);
- $('mFixtures').textContent=state.sources.length?state.fixtures.length:'—';
- $('mFixturesHelp').textContent=state.sources.length?'已查詢 '+state.sources.length+' 筆 · 異常 '+failures:'等待免費賽程來源';
  if(!state.loading)$('sourceSummary').textContent=state.sources.length?'ESPN · '+(state.sources.length-failures)+' / '+state.sources.length+' 請求成功':'尚未查詢賽程';
 }
 function renderPredictions(){
@@ -774,56 +772,56 @@ function renderPredictions(){
  '</div>'+
  '<div class="pred-choice"><strong>'+escapeHtml(displayCleanText(p.market))+'</strong>'+(p.probability!==null&&Number.isFinite(p.probability)?'<span class="probability">'+p.probability+'%<small>估計'+escapeHtml(p.probabilityType)+'機率</small></span>':'')+'</div></article>'
  ).join('');
- const total=state.report?.matches.length||0;
- $('mPreds').textContent=total;$('mPredsHelp').textContent=state.report?'正式報告 '+state.report.date:'當日無正式報告';
 }
-function settlementPill(p){
- if(p.verified){if(/全贏|半贏/.test(p.settlement))return statusPill(p.settlement,'ok');
- if(/全輸|半輸/.test(p.settlement))return statusPill(p.settlement,'bad');return statusPill(p.settlement,'neutral')}
- if(/^參考/.test(p.settlement||''))return statusPill(p.settlement,'warn');
- return statusPill(p.settlement||'待核實','neutral')
+function reviewResultLabel(settlement){
+ const value=String(settlement||'');
+ if(/全贏|半贏/.test(value))return '贏';
+ if(/全輸|半輸/.test(value))return '輸';
+ if(/走盤|退款|退回本金|無效/.test(value))return '走盤';
+ return '';
 }
 function renderReview(){
  const rows=predsForView(),available=state.reviewFixtures.concat(state.fixtures);
- $('reviewCount').textContent=rows.length;$('reviewEmpty').classList.toggle('hidden',rows.length>0);
+ $('reviewCount').textContent=rows.length;
+ $('reviewEmpty').classList.toggle('hidden',rows.length>0);
  const checked=state.reviewUpdatedAt?fTaiwan(state.reviewUpdatedAt).time:'';
- $('reviewFreshness').textContent=state.reviewLoading?'查詢最新比分中…':
-  checked?'ESPN 比分查詢 '+checked+(state.reviewErrors.length?' · 部分失敗':''):'尚未查詢即時比分';
+ $('reviewFreshness').textContent=state.reviewLoading?'更新比分中…':
+   checked?'更新 '+checked+(state.reviewErrors.length?' · 部分賽事尚未更新':''):'尚未更新比分';
  $('reviewTable').innerHTML=rows.map(p=>{
-  const live=eventForPrediction(p,available),
-    liveScore=live&&(live.status==='finished'||live.status==='inprogress')&&
-      live.scoreHome!==null&&live.scoreHome!==undefined&&live.scoreAway!==null&&live.scoreAway!==undefined;
-  const recorded=p.homeScore!==null&&p.awayScore!==null;
-  const inconsistent=p.verified&&recorded&&liveScore&&
-    (Number(live.scoreHome)!==p.homeScore||Number(live.scoreAway)!==p.awayScore);
-  const h=p.verified&&recorded?p.homeScore:liveScore?Number(live.scoreHome):recorded?p.homeScore:null;
-  const a=p.verified&&recorded?p.awayScore:liveScore?Number(live.scoreAway):recorded?p.awayScore:null;
-  const extraTime=Boolean(live&&/penalty|penalties|extra time|\bAET\b|PEN/i.test(live.stateName||''));
-  const ref=(!p.verified&&live&&live.status==='finished'&&liveScore&&!extraTime)?
-    referenceResult(p,Number(live.scoreHome),Number(live.scoreAway)):'';
-  const outcome=p.verified?settlementPill(p):ref?statusPill(ref,'warn'):settlementPill(p);
-  let status='';
-  if(inconsistent||live?.scoreConflict)status=statusPill('比分有差異，需重核','bad');
-  else if(p.verified)status=statusPill('雙來源已核實','ok');
-  else if(live&&live.status==='finished')status=statusPill(extraTime?'含加時／點球，待核':live.scoreVerified?'雙來源比分一致':'終場比分待覆核',live.scoreVerified?'ok':'warn');
-  else if(live&&live.status==='inprogress')status=statusPill('比賽進行中','blue');
-  else if(live&&['stale','pending','conflict'].includes(elapsedStatus(live)))
-   status=statusPill(elapsedStatus(live)==='conflict'?'比分衝突，待核對':'賽況待更新','warn');
-  else status=statusPill(recorded?(p.status||'待覆核'):(state.reviewLoading?'正在查詢':'待核對'),'neutral');
+  const live=eventForPrediction(p,available);
+  const liveScore=!!live&&['finished','inprogress','halftime'].includes(live.status)&&
+    Number.isInteger(Number(live.scoreHome))&&live.scoreHome!==null&&live.scoreHome!==undefined&&
+    Number.isInteger(Number(live.scoreAway))&&live.scoreAway!==null&&live.scoreAway!==undefined;
+  const recorded=Number.isInteger(Number(p.homeScore))&&p.homeScore!==null&&p.homeScore!==undefined&&
+    Number.isInteger(Number(p.awayScore))&&p.awayScore!==null&&p.awayScore!==undefined;
+  const inconsistent=!!live?.scoreConflict||(p.verified&&recorded&&liveScore&&
+    (Number(live.scoreHome)!==Number(p.homeScore)||Number(live.scoreAway)!==Number(p.awayScore)));
+  const h=p.verified&&recorded?Number(p.homeScore):
+    liveScore?Number(live.scoreHome):recorded?Number(p.homeScore):null;
+  const a=p.verified&&recorded?Number(p.awayScore):
+    liveScore?Number(live.scoreAway):recorded?Number(p.awayScore):null;
+  const extraTime=!!live&&/penalt|extra.time|\bAET\b|\bPEN\b/i.test(live.stateName||'');
+  // A win or loss is shown only for a confirmed stored settlement or a complete
+  // 90-minute score. An in-progress match never receives an inferred result.
+  let result='';
+  if(!inconsistent){
+   if(p.verified&&recorded){
+     result=reviewResultLabel(p.settlement);
+   }else if(live?.status==='finished'&&liveScore&&!extraTime){
+     result=reviewResultLabel(referenceResult(p,Number(live.scoreHome),Number(live.scoreAway)));
+   }
+  }
+  const label=result||'—';
+  const resultClass=result==='贏'?'win':result==='輸'?'loss':'neutral';
   return '<tr><td class="review-time"><strong>'+escapeHtml(p.time)+'</strong></td>'+
     '<td class="review-match"><div class="review-teams">'+
     teamLine('home',p.home,'',live?.homeLogo,p.homeZh,PRED_LEAGUE_CODES[p.league]||'',live?.homeAbbr||'')+
     teamLine('away',p.away,'',live?.awayLogo,p.awayZh,PRED_LEAGUE_CODES[p.league]||'',live?.awayAbbr||'')+
     '</div><small>'+escapeHtml(p.league)+'</small></td>'+
     '<td class="review-market">'+escapeHtml(displayCleanText(p.market))+'</td>'+
-    '<td class="review-score"><strong>'+(h!==null&&a!==null?escapeHtml(h)+' : '+escapeHtml(a):'—')+'</strong>'+
-    (!p.verified&&liveScore?'<small>'+escapeHtml(live.scoreVerified?'兩來源核對':'單一來源參考')+'</small>':'')+'</td>'+
-    '<td>'+outcome+'</td><td>'+status+'</td></tr>';
+    '<td class="review-score"><strong>'+(h!==null&&a!==null?escapeHtml(h)+' : '+escapeHtml(a):'—')+'</strong></td>'+
+    '<td class="review-result-cell"><strong class="review-result '+resultClass+'">'+escapeHtml(label)+'</strong></td></tr>';
  }).join('');
- const all=state.report?.matches||[];
- const verified=all.filter(x=>x.verified).length;
- $('mVerified').textContent=verified;
- $('mPending').textContent=all.length-verified;
 }
 function renderHistory(){
  const reports=state.feed?.reports||[],all=reports.flatMap(r=>r.matches||[]),v=all.filter(p=>p.verified&&p.settlement!=='待核實');
@@ -890,11 +888,11 @@ function init(){
  $('refreshAll').onclick=async()=>{
    await loadFeed();
    if(state.view==='reviews')await loadReviewScores(true);else await loadFixtures(true);
-   toast('資料已重新查詢，比分未經覆核前僅供參考');
+   toast('資料已重新查詢');
  };
  $('refreshReview').onclick=async()=>{
    await loadFeed();await loadReviewScores(true);
-   toast('已重新查詢 ESPN 終場比分；正式結算以雙來源核實為準');
+   toast('比分已重新查詢');
  };
  // Live-only ESPN summary refresh; source-reported match minute is not locally fabricated.
  setInterval(()=>pollLiveMatches(),35000);
