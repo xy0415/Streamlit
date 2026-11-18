@@ -7,6 +7,8 @@ const test=require('node:test');
 const root=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'public','analysis.js'),'utf8')
   .replace("document.addEventListener('DOMContentLoaded',init);",'');
+const liveSource=fs.readFileSync(path.join(root,'public','live-details.js'),'utf8');
+const historySource=fs.readFileSync(path.join(root,'public','history-engine.js'),'utf8');
 const corrections=JSON.parse(fs.readFileSync(path.join(root,'public','data','verified-results.json'),'utf8'));
 function setup(){
  const nodes={};
@@ -37,6 +39,8 @@ function setup(){
   }
  };
  vm.createContext(context);
+ vm.runInContext(liveSource,context,{filename:'live-details.js'});
+ vm.runInContext(historySource,context,{filename:'history-engine.js'});
  vm.runInContext(source,context,{filename:'analysis.js'});
  return {context,requests,document,state:vm.runInContext('state',context)};
 }
@@ -140,5 +144,13 @@ test('Only confirmed goal events with matching team identities appear as scorers
  assert.equal(goals[0].side,'home');
  assert.equal(goals[1].side,'away');
  assert.doesNotMatch(context.goalDetailMarkup(goals),/Not a scorer|Unknown team/);
- assert.match(context.goalDetailMarkup([]),/尚未提供可核實/);
+ assert.match(context.goalDetailMarkup([]),/尚未提供可辨識的進球事件/);
+});
+test('Reference review does not grade corners or cards using the goal score',()=>{
+ const {context}=setup();
+ const p={home:'France',away:'Turkey',homeZh:'法國',awayZh:'土耳其'};
+ assert.equal(context.referenceResult({...p,market:'總角球大 9.5'},3,2),'');
+ assert.equal(context.referenceResult({...p,market:'總黃牌小 4.5'},1,0),'');
+ assert.equal(context.referenceResult({...p,market:'全場總進球小 3.5'},2,1),'參考全贏');
+ assert.equal(context.referenceResult({...p,market:'法國亞洲讓球 -0.75'},2,1),'參考半贏');
 });
