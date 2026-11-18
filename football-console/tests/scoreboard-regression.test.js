@@ -54,7 +54,7 @@ test('Past kickoff with stale ESPN pre status never appears as not started',()=>
  const f=context.parseScore(fixtureEvent('Tahiti','Cook Islands','2026-11-17T05:30:00Z'));
  const now=Date.parse('2026-11-17T12:35:00Z');
  assert.equal(context.elapsedStatus(f,now),'stale');
- assert.equal(context.displayFixtureStatus(f,now).text,'比分待更新');
+ assert.equal(context.displayFixtureStatus(f,now).text,'已開賽');
  assert.equal(context.elapsedStatus(f,Date.parse('2026-11-17T04:00:00Z')),'scheduled');
 });
 test('Strictly sourced two-match Nov 17 corrections display actual results without inventing others',async()=>{
@@ -75,7 +75,7 @@ test('Strictly sourced two-match Nov 17 corrections display actual results witho
  const output=document.getElementById('fixtureTable').innerHTML;
  assert.match(output,/3 : 3/);
  assert.match(output,/2 : 1/);
- assert.match(output,/比分待更新/);
+ assert.match(output,/已開賽/);
  assert.doesNotMatch(output,/未開賽/);
  assert.equal(context.fixturesForView().length,3);
 });
