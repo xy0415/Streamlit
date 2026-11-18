@@ -12,6 +12,43 @@ const ALLOWED = new Set(['eng.1','eng.2','eng.fa','esp.1','esp.copa_del_rey','ge
 const FD_ALLOWED = new Set(['PL','ELC','PD','BL1','SA','FL1','DED','PPL','BSA','CL','WC']);
 const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const counters = new Map();
+// Shared upstream cache across visitors. A rejected request is never cached as valid data.
+const UPSTREAM_CACHE = new Map();
+const UPSTREAM_INFLIGHT = new Map();
+const SOURCE_HEALTH = new Map();
+async function cachedRemoteGet(target,ttlMs,headers={}) {
+ const now=Date.now(),cached=UPSTREAM_CACHE.get(target);
+ if(cached&&cached.expires>now)return cached.response;
+ if(UPSTREAM_INFLIGHT.has(target))return UPSTREAM_INFLIGHT.get(target);
+ const job=(async()=>{
+  let response;
+  try{
+   response=await remoteGet(target,headers);
+   if([502,503,504].includes(response.status))response=await remoteGet(target,headers);
+   SOURCE_HEALTH.set(new URL(target).hostname,{ok:response.status===200,checkedAt:Date.now()});
+  }catch(error){
+   SOURCE_HEALTH.set(new URL(target).hostname,{ok:false,checkedAt:Date.now()});
+   throw error;
+  }
+  if(response.status===200){
+   UPSTREAM_CACHE.set(target,{response,expires:Date.now()+ttlMs});
+   if(UPSTREAM_CACHE.size>500){
+    for(const [key,value] of UPSTREAM_CACHE)if(value.expires<Date.now())UPSTREAM_CACHE.delete(key);
+    while(UPSTREAM_CACHE.size>500)UPSTREAM_CACHE.delete(UPSTREAM_CACHE.keys().next().value);
+   }
+  }
+  return response;
+ })().finally(()=>UPSTREAM_INFLIGHT.delete(target));
+ UPSTREAM_INFLIGHT.set(target,job);
+ return job;
+}
+function scoreboardTtl(date){
+ const dateMs=Date.parse(date+'T00:00:00Z');
+ const distance=Date.now()-dateMs;
+ if(distance>36*3600000)return 8*3600000;
+ if(distance< -36*3600000)return 6*3600000;
+ return 90*1000;
+}
 const FIFA_RANK_SNAPSHOT={data:null,expires:0};
 async function currentFifaRankingSnapshot(){
  if(FIFA_RANK_SNAPSHOT.data && FIFA_RANK_SNAPSHOT.expires>Date.now())return FIFA_RANK_SNAPSHOT.data;
@@ -132,7 +169,7 @@ function remoteGet(target, headers={}) {
 }
 async function api(req,res,route){
  if(!rateOk(req))return send(res,429,{error:'請求過於頻繁，請稍後再試'});
- if(route.pathname==='/api/health')return send(res,200,{ok:true,serverTime:new Date().toISOString(),sources:['ESPN','TheSportsDB','football-data.org',...(process.env.API_FOOTBALL_KEY?['API-FOOTBALL']:[])],apiFootball:apiFootball.publicQuota(),reportSyncConfigured:Boolean(process.env.FOOTBALL_REPORT_FEED_URL)});
+ if(route.pathname==='/api/health')return send(res,200,{ok:true,serverTime:new Date().toISOString(),sources:['ESPN','TheSportsDB','football-data.org',...(process.env.API_FOOTBALL_KEY?['API-FOOTBALL']:[])],apiFootball:apiFootball.publicQuota(),reportSyncConfigured:Boolean(process.env.FOOTBALL_REPORT_FEED_URL),upstreamHealth:Object.fromEntries(SOURCE_HEALTH),sharedCacheEntries:UPSTREAM_CACHE.size});
  if(route.pathname==='/api/api-football/fixtures'&&req.method==='GET'){
   const date=route.searchParams.get('date');
   if(!dateOk(date))return send(res,400,{error:'日期無效'});
@@ -172,7 +209,7 @@ async function api(req,res,route){
    const fixtureName=home.trim().replace(/\s+/g,'_')+'_vs_'+away.trim().replace(/\s+/g,'_');
    const target='https://www.thesportsdb.com/api/v1/json/123/searchevents.php?e='+encodeURIComponent(fixtureName)+'&d='+encodeURIComponent(date);
    try{
-     const up=await remoteGet(target);
+     const up=await cachedRemoteGet(target,5*60*1000);
      return send(res,up.status===200?200:502,{
        provider:'tsdb_search',upstreamStatus:up.status,requestUrl:target,
        receivedAt:new Date().toISOString(),data:up.data
@@ -191,7 +228,7 @@ async function api(req,res,route){
      return send(res,400,{error:'賽事識別碼或聯賽代碼不正確'});
    const target='https://site.api.espn.com/apis/site/v2/sports/soccer/'+encodeURIComponent(league)+'/summary?event='+event;
    try{
-     const up=await remoteGet(target);
+     const up=await cachedRemoteGet(target,45*1000);
      return send(res,up.status===200?200:502,{
        provider:'ESPN',upstreamStatus:up.status,receivedAt:new Date().toISOString(),
        data:up.data
@@ -207,7 +244,7 @@ async function api(req,res,route){
    if(provider==='espn'&&ALLOWED.has(league))target='https://site.api.espn.com/apis/site/v2/sports/soccer/'+encodeURIComponent(league)+'/scoreboard?dates='+date.replaceAll('-','');
    else if(provider==='tsdb')target='https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d='+encodeURIComponent(date)+'&s=Soccer';
    else return send(res,400,{error:'不支援的來源或聯賽'});
-   try{const up=await remoteGet(target);return send(res,up.status===200?200:502,{provider,requestUrl:target,upstreamStatus:up.status,bytes:up.bytes,receivedAt:new Date().toISOString(),data:up.data})}catch(e){return send(res,502,{provider,requestUrl:target,error:String(e.message||e)})}
+   try{const up=await cachedRemoteGet(target,scoreboardTtl(date));return send(res,up.status===200?200:502,{provider,requestUrl:target,upstreamStatus:up.status,bytes:up.bytes,receivedAt:new Date().toISOString(),data:up.data})}catch(e){return send(res,502,{provider,requestUrl:target,error:String(e.message||e)})}
  }
  if(route.pathname==='/api/football-data'&&req.method==='POST'){
    let raw='';try{for await(const chunk of req){raw+=chunk;if(raw.length>MAX_BODY)throw Error('輸入資料過大')}}catch(e){return send(res,413,{error:String(e.message||e)})}
