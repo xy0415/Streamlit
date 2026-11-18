@@ -1195,13 +1195,27 @@ async function includeMissingClubPredictions(fixtures,force=false,selectedDay=st
 }
 
 function renderHistory(){
- const source=historyReportRows();
+ const all=historyReportRows();
+ const leagueControl=$('historyLeague'),periodControl=$('historyPeriod');
+ const previousLeague=leagueControl.value;
+ const leagues=[...new Set(all.map(row=>String(row.p.league||'').trim()).filter(Boolean))]
+  .sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+ leagueControl.innerHTML='<option value="">全部聯賽</option>'+leagues.map(name=>
+  '<option value="'+escapeHtml(name)+'">'+escapeHtml(name)+'</option>').join('');
+ leagueControl.value=leagues.includes(previousLeague)?previousLeague:'';
+ const selectedLeague=leagueControl.value;
+ const days=Number(periodControl.value);
+ const limit=Number.isInteger(days)&&days>0?Date.parse(todayTaiwan()+'T00:00:00+08:00')-(days-1)*86400000:null;
+ const inPeriod=all.filter(row=>limit===null||Date.parse(row.reportDate+'T00:00:00+08:00')>=limit);
+ const source=inPeriod.filter(row=>!selectedLeague||row.p.league===selectedLeague);
  const rows=source.map(row=>({...row,result:state.historyScores.get(row.key)||null}));
  let summary={total:rows.length,finished:0,win:0,loss:0,halfwin:0,halfloss:0,push:0,pending:rows.length,unsupported:0,rate:null};
  if(HISTORY)summary=HISTORY.summarize(rows.map(x=>x.result?.grade?x.result:{status:x.result?.status||'pending'}));
  $('historyTotal').textContent=String(summary.total);
  $('historyVerified').textContent=String(summary.finished);
  $('historyWin').textContent=String(summary.win+summary.halfwin);
+ $('historyLoss').textContent=String(summary.loss+summary.halfloss);
+ $('historyPush').textContent=String(summary.push);
  $('historyRate').textContent=summary.rate===null?'—':summary.rate.toFixed(1)+'%';
  const label=state.historyLoading?
   '比對歷史比分 '+state.historyChecks+'/'+state.historyRequired+(state.historyErrors?' · 來源失敗 '+state.historyErrors:''):
@@ -1209,6 +1223,20 @@ function renderHistory(){
   summary.finished?'已取得部分終場資料':'尚未查核歷史比分';
  $('historyProgress').textContent=label;
  $('historyRefresh').disabled=state.historyLoading;
+ const byLeague=new Map();
+ for(const row of inPeriod){
+  const league=String(row.p.league||'其他');
+  if(!byLeague.has(league))byLeague.set(league,[]);
+  byLeague.get(league).push(row);
+ }
+ $('historyLeagueRows').innerHTML=[...byLeague].filter(([name])=>!selectedLeague||name===selectedLeague)
+  .map(([name,group])=>({name,stats:HISTORY?HISTORY.summarize(group.map(row=>state.historyScores.get(row.key)||{status:'pending'})):null}))
+  .filter(item=>item.stats)
+  .sort((a,b)=>(b.stats.finished-a.stats.finished)||a.name.localeCompare(b.name,'zh-Hant'))
+  .map(({name,stats})=>'<tr><td><strong>'+escapeHtml(name)+'</strong></td><td>'+stats.total+'</td><td>'+stats.finished+'</td><td>'+(
+   stats.win+stats.halfwin)+'</td><td>'+(stats.loss+stats.halfloss)+'</td><td>'+stats.push+'</td><td><strong>'+
+   (stats.rate===null?'—':stats.rate.toFixed(1)+'%')+'</strong></td></tr>').join('')||
+  '<tr><td colspan="7" class="history-no-data">所選範圍尚無預測紀錄</td></tr>';
  const byDay=new Map();
  for(const row of rows){
   if(!byDay.has(row.reportDate))byDay.set(row.reportDate,[]);
@@ -1291,6 +1319,8 @@ function init(){
    toast('資料已重新查詢');
  };
  $('historyRefresh').onclick=()=>loadHistoryResults(true);
+ $('historyLeague').onchange=renderHistory;
+ $('historyPeriod').onchange=renderHistory;
  $('refreshReview').onclick=async()=>{
    await loadFeed();await loadReviewScores(true);
    toast('比分已重新查詢');
