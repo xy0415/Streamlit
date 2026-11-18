@@ -1185,7 +1185,8 @@ function renderHistory(){
  const all=historyReportRows();
  const leagueControl=$('historyLeague'),periodControl=$('historyPeriod');
  const previousLeague=leagueControl.value;
- const leagues=[...new Set(all.map(row=>String(row.p.league||'').trim()).filter(Boolean))]
+ const leagueLabel=name=>KN[PRED_LEAGUE_CODES[name]]||String(name||'').trim();
+ const leagues=[...new Set(all.map(row=>leagueLabel(row.p.league)).filter(Boolean))]
   .sort((a,b)=>a.localeCompare(b,'zh-Hant'));
  leagueControl.innerHTML='<option value="">全部聯賽</option>'+leagues.map(name=>
   '<option value="'+escapeHtml(name)+'">'+escapeHtml(name)+'</option>').join('');
@@ -1194,7 +1195,7 @@ function renderHistory(){
  const days=Number(periodControl.value);
  const limit=Number.isInteger(days)&&days>0?Date.parse(todayTaiwan()+'T00:00:00+08:00')-(days-1)*86400000:null;
  const inPeriod=all.filter(row=>limit===null||Date.parse(row.reportDate+'T00:00:00+08:00')>=limit);
- const source=inPeriod.filter(row=>!selectedLeague||row.p.league===selectedLeague);
+ const source=inPeriod.filter(row=>!selectedLeague||leagueLabel(row.p.league)===selectedLeague);
  const rows=source.map(row=>({...row,result:state.historyScores.get(row.key)||null}));
  let summary={total:rows.length,finished:0,win:0,loss:0,halfwin:0,halfloss:0,push:0,pending:rows.length,unsupported:0,rate:null};
  if(HISTORY)summary=HISTORY.summarize(rows.map(x=>x.result?.grade?x.result:{status:x.result?.status||'pending'}));
@@ -1212,7 +1213,7 @@ function renderHistory(){
  $('historyRefresh').disabled=state.historyLoading;
  const byLeague=new Map();
  for(const row of inPeriod){
-  const league=String(row.p.league||'其他');
+  const league=leagueLabel(row.p.league)||'其他';
   if(!byLeague.has(league))byLeague.set(league,[]);
   byLeague.get(league).push(row);
  }
