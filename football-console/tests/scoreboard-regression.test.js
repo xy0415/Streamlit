@@ -154,3 +154,19 @@ test('Reference review does not grade corners or cards using the goal score',()=
  assert.equal(context.referenceResult({...p,market:'全場總進球小 3.5'},2,1),'參考全贏');
  assert.equal(context.referenceResult({...p,market:'法國亞洲讓球 -0.75'},2,1),'參考半贏');
 });
+test('History combines equivalent league names without changing archived predictions',()=>{
+ const {context,state,document}=setup();
+ state.feed={reports:[{date:'2026-11-13',matches:[
+  {date:'2026-11-13',league:'歐國聯',time:'03:00',home:'France',away:'Turkey',market:'全場總進球小 3.5',order:1},
+  {date:'2026-11-13',league:'歐洲國家聯賽',time:'04:00',home:'Norway',away:'Denmark',market:'全場總進球小 3.5',order:2}
+ ]}]};
+ document.getElementById('historyPeriod').value='all';
+ context.renderHistory();
+ const options=document.getElementById('historyLeague').innerHTML;
+ const table=document.getElementById('historyLeagueRows').innerHTML;
+ assert.equal((options.match(/<option /g)||[]).length,2);
+ assert.doesNotMatch(options,/歐洲國家聯賽/);
+ assert.match(table,/歐國聯/);
+ assert.match(table,/<td>2<\/td>/);
+ assert.equal(state.feed.reports[0].matches[1].league,'歐洲國家聯賽');
+});
