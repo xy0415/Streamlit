@@ -326,8 +326,9 @@ function fifaRankMarkup(league,name,abbr){
  const code=rankCode(league,name,abbr);
  if(!code)return '';
  const entry=state.fifaRanks.get(code),valid=entry&&Number.isInteger(entry.rank);
- const title=valid?'FIFA 男子世界排名 · 發布日期 '+entry.date+' · 資料提供：FotMob（依 FIFA 公布名次）':'FIFA 男子排名尚未查到有效名次';
- return '<span class="fifa-rank" title="'+escapeHtml(title)+'">'+(valid?'FIFA '+entry.rank:'FIFA —')+'</span>';
+ if(!valid)return '';
+ const title='FIFA 男子世界排名 · 發布日期 '+entry.date+' · 資料提供：FotMob（依 FIFA 公布名次）';
+ return '<span class="fifa-rank" title="'+escapeHtml(title)+'">FIFA '+entry.rank+'</span>';
 }
 async function loadFifaRanks(fixtures){
  if(state.fifaRanksBusy||!LIVE)return;
