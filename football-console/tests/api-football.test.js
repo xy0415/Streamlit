@@ -33,7 +33,7 @@ test('do not fabricate scores from missing fields',()=>{
  assert.equal(result.scoreHome,null);
  assert.equal(result.scoreAway,null);
 });
-test('do not identify women's clubs from league ID alone',()=>{
+test("do not identify women's clubs from league ID alone",()=>{
  const wrong=fixture('Premier League Women','England',39);
  assert.equal(api.normalizedFixture(wrong),null);
 });
