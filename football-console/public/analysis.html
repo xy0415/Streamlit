@@ -44,9 +44,11 @@
       
       <div class="tablewrap"><table class="review-table"><thead><tr><th>開賽</th><th>對戰球隊（主／客）</th><th>原始選項</th><th>比分</th><th>結算</th></tr></thead><tbody id="reviewTable"></tbody></table></div><div class="empty" id="reviewEmpty"><strong>沒有可顯示的復盤紀錄</strong><small>需要已公開的原始預測及可核對終場結果</small></div>
    </section>
-   <section id="historyPanel" class="panel mainsection"><div class="sectionhead"><div><h2>歷史績效</h2></div><div class="sectionactions"><span class="sectionhint" id="historyProgress">歷史比分等待查核</span><button class="linkbtn" id="historyRefresh">↻ 重新核對歷史</button></div></div>
-    <div class="statgrid"><div><label>歷史預測場次</label><strong id="historyTotal">0</strong></div><div><label>已結算選項</label><strong id="historyVerified">0</strong></div><div><label>贏的選項</label><strong id="historyWin">—</strong></div><div><label>命中率</label><strong id="historyRate">—</strong></div></div>
-    <p class="history-explain">命中率依已取得可信終場比分的選項計算；走盤不列分母、半贏計 0.5，沒有盤口賠率不計算收益率。</p><div class="history-table"><div id="historyRows"></div></div>
+   <section id="historyPanel" class="panel mainsection"><div class="sectionhead"><div><h2>歷史績效</h2></div><div class="sectionactions"><span class="sectionhint" id="historyProgress">歷史比分等待查核</span><button class="linkbtn" id="historyRefresh">↻ 更新</button></div></div>
+    <div class="history-filters"><div class="inputset"><label for="historyLeague">聯賽</label><select id="historyLeague"><option value="">全部聯賽</option></select></div><div class="inputset"><label for="historyPeriod">期間</label><select id="historyPeriod"><option value="all">全部期間</option><option value="30">近 30 天</option><option value="90">近 90 天</option><option value="365">近一年</option></select></div></div>
+    <div class="statgrid history-statgrid"><div><label>預測選項</label><strong id="historyTotal">0</strong></div><div><label>已結算</label><strong id="historyVerified">0</strong></div><div><label>贏（含半贏）</label><strong id="historyWin">—</strong></div><div><label>輸（含半輸）</label><strong id="historyLoss">—</strong></div><div><label>走盤</label><strong id="historyPush">—</strong></div><div><label>命中率</label><strong id="historyRate">—</strong></div></div>
+    <p class="history-explain">命中率 =（全贏 + 半贏 × 0.5）÷（全贏 + 半贏 + 全輸 + 半輸），走盤不計。未取得可靠賽果的不納入命中率。</p>
+    <div class="history-table"><div class="history-heading">各聯賽表現</div><div class="tablewrap"><table class="history-league-table"><thead><tr><th>聯賽</th><th>預測</th><th>已結算</th><th>贏</th><th>輸</th><th>走盤</th><th>命中率</th></tr></thead><tbody id="historyLeagueRows"></tbody></table></div><div class="history-heading">每日紀錄</div><div id="historyRows"></div></div>
    </section>
    <div class="footer"><span id="dataFooter">資料來源：公開賽程與已寄出之正式預測</span><span>Asia/Taipei · 90 分鐘賽果須核實</span></div>
  </div>
