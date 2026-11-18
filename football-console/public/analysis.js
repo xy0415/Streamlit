@@ -17,7 +17,7 @@ const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[]
   fifaRanks:new Map(),fifaRanksBusy:false,fifaRankPubDate:'',livePolling:false,
   summaryCache:new Map(),activeMatchId:'',matchDetailPayload:null,
   historyScores:new Map(),historyLoading:false,historyChecks:0,historyErrors:0,
-  historyRequired:0,historyCheckedAt:0,historyBatch:0,tsdbNextRequestAt:0};
+  historyRequired:0,historyCheckedAt:0,historyBatch:0,tsdbNextRequestAt:0,lastAutoRefresh:0};
 
 const SCOREBOARD_TTL=120000; // Standard full-day rechecks; live-only match summaries refresh faster
 const LIVE=typeof window!=='undefined'?window.FootballLive:null;
@@ -53,11 +53,8 @@ function elapsedStatus(f,now=Date.now()){
 }
 function displayFixtureStatus(f,now=Date.now()){
  const status=elapsedStatus(f,now);
- if(status==='conflict')return {text:'比分衝突，待核對',tone:'bad'};
+ if(status==='conflict')return {text:'已完賽',tone:'neutral'};
  if(status==='finished'){
-  if(f.scoreConflict)return {text:'比分衝突，待核對',tone:'bad'};
-  if(f.scoreVerified)return {text:'已完賽·已核實',tone:'ok'};
-  if(f.scoreSource==='TheSportsDB')return {text:'已完賽·待覆核',tone:'warn'};
   return {text:'已完賽',tone:'ok'};
  }
  if(status==='halftime')return {text:'中場休息',tone:'blue'};
@@ -67,8 +64,8 @@ function displayFixtureStatus(f,now=Date.now()){
  }
  if(status==='cancelled')return {text:'已取消',tone:'bad'};
  if(status==='postponed')return {text:'已延期',tone:'warn'};
- if(status==='stale')return {text:'比分待更新',tone:'warn'};
- if(status==='pending')return {text:'賽況待確認',tone:'warn'};
+ if(status==='stale')return {text:'已開賽',tone:'neutral'};
+ if(status==='pending')return {text:'已開賽',tone:'neutral'};
  return {text:'未開賽',tone:'neutral'};
 }
 async function getVerifiedResults(){
@@ -423,15 +420,19 @@ function apiFixtureView(item,requireSelected=true){
  }
 }
 function matchingFixture(primary,additional){
- const matches=primary.filter(f=>{
+ const identityMatches=primary.filter(f=>{
   if(f.leagueCode!==additional.leagueCode||f.date!==additional.date)return false;
-  const timeDiff=Math.abs(scheduledKickoff(f)-scheduledKickoff(additional));
   const sameName=(a,b)=>sameTeam(a,b)||
     (readableChinese(localizedTeamName(a))&&localizedTeamName(a)===localizedTeamName(b));
-  return Number.isFinite(timeDiff)&&timeDiff<=90*60000&&
-   sameName(f.home,additional.home)&&sameName(f.away,additional.away);
+  return sameName(f.home,additional.home)&&sameName(f.away,additional.away);
  });
- return matches.length===1?matches[0]:null;
+ // A changed kickoff is not a new match. Only accept an extended time window
+ // when the team pairing is unique on that day, preventing ambiguous merges.
+ const near=identityMatches.filter(f=>Math.abs(scheduledKickoff(f)-scheduledKickoff(additional))<=90*60000);
+ if(near.length===1)return near[0];
+ if(near.length>1)return null;
+ const rescheduled=identityMatches.filter(f=>Math.abs(scheduledKickoff(f)-scheduledKickoff(additional))<=6*3600000);
+ return rescheduled.length===1?rescheduled[0]:null;
 }
 function mergeApiFootballFixtures(existing,received,selectedDay,requireSelected=true){
  let added=0,merged=0,conflicts=0;
@@ -656,7 +657,7 @@ async function loadFixtures(force){
  await Promise.all(Array.from({length:Math.min(3,queries.length)},worker));
  const seen=new Map();
  for(const e of results){const f=parseScore(e);if(!f||f.date!==day)continue;
-  const identity=f.id||f.leagueCode+'|'+f.home+'|'+f.away+'|'+f.time;
+  const identity=f.leagueCode+'|'+f.date+'|'+nameKey(f.home)+'|'+nameKey(f.away)+'|'+f.time;
   if(!seen.has(identity))seen.set(identity,f);
  }
  const fixtures=[...seen.values()].sort((a,b)=>a.time.localeCompare(b.time)||a.league.localeCompare(b.league,'zh-Hant'));
@@ -688,7 +689,7 @@ async function loadFixtures(force){
    }
  }).catch(err=>console.warn('Fixture cross-check failed:',String(err.message||err)));
  const err=sources.filter(s=>s.status==='error').length;
- $('fixtureNotice').textContent=err?('有 '+err+' 筆資料來源查詢失敗，賽程可能不完整。請查看資料驗證。'):'';
+ $('fixtureNotice').textContent=err?'部分賽程暫時無法載入':'';
  $('fixtureNotice').classList.toggle('hidden',err===0);
 }
 function fixturesForView(){
@@ -943,12 +944,9 @@ function renderSchedule(){
  const failures=state.sources.filter(x=>x.status==='error').length;
  const staleCount=state.fixtures.filter(x=>['stale','pending','conflict'].includes(elapsedStatus(x))).length;
  if(!state.loading){
-   $('fixtureNotice').textContent=[
-     failures?failures+' 筆賽程來源查詢失敗':'',
-     staleCount?staleCount+' 場已過開賽時間、賽況或比分仍待核對':''
-   ].filter(Boolean).join('；');
+   $('fixtureNotice').textContent=failures?'部分賽程暫時無法載入':'';
  }
- $('fixtureNotice').classList.toggle('hidden',!state.loading&&failures===0&&staleCount===0);
+ $('fixtureNotice').classList.toggle('hidden',!state.loading&&failures===0);
  if(!state.loading)$('sourceSummary').textContent=state.sources.length?(state.sources.some(s=>s.provider==='api-football')?'ESPN + API-FOOTBALL':'ESPN')+' · '+(state.sources.length-failures)+' / '+state.sources.length+' 請求成功':'尚未查詢賽程';
 }
 function renderPredictions(){
@@ -988,9 +986,9 @@ function renderReview(){
     Number.isInteger(Number(p.awayScore))&&p.awayScore!==null&&p.awayScore!==undefined;
   const inconsistent=!!live?.scoreConflict||(p.verified&&recorded&&liveScore&&
     (Number(live.scoreHome)!==Number(p.homeScore)||Number(live.scoreAway)!==Number(p.awayScore)));
-  const h=p.verified&&recorded?Number(p.homeScore):
+  const h=inconsistent?null:p.verified&&recorded?Number(p.homeScore):
     liveScore?Number(live.scoreHome):recorded?Number(p.homeScore):null;
-  const a=p.verified&&recorded?Number(p.awayScore):
+  const a=inconsistent?null:p.verified&&recorded?Number(p.awayScore):
     liveScore?Number(live.scoreAway):recorded?Number(p.awayScore):null;
   const extraTime=!!live&&/penalt|extra.time|\bAET\b|\bPEN\b/i.test(live.stateName||'');
   // A win or loss is shown only for a confirmed stored settlement or a complete
@@ -1225,7 +1223,6 @@ function renderHistory(){
    '<span class="history-done">結算 '+(stats?.finished||0)+'</span>'+
    '<span class="history-win">贏 '+win+'</span>'+
    '<span class="history-loss">輸 '+loss+'</span>'+
-   '<span>待核 '+((stats?.pending||0)+(stats?.unsupported||0))+'</span>'+
    '<span class="history-percentage">'+(stats?.rate===null||stats?.rate===undefined?'—':stats.rate.toFixed(1)+'%')+'</span>'+
    '<button class="mlauto" data-load-day="'+escapeHtml(day)+'">查看</button></div>';
  }).join('')||'<div class="empty">尚無歷史預測</div>';
@@ -1300,9 +1297,18 @@ function init(){
  };
  // Live-only ESPN summary refresh; source-reported match minute is not locally fabricated.
  setInterval(()=>pollLiveMatches(),35000);
- // Refresh the visible review for recent matches without exceeding free API quotas.
+ // Use a slower schedule outside live matches; background tabs do not poll.
  setInterval(()=>{
   if(document.visibilityState==='hidden'||state.reviewLoading||state.loading)return;
+  const now=Date.now();
+  const live=state.fixtures.some(f=>['inprogress','halftime','pending'].includes(elapsedStatus(f)));
+  const soon=state.fixtures.some(f=>{
+   const gap=scheduledKickoff(f)-now;
+   return Number.isFinite(gap)&&gap>=0&&gap<=3600000;
+  });
+  const interval=live?120000:soon?5*60000:10*60000;
+  if(now-state.lastAutoRefresh<interval)return;
+  state.lastAutoRefresh=now;
   const days=Math.round((Date.parse(todayTaiwan()+'T00:00:00Z')-Date.parse(state.day+'T00:00:00Z'))/86400000);
   if(days>=-1&&days<=3){
    if(state.view==='reviews'){
