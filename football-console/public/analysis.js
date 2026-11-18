@@ -481,28 +481,11 @@ async function supplementFromApiFootball(fixtures,day,force=false,{requireSelect
 }
 
 function referenceResult(p,h,a){
- if(!Number.isInteger(h)||!Number.isInteger(a))return '';
- const market=String(p.market||'').replace(/\s+/g,''),total=h+a;
- if(/雙方進球/.test(market)){
-   const yes=/是|有/.test(market),has=h>0&&a>0;
-   if(/是|否|有|無/.test(market))return (has===yes?'參考全贏':'參考全輸');
- }
- const totalMatch=market.match(/(?:全場)?(?:總進球)?(大|小)(\d+(?:\.\d+)?)/);
- if(totalMatch){
-  const line=Number(totalMatch[2]);
-  if(!Number.isFinite(line)||line%0.5!==0)return '';
-  const won=totalMatch[1]==='大'?total>line:total<line;
-  const draw=total===line;return draw?'參考走盤':won?'參考全贏':'參考全輸';
- }
- if(/不敗/.test(market)){
-  if((p.homeZh&&market.includes(p.homeZh))||market.includes('主勝或和局'))return h>=a?'參考全贏':'參考全輸';
-  if((p.awayZh&&market.includes(p.awayZh))||market.includes('客勝或和局'))return a>=h?'參考全贏':'參考全輸';
- }
- if(/獲勝|勝出|主勝|客勝/.test(market)){
-  if((p.homeZh&&market.includes(p.homeZh))||market==='主勝')return h>a?'參考全贏':'參考全輸';
-  if((p.awayZh&&market.includes(p.awayZh))||market==='客勝')return a>h?'參考全贏':'參考全輸';
- }
- return '';
+ // Only settle markets supported by the same strict grading rules as history.
+ // A generic /大9.5/ match would misgrade corners or cards using goal totals.
+ const result=HISTORY?.evaluate(p,h,a);
+ return {win:'參考全贏',loss:'參考全輸',halfwin:'參考半贏',
+  halfloss:'參考半輸',push:'參考走盤'}[result]||'';
 }
 async function loadReviewScores(force=false){
  if(state.reviewLoading||!state.report?.matches?.length){
@@ -752,6 +735,8 @@ function goalEventsFromSummary(payload,fixture){
    const team=String(e.team||''),id=Number(e.teamId);
    const side=id&&homeId&&id===homeId?'home':id&&awayId&&id===awayId?'away':
      sameTeam(team,fixture.home)?'home':sameTeam(team,fixture.away)?'away':'unknown';
+   // An event without a confirmed participant must not be attributed to this fixture.
+   if(side==='unknown')continue;
    const minute=Number(e.minute),extra=Number(e.extra);
    const time=Number.isInteger(minute)&&minute>0?
      String(minute)+(Number.isInteger(extra)&&extra>0?'+'+extra:'')+'′':'—';
@@ -771,6 +756,7 @@ function goalEventsFromSummary(payload,fixture){
   const side=byId||(
    p.teamName&&sameTeam(p.teamName,fixture.home)?'home':
    p.teamName&&sameTeam(p.teamName,fixture.away)?'away':'unknown');
+  if(side==='unknown')continue;
   const player=p.scorer||'進球者未提供',time=p.minute||'—';
   const key=[side,time,player].join('|');
   if(seen.has(key))continue;seen.add(key);
