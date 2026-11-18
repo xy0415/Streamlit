@@ -96,14 +96,15 @@ function fetchScriptJson(url,remaining=4) {
       const location=new URL(response.headers.location,u).toString();
       return fetchScriptJson(location,remaining-1).then(resolve,reject);
     }
-    let buf='',size=0;
+    const chunks=[];let size=0;
     response.on('data',chunk=>{
       size+=chunk.length;if(size>3*1024*1024){request.destroy(Error('資料來源回應過大'));return}
-      buf+=chunk.toString('utf8');
+      // Decode after joining all bytes: UTF-8 Chinese characters may span chunks.
+      chunks.push(chunk);
     });
     response.on('end',()=>{
       if(response.statusCode!==200)return reject(Error('Google Apps Script HTTP '+response.statusCode));
-      try{resolve(JSON.parse(buf))}catch{return reject(Error('Google Apps Script 回傳非 JSON'))}
+      try{resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')))}catch{return reject(Error('Google Apps Script 回傳非 JSON'))}
     });
   });
   request.on('timeout',()=>request.destroy(Error('Apps Script 連線逾時')));
