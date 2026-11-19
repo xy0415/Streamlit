@@ -213,3 +213,30 @@ test('Review reuses newer final score from schedule when its own snapshot is sta
  state.report.matches[0].verified=true;
  assert.equal(context.predsForView().length,1);
 });
+test('Brazilian shortened ESPN club names match formal predictions for Nov 19',()=>{
+ const {context}=setup();
+ const p={date:'2026-11-19',time:'07:30',league:'巴甲',
+  home:'Flamengo',away:'Athletico Paranaense'};
+ const fixture={id:'401841313',date:p.date,time:p.time,leagueCode:'bra.1',
+  home:'Flamengo',away:'Athletico-PR',status:'finished',scoreHome:2,scoreAway:1};
+ assert.equal(context.eventForPrediction(p,[fixture]),fixture);
+ assert.equal(context.sameTeam('Botafogo-RJ','Botafogo'),true);
+ assert.equal(context.sameTeam('Flamengo-RJ','Flamengo'),true);
+ // Different sides or fixture date must not be treated as a match.
+ assert.equal(context.eventForPrediction(p,[{...fixture,away:'Palmeiras'}]),null);
+});
+test('Final scores recovered in review also update historical hit-rate immediately',()=>{
+ const {context,state,document}=setup();
+ const p={date:'2026-11-19',time:'07:30',order:1,league:'巴甲',
+  home:'Flamengo',away:'Athletico Paranaense',market:'全場總進球大 1.5'};
+ const f={id:'401841313',date:p.date,time:p.time,leagueCode:'bra.1',
+  home:'Flamengo',away:'Athletico-PR',status:'finished',scoreHome:2,scoreAway:1,
+  scoreVerified:false,sourceStatus:{type:{name:'STATUS_FULL_TIME'}}};
+ state.feed={reports:[{date:p.date,matches:[p]}]};
+ document.getElementById('historyPeriod').value='all';
+ context.syncReviewedHistory([p],[f]);
+ context.renderHistory();
+ assert.equal(document.getElementById('historyVerified').textContent,'1');
+ assert.equal(document.getElementById('historyWin').textContent,'1');
+ assert.equal(document.getElementById('historyRate').textContent,'100.0%');
+});
