@@ -318,3 +318,21 @@ tbody tr:hover{background:#f4f4f1}
  table{min-width:950px}
  .table-footer{padding:0 12px}
 }
+
+/* Accessibility and localized/mobile edge cases from the design review. */
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,
+.selectlike:focus-visible,.league-item:focus-visible{
+ outline:2px solid #202223;outline-offset:2px
+}
+.sidebar button:focus-visible,.sidebar a:focus-visible{
+ outline-color:#fff;outline-offset:-4px
+}
+.source-toggle input:focus-visible+.toggle-surface{
+ outline:2px solid #202223;outline-offset:3px
+}
+@media(max-width:700px){
+ .field input,.field select,.filters input,.filters select,.modal-search{font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){
+ .toggle-surface,.toggle-surface:before,.btn,.nav-item{transition:none!important}
+}
