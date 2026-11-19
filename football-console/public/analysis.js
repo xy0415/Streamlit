@@ -1492,18 +1492,24 @@ function renderHistory(){
   if(!byDay.has(row.reportDate))byDay.set(row.reportDate,[]);
   byDay.get(row.reportDate).push(row);
  }
- $('historyRows').innerHTML=[...byDay].sort((a,b)=>b[0].localeCompare(a[0])).map(([day,group])=>{
-  const stats=HISTORY?HISTORY.summarize(group.map(x=>x.result?.grade?x.result:{status:x.result?.status||'pending'})):null;
-  const win=stats?stats.win+stats.halfwin:0;
-  const loss=stats?stats.loss+stats.halfloss:0;
+ const daily=[...byDay].sort((a,b)=>a[0].localeCompare(b[0])).map(([day,group])=>({
+  day,
+  stats:HISTORY?HISTORY.summarize(group.map(x=>x.result?.grade?x.result:{status:x.result?.status||'pending'})):{...summary,total:group.length}
+ }));
+ window.FootballHistoryCharts?.render($('historyMixChart'),$('historyTrendChart'),summary,daily);
+ const date=$('historyDate').value;
+ $('clearHistoryDate').disabled=!date;
+ $('historyRows').innerHTML=daily.filter(item=>!date||item.day===date).reverse().map(({day,stats})=>{
+  const win=stats.win+stats.halfwin;
+  const loss=stats.loss+stats.halfloss;
   return '<div class="history-item"><strong>'+escapeHtml(day)+'</strong>'+
-   '<span>推薦 '+group.length+'</span>'+
-   '<span class="history-done">結算 '+(stats?.finished||0)+'</span>'+
+   '<span>推薦 '+stats.total+'</span>'+
+   '<span class="history-done">結算 '+stats.finished+'</span>'+
    '<span class="history-win">贏 '+win+'</span>'+
    '<span class="history-loss">輸 '+loss+'</span>'+
-   '<span class="history-percentage">'+(stats?.rate===null||stats?.rate===undefined?'—':stats.rate.toFixed(1)+'%')+'</span>'+
+   '<span class="history-percentage">'+(stats.rate===null?'—':stats.rate.toFixed(1)+'%')+'</span>'+
    '<button class="mlauto" data-load-day="'+escapeHtml(day)+'">查看</button></div>';
- }).join('')||'<div class="empty">尚無歷史預測</div>';
+ }).join('')||'<div class="empty">'+(date?'所選日期在目前篩選範圍內沒有預測紀錄':'尚無歷史預測')+'</div>';
 }
 function renderStandings(){
  const select=$('standingsLeague'),content=$('standingsContent'),status=$('standingsUpdated');
@@ -1516,7 +1522,7 @@ function renderStandings(){
  content.innerHTML='<div class="standings-season">'+escapeHtml(KN[standingsState.league]||standingsState.league)+(cached.season?' · '+escapeHtml(cached.season):'')+'</div>'+
  cached.groups.map(group=>'<section class="standings-group">'+(cached.groups.length>1?'<h3>'+escapeHtml(group.name||'分組')+'</h3>':'')+
  '<div class="standings-scroll"><table class="standings-table"><thead><tr><th>#</th><th>球隊</th><th>賽</th><th>勝</th><th>和</th><th>負</th><th>進–失</th><th>淨勝</th><th>積分</th></tr></thead><tbody>'+
- group.rows.map(row=>'<tr><td class="standing-rank">'+row.rank+'</td><td class="standing-team">'+teamLogo(row.logo,row.name)+'<strong>'+escapeHtml(localizedTeamName(row.name))+'</strong></td><td>'+row.played+'</td><td>'+row.won+'</td><td>'+row.drawn+'</td><td>'+row.lost+'</td><td>'+row.goalsFor+'–'+row.goalsAgainst+'</td><td>'+(row.goalDifference>0?'+':'')+row.goalDifference+'</td><td class="standing-points">'+row.points+'</td></tr>').join('')+'</tbody></table></div></section>').join('');
+ group.rows.map(row=>'<tr><td class="standing-rank">'+row.rank+'</td><td class="standing-team"><div class="standing-identity">'+teamLogo(row.logo,row.name)+'<strong>'+escapeHtml(localizedTeamName(row.name))+'</strong></div></td><td>'+row.played+'</td><td>'+row.won+'</td><td>'+row.drawn+'</td><td>'+row.lost+'</td><td>'+row.goalsFor+'–'+row.goalsAgainst+'</td><td>'+(row.goalDifference>0?'+':'')+row.goalDifference+'</td><td class="standing-points">'+row.points+'</td></tr>').join('')+'</tbody></table></div></section>').join('');
 }
 async function loadStandings(force=false){
  if(standingsState.busy)return;
@@ -1551,7 +1557,7 @@ function render(){
  $('historyPanel').classList.toggle('hidden',state.view!=='history');
  $('standingsPanel').classList.toggle('hidden',state.view!=='standings');
  const mainControls=document.querySelector?.('.controls');
- if(mainControls)mainControls.classList.toggle('hidden',state.view==='standings');
+ if(mainControls)mainControls.classList.toggle('hidden',state.view==='standings'||state.view==='history');
  $('exportDaily').classList.toggle('hidden',state.view==='standings');
  if(state.view==='standings')renderStandings();
  updateFilter();renderSchedule();renderPredictions();renderReview();renderHistory()
@@ -1648,6 +1654,12 @@ function init(){
  $('historyRefresh').onclick=()=>loadHistoryResults(true);
  $('historyLeague').onchange=renderHistory;
  $('historyPeriod').onchange=renderHistory;
+ $('historyDate').onchange=renderHistory;
+ $('clearHistoryDate').onclick=()=>{
+  $('historyDate').value='';
+  renderHistory();
+  $('historyDate').focus();
+ };
  $('refreshReview').onclick=async()=>{
    await loadFeed();await loadReviewScores(true);
    toast('比分已重新查詢');

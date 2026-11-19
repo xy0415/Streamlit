@@ -52,7 +52,31 @@
     <div class="history-filters"><div class="inputset"><label for="historyLeague">聯賽</label><select id="historyLeague"><option value="">全部聯賽</option></select></div><div class="inputset"><label for="historyPeriod">期間</label><select id="historyPeriod"><option value="all">全部期間</option><option value="30">近 30 天</option><option value="90">近 90 天</option><option value="365">近一年</option></select></div></div>
     <div class="statgrid history-statgrid"><div><label>預測選項</label><strong id="historyTotal">0</strong></div><div><label>已結算</label><strong id="historyVerified">0</strong></div><div><label>贏（含半贏）</label><strong id="historyWin">—</strong></div><div><label>輸（含半輸）</label><strong id="historyLoss">—</strong></div><div><label>走盤</label><strong id="historyPush">—</strong></div><div><label>命中率</label><strong id="historyRate">—</strong></div></div>
     <p class="history-explain">命中率 =（全贏 + 半贏 × 0.5）÷（全贏 + 半贏 + 全輸 + 半輸），走盤不計。未取得可靠賽果的不納入命中率。</p>
-    <div class="history-table"><div class="history-heading">各聯賽表現</div><div class="tablewrap"><table class="history-league-table"><thead><tr><th>聯賽</th><th>預測</th><th>已結算</th><th>贏</th><th>輸</th><th>走盤</th><th>命中率</th></tr></thead><tbody id="historyLeagueRows"></tbody></table></div><div class="history-heading">每日紀錄</div><div id="historyRows"></div></div>
+    <div class="history-performance">
+     <section class="history-table" aria-labelledby="history-leagues-heading">
+      <h3 class="history-heading" id="history-leagues-heading">各聯賽表現</h3>
+      <div class="tablewrap"><table class="history-league-table"><thead><tr><th scope="col">聯賽</th><th scope="col">預測</th><th scope="col">已結算</th><th scope="col">贏</th><th scope="col">輸</th><th scope="col">走盤</th><th scope="col">命中率</th></tr></thead><tbody id="historyLeagueRows"></tbody></table></div>
+     </section>
+     <aside class="history-charts" aria-label="歷史統計圖表">
+      <section class="history-chart" aria-labelledby="history-mix-heading">
+       <h3 id="history-mix-heading">結算結果分布</h3>
+       <div id="historyMixChart"></div>
+      </section>
+      <section class="history-chart" aria-labelledby="history-trend-heading">
+       <h3 id="history-trend-heading">累計命中率</h3>
+       <p>依預測日期累計，走盤與未結算不計。</p>
+       <div id="historyTrendChart"></div>
+      </section>
+     </aside>
+    </div>
+    <section class="history-daily" aria-labelledby="history-daily-heading">
+     <h3 class="history-heading" id="history-daily-heading">每日紀錄</h3>
+     <div class="history-date-controls">
+      <div class="inputset"><label for="historyDate">篩選日期（台灣時間）</label><input type="date" id="historyDate"></div>
+      <button class="btn secondary" type="button" id="clearHistoryDate" disabled>清除日期</button>
+     </div>
+     <div id="historyRows"></div>
+    </section>
    </section>
    <section id="standingsPanel" class="panel mainsection hidden"><div class="sectionhead"><div><h2>聯賽積分榜</h2></div><div class="sectionactions"><button class="linkbtn" id="standingsRefresh">更新積分榜</button></div></div>
     <div class="standings-controls"><div class="inputset"><label for="standingsLeague">聯賽</label><select id="standingsLeague"></select></div><span id="standingsUpdated" class="standings-updated" role="status"></span></div>
@@ -76,5 +100,6 @@
 <script src="/team-names-zh.js" defer></script>
 <script src="/live-details.js" defer></script>
 <script src="/history-engine.js" defer></script>
+<script src="/history-charts.js" defer></script>
 <script src="/analysis.js" defer></script>
 </body></html>
