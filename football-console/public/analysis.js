@@ -9,7 +9,7 @@ const LEAGUES=[
 ['mex.1','墨超'],['tur.1','土超'],['bel.1','比甲'],['sco.1','蘇超'],['chn.1','中超']
 ];
 const KN=Object.fromEntries(LEAGUES);
-const defaultLeagues=['uefa.nations','caf.nations','caf.nations_qual','fifa.friendly','eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','bra.1','usa.1','ksa.1'];
+const defaultLeagues=['uefa.nations','caf.nations','caf.nations_qual','fifa.friendly','eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','bra.1','usa.1','ksa.1','aus.1'];
 const $=id=>document.getElementById(id);
 const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[],loading:false,
   leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),resultLookupCache:new Map(),verifiedResultsPromise:null,scheduleQueued:false,
@@ -33,7 +33,7 @@ const PRED_LEAGUE_CODES={
  '荷甲':'ned.1','葡超':'por.1','歐冠':'uefa.champions','歐霸':'uefa.europa',
  '歐協聯':'uefa.europa.conf','歐洲協會聯賽':'uefa.europa.conf',
  '巴甲':'bra.1','阿甲':'arg.1','美職聯':'usa.1','沙職':'ksa.1',
- '日職':'jpn.1','韓職':'kor.1','澳甲':'aus.1',
+ '日職':'jpn.1','韓職':'kor.1','澳甲':'aus.1','澳職':'aus.1','澳洲甲級聯賽':'aus.1','澳洲職業聯賽':'aus.1','A-League':'aus.1',
  '世界盃':'fifa.world','世歐預':'fifa.worldq.uefa','世南預':'fifa.worldq.conmebol',
  '亞冠':'afc.champions','中北美冠軍盃':'concacaf.champions'
 };
@@ -605,7 +605,15 @@ async function loadFeed(){
  setReport();render();
  if(state.view==='history')loadHistoryResults(false);
 }
-function setReport(){state.report=state.feed?.reports.find(x=>x.date===state.day)||null}
+function setReport(){
+ state.report=state.feed?.reports.find(x=>x.date===state.day)||null;
+ // Official recommendations must never disappear simply because an older
+ // browser saved a narrower league selection.
+ for(const match of state.report?.matches||[]){
+  const code=PRED_LEAGUE_CODES[match.league]||LEAGUES.find(([,name])=>name===match.league)?.[0];
+  if(code&&KN[code])state.leagues.add(code);
+ }
+}
 function pickDay(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;state.day=day;$('selectedDay').value=day;setReport();state.fixtures=state.cache.get(cacheKey())?.fixtures||[];state.sources=state.cache.get(cacheKey())?.sources||[];state.reviewFixtures=[];state.reviewDate='';state.reviewUpdatedAt=0;render();if(state.view==='reviews')loadReviewScores(false);else loadFixtures(false)}
 function cacheKey(){return state.day+'|'+[...state.leagues].sort().join(',')}
 function getSelected(){const set=new Set(state.leagues);return LEAGUES.filter(x=>set.has(x[0]))}
@@ -1441,6 +1449,12 @@ function init(){
    state.leagues.add('caf.nations');state.leagues.add('caf.nations_qual');
    localStorage.setItem('football-dashboard-leagues',JSON.stringify([...state.leagues]));
    localStorage.setItem('football-afcon-migration-v1','done');
+ }}catch{}
+ // Include the A-League for visitors with settings saved before its addition.
+ try{if(localStorage.getItem('football-aus-migration-v1')!=='done'){
+   state.leagues.add('aus.1');
+   localStorage.setItem('football-dashboard-leagues',JSON.stringify([...state.leagues]));
+   localStorage.setItem('football-aus-migration-v1','done');
  }}catch{}
  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
    state.view=b.dataset.view;render();
