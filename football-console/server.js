@@ -10,9 +10,9 @@ const { URL } = require('node:url');
 const PORT = Number(process.env.PORT || 3000);
 const BASE = path.join(__dirname, 'public');
 const MAX_BODY = 4096;
-const ALLOWED = new Set(['eng.1','eng.2','eng.fa','esp.1','esp.copa_del_rey','ger.1','ita.1','fra.1','ned.1','por.1','usa.1','bra.1','arg.1','ksa.1','jpn.1','kor.1','mex.1','uefa.champions','uefa.europa','uefa.europa.conf','uefa.nations','fifa.world','fifa.friendly','conmebol.libertadores','concacaf.champions','afc.champions','aus.1','sco.1','bel.1','tur.1','chn.1','fifa.worldq.uefa','fifa.worldq.conmebol','caf.nations','caf.nations_qual']);
+const ALLOWED = new Set(['eng.1','eng.2','eng.fa','esp.1','esp.copa_del_rey','ger.1','ita.1','fra.1','ned.1','por.1','usa.1','bra.1','arg.1','ksa.1','jpn.1','mex.1','uefa.champions','uefa.europa','uefa.europa.conf','uefa.nations','fifa.world','fifa.friendly','conmebol.libertadores','concacaf.champions','afc.champions','aus.1','sco.1','bel.1','tur.1','chn.1','fifa.worldq.uefa','fifa.worldq.conmebol','caf.nations','caf.nations_qual']);
 const FD_ALLOWED = new Set(['PL','ELC','PD','BL1','SA','FL1','DED','PPL','BSA','CL','WC']);
-const STANDINGS_ALLOWED = new Set(['eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','ned.1','por.1','bra.1','arg.1','usa.1','ksa.1','jpn.1','kor.1','mex.1','tur.1','bel.1','sco.1','chn.1','aus.1']);
+const STANDINGS_ALLOWED = new Set(['eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','ned.1','por.1','bra.1','arg.1','usa.1','ksa.1','jpn.1','mex.1','tur.1','bel.1','sco.1','chn.1','aus.1']);
 const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const counters = new Map();
 // Shared upstream cache across visitors. A rejected request is never cached as valid data.
