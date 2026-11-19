@@ -11,7 +11,7 @@ const LEAGUES=[
 const KN=Object.fromEntries(LEAGUES);
 const defaultLeagues=['uefa.nations','caf.nations','caf.nations_qual','fifa.friendly','eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','bra.1','usa.1','ksa.1','aus.1'];
 const $=id=>document.getElementById(id);
-const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[],loading:false,
+const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[],loading:false,dayManuallyChosen:false,
   leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),resultLookupCache:new Map(),verifiedResultsPromise:null,scheduleQueued:false,
   reviewFixtures:[],reviewErrors:[],reviewLoading:false,reviewUpdatedAt:0,reviewDate:'',
   fifaRanks:new Map(),fifaRanksBusy:false,fifaRankPubDate:'',livePolling:false,
@@ -599,6 +599,7 @@ async function loadFeed(){
   if(!state.day||state.feed.reports.length&&!state.feed.reports.some(r=>r.date===state.day)){
    if(!state.day)state.day=state.feed.reports[0]?.date||todayTaiwan();
   }
+  selectLatestOfficialPrediction();
   $('selectedDay').value=state.day;
  }catch(e){state.feed={connected:false,reports:[]};$('sideSync').textContent='正式預測資料未連線';$('sideTime').textContent=String(e.message||e);toast('預測資料來源暫時無法讀取')}
  primeHistoryFromFeed();
@@ -614,7 +615,15 @@ function setReport(){
   if(code&&KN[code])state.leagues.add(code);
  }
 }
-function pickDay(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;state.day=day;$('selectedDay').value=day;setReport();state.fixtures=state.cache.get(cacheKey())?.fixtures||[];state.sources=state.cache.get(cacheKey())?.sources||[];state.reviewFixtures=[];state.reviewDate='';state.reviewUpdatedAt=0;render();if(state.view==='reviews')loadReviewScores(false);else loadFixtures(false)}
+function selectLatestOfficialPrediction(){
+ if(state.view!=='predictions'||state.dayManuallyChosen)return;
+ const latest=state.feed?.reports?.[0]?.date;
+ if(latest&&latest>=todayTaiwan()&&latest>state.day){
+  state.day=latest;
+  state.fixtures=[];state.reviewFixtures=[];state.reviewDate='';state.reviewUpdatedAt=0;
+ }
+}
+function pickDay(day){if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;state.dayManuallyChosen=true;state.day=day;$('selectedDay').value=day;setReport();state.fixtures=state.cache.get(cacheKey())?.fixtures||[];state.sources=state.cache.get(cacheKey())?.sources||[];state.reviewFixtures=[];state.reviewDate='';state.reviewUpdatedAt=0;render();if(state.view==='reviews')loadReviewScores(false);else loadFixtures(false)}
 function cacheKey(){return state.day+'|'+[...state.leagues].sort().join(',')}
 function getSelected(){const set=new Set(state.leagues);return LEAGUES.filter(x=>set.has(x[0]))}
 function parseScore(item){
@@ -1525,7 +1534,14 @@ function init(){
    localStorage.setItem('football-aus-migration-v1','done');
  }}catch{}
  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
-   state.view=b.dataset.view;render();
+   state.view=b.dataset.view;
+   if(state.view==='predictions'){
+    selectLatestOfficialPrediction();
+    $('selectedDay').value=state.day;
+    setReport();
+    loadFeed();
+   }
+   render();
    if(state.view==='reviews')loadReviewScores(false);
    else if(state.view==='schedule')loadFixtures(false);
    else if(state.view==='history')loadHistoryResults(false);
@@ -1568,6 +1584,11 @@ function init(){
  };
  // Live-only ESPN summary refresh; source-reported match minute is not locally fabricated.
  setInterval(()=>pollLiveMatches(),35000);
+ // New Gmail reports may arrive while this tab is open. Keep predictions fresh
+ // independently of fixture polling, which only refreshes scoreboard data.
+ setInterval(()=>{
+  if(document.visibilityState==='visible'&&state.view==='predictions')loadFeed();
+ },45000);
  // The upstream shared cache is 45 seconds; refresh only while the table is visible.
  setInterval(()=>{if(document.visibilityState==='visible'&&state.view==='standings')loadStandings(false)},45000);
  // Review is independently refreshed while visible; finished fixtures settle from actual data.
@@ -1607,6 +1628,7 @@ function init(){
   if(document.visibilityState!=='visible')return;
   if(state.view==='schedule'){loadFixtures(false);pollLiveMatches()}
   if(state.view==='reviews')loadReviewScores(false);
+  if(state.view==='predictions')loadFeed();
  });
  $('exportDaily').onclick=getDailyExport;
  $('showOriginal').onclick=()=>{if(!state.report)return;$('originalDate').textContent=state.report.date;$('originalArticle').textContent=displayCleanText(state.report.article||'當天未提供可公開原始全文');openModal('originalModal')};
