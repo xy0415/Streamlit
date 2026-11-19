@@ -1363,3 +1363,17 @@ tbody tr:hover{background:#f6f6f4}
  .history-statgrid>div:nth-child(n+3){border-top:0}
  .history-statgrid>div:nth-child(2n){border-right:1px solid var(--border)}
 }
+
+/* Impeccable audit pass: accessible focus, mobile inputs and calm motion. */
+.sidebar button:focus-visible,.sidebar a:focus-visible,
+.mobile-nav button:focus-visible,.mobile-nav a:focus-visible{
+ outline:2px solid #fff;outline-offset:-4px
+}
+.clickable-match:focus-visible{position:relative;z-index:1}
+@media(max-width:700px){
+ /* Keep iOS Safari from zooming when a visitor opens a date or league filter. */
+ .inputset input,.inputset select{font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){
+ .btn,.nav-item,.mobile-item,.prediction,.clickable-match{transition:none!important}
+}
