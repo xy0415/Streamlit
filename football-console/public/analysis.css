@@ -826,3 +826,49 @@ tbody tr:hover{background:#fcfdff}
  .review-table .team-names strong{font-size:14px}
  .review-table .review-score strong{font-size:17px}
 }
+
+/* League sections and FotMob-style horizontal match rows. */
+.schedule-table tr[hidden],.review-table tr[hidden]{display:none!important}
+.match-league-heading td{padding:0!important;border:0;background:#f3f6fb}
+.match-league-toggle{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:0;background:#f3f6fb;color:#29446b;font-size:14px;font-weight:800;padding:12px 17px;min-height:44px}
+.match-league-meta{margin-left:auto;font-size:11px;color:#8193ac;font-weight:650}
+.match-league-arrow{font-size:18px;color:#7186a5;transform:rotate(180deg);transition:transform .15s}
+.match-league-toggle[aria-expanded="false"] .match-league-arrow{transform:none}
+.mobile-fixture-status,.inline-match-score{display:none}
+@media(max-width:700px){
+ .schedule-table tbody,.review-table tbody{gap:0;padding:0 9px 12px}
+ .schedule-table tbody tr.match-league-heading,.review-table tbody tr.match-league-heading{display:block!important;border:1px solid #e4ebf4;border-radius:9px 9px 0 0;padding:0;margin-top:9px;overflow:hidden}
+ .schedule-table tbody tr.match-league-heading td,.review-table tbody tr.match-league-heading td{display:block;border:0;padding:0!important}
+ .match-league-toggle{padding:10px 12px;background:#f1f5fb;font-size:13px}
+ .schedule-table tbody tr.league-match-row{
+  display:grid;grid-template-columns:49px minmax(0,1fr);
+  grid-template-areas:"time teams";
+  column-gap:6px;row-gap:0;min-height:65px;
+  border:1px solid #e5ebf3;border-top:0;border-radius:0;padding:8px 9px;
+  align-items:center;
+ }
+ .schedule-table tbody tr.league-match-row:last-child{border-radius:0 0 9px 9px}
+ .schedule-table td:nth-child(1){grid-area:time;text-align:center}
+ .schedule-table .fixture-time .fixture-day,.schedule-table td:nth-child(2),.schedule-table td:nth-child(4){display:none}
+ .schedule-table .fixture-time strong{font-size:12px;display:block;line-height:1.3;color:#506889}
+ .schedule-table .mobile-fixture-status{display:block;font-size:10px;font-weight:750;color:#198166;margin-top:3px;white-space:nowrap}
+ .schedule-table td:nth-child(3){grid-area:teams;padding:0!important;border:0;min-width:0}
+ .schedule-table .teams-stack{display:grid;grid-template-columns:minmax(0,1fr) 53px minmax(0,1fr);align-items:center;gap:4px}
+ .schedule-table .match-team{display:flex;align-items:center;gap:5px;min-width:0;width:100%;min-height:38px}
+ .schedule-table .home-team{justify-content:flex-end;text-align:right}
+ .schedule-table .home-team .team-names{order:1;justify-content:flex-end}
+ .schedule-table .home-team .team-crest{order:2}
+ .schedule-table .away-team .team-crest{order:1}
+ .schedule-table .away-team .team-names{order:2}
+ .schedule-table .team-position{display:none}
+ .schedule-table .team-crest{width:24px;height:24px;flex:0 0 24px}
+ .schedule-table .team-names{display:block;min-width:0;overflow:hidden}
+ .schedule-table .team-names strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:13px;line-height:1.22}
+ .schedule-table .team-names small,.schedule-table .team-names .fifa-rank{display:none}
+ .schedule-table .inline-match-score{display:block;text-align:center;color:#263d5d;font-weight:850;white-space:nowrap}
+ .schedule-table .inline-match-score .match-score{font-size:16px;letter-spacing:-.3px}
+ .schedule-table .inline-match-score .schedule-vs{font-size:12px}
+ .review-table tbody tr.league-match-row{border:1px solid #e5ebf3;border-top:0;border-radius:0;padding:9px 11px;gap:5px 8px}
+ .review-table .review-match>small{display:none}
+ .review-table .review-market{font-size:12px}
+}
