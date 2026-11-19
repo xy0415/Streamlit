@@ -170,3 +170,27 @@ test('History combines equivalent league names without changing archived predict
  assert.match(table,/<td>2<\/td>/);
  assert.equal(state.feed.reports[0].matches[1].league,'歐洲國家聯賽');
 });
+test('Review article uses verified results and keeps unsupported results out',()=>{
+ const {context,state,document}=setup();
+ state.report={date:'2026-11-18',matches:[]};
+ const p={date:'2026-11-18',time:'03:45',league:'歐國聯',
+  home:'France',homeZh:'法國',away:'Turkey',awayZh:'土耳其',
+  market:'全場總進球小 3.5',verified:true,homeScore:2,awayScore:1};
+ context.renderReviewArticle([p],[]);
+ assert.match(document.getElementById('reviewArticleBody').textContent,/已取得 1 場/);
+ assert.match(document.getElementById('reviewArticleBody').textContent,/2：1/);
+ assert.match(document.getElementById('reviewArticleBody').textContent,/贏/);
+ context.renderReviewArticle([{...p,market:'總角球大 9.5'}],[]);
+ assert.match(document.getElementById('reviewArticleBody').textContent,/尚無可結算/);
+});
+test('Prediction and review entries expose accessible clickable detail targets',()=>{
+ const {context,state,document}=setup();
+ const p={date:'2026-11-18',time:'03:45',order:1,league:'歐國聯',
+  home:'France',homeZh:'法國',away:'Turkey',awayZh:'土耳其',
+  market:'全場總進球小 3.5',probability:70,verified:false};
+ state.day='2026-11-18';state.report={date:state.day,matches:[p]};
+ document.getElementById('leagueFilter').value='';document.getElementById('statusFilter').value='';
+ context.renderPredictions();context.renderReview();
+ assert.match(document.getElementById('predictionsGrid').innerHTML,/data-prediction-index="0"/);
+ assert.match(document.getElementById('reviewTable').innerHTML,/data-review-index="0"/);
+});
