@@ -19,7 +19,7 @@ const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[]
   historyScores:new Map(),historyLoading:false,historyChecks:0,historyErrors:0,
   historyRequired:0,historyCheckedAt:0,historyBatch:0,tsdbNextRequestAt:0,lastAutoRefresh:0};
 
-const SCOREBOARD_TTL=120000; // Standard full-day rechecks; live-only match summaries refresh faster
+const SCOREBOARD_TTL=45000; // Recent scoreboard refresh; older dates stay cached longer.
 const LIVE=typeof window!=='undefined'?window.FootballLive:null;
 const LIVE_DETAIL_TTL=35000;
 const PRED_LEAGUE_CODES={
@@ -384,7 +384,9 @@ async function readScoreboard(league,date,force){
   if(!data.data||!Array.isArray(data.data.events))throw Error('ESPN 回傳欄位不完整');
   return data.data.events.map(e=>({...e,_league:league}));
  })();
- state.scoreboardCache.set(key,{expiresAt:Date.now()+SCOREBOARD_TTL,promise});
+ const distance=Math.abs(Date.parse(date+'T00:00:00Z')-Date.parse(todayTaiwan()+'T00:00:00Z'));
+ const ttl=distance>2*86400000?6*3600000:SCOREBOARD_TTL;
+ state.scoreboardCache.set(key,{expiresAt:Date.now()+ttl,promise});
  try{return await promise}catch(e){state.scoreboardCache.delete(key);throw e}
 }
 
@@ -547,7 +549,7 @@ function statusPill(name,type){return '<span class="pill '+(type||'neutral')+'">
 function toast(s){$('snackbar').textContent=s;$('snackbar').classList.remove('hidden');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('snackbar').classList.add('hidden'),4200)}
 function normalizeReport(r){
  const matches=Array.isArray(r.matches)?r.matches:[];
- return {date:String(r.date||''),article:String(r.article||''),cutoff:String(r.cutoff||''),publishedAt:r.publishedAt||r.sentAt||'',
+ return {date:String(r.date||''),article:String(r.article||''),reviewArticle:String(r.reviewArticle||''),cutoff:String(r.cutoff||''),publishedAt:r.publishedAt||r.sentAt||'',
   matches:matches.map((m,i)=>({
    id:m.id||r.date+'-'+i,date:m.date||r.date,time:m.time||'',league:m.league||'',round:m.round||'',
    home:m.home||'',homeZh:m.homeZh||m.home_zh||'',away:m.away||'',awayZh:m.awayZh||m.away_zh||'',
@@ -901,6 +903,32 @@ async function openMatchDetail(f){
    renderSchedule();
  }
 }
+async function openPredictionMatchDetail(p){
+ if(!p)return;
+ const selectedDay=state.day;
+ let fixture=eventForPrediction(p,state.reviewFixtures.concat(state.fixtures));
+ if(!fixture){
+  const code=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
+  if(code){
+   const days=[addDay(p.date,-1),p.date];
+   const queries=await Promise.allSettled(days.map(day=>readScoreboard(code,day,false)));
+   const candidates=queries.flatMap(result=>result.status==='fulfilled'?result.value.map(parseScore).filter(Boolean):[]);
+   fixture=eventForPrediction(p,candidates);
+   if(fixture&&state.day===selectedDay){
+    state.reviewFixtures=[...state.reviewFixtures.filter(x=>x.id!==fixture.id),fixture];
+    renderReview();
+   }
+  }
+ }
+ if(state.day!==selectedDay)return;
+ if(!fixture){
+  // Preserve the exact published fixture without inventing an upstream event ID.
+  fixture={id:'',date:p.date,time:p.time,league:p.league,
+   home:p.home,away:p.away,homeLogo:'',awayLogo:'',homeId:'',awayId:'',
+   status:'scheduled',scoreHome:null,scoreAway:null,source:'公開預測'};
+ }
+ openMatchDetail(fixture);
+}
 function closeMatchDetail(){
  ++matchDialogRequest;
  state.activeMatchId='';
@@ -941,8 +969,8 @@ function renderPredictions(){
  $('predictionCount').textContent=rows.length;$('predictionEmpty').classList.toggle('hidden',rows.length>0);
  $('publishedStamp').textContent=state.report?.cutoff?'資料截止：'+state.report.cutoff:'僅採已正式寄出的預測';
  $('showOriginal').disabled=!state.report;
- $('predictionsGrid').innerHTML=rows.map(p=>
- '<article class="prediction"><div class="pred-top"><span>第 '+p.order+' 關　'+escapeHtml(p.time)+'　·　'+escapeHtml(p.league)+(p.round?' · '+escapeHtml(p.round):'')+'</span>'+(p.group&&p.group!=='串關單'?'<span>'+escapeHtml(p.group)+'</span>':'')+'</div>'+
+ $('predictionsGrid').innerHTML=rows.map((p,i)=>
+ '<article class="prediction clickable-match" tabindex="0" role="button" data-prediction-index="'+i+'" aria-label="查看'+escapeHtml(localizedTeamName(p.home,p.homeZh))+'對'+escapeHtml(localizedTeamName(p.away,p.awayZh))+'的進球詳情"><div class="pred-top"><span>第 '+p.order+' 關　'+escapeHtml(p.time)+'　·　'+escapeHtml(p.league)+(p.round?' · '+escapeHtml(p.round):'')+'</span>'+(p.group&&p.group!=='串關單'?'<span>'+escapeHtml(p.group)+'</span>':'')+'</div>'+
  '<div class="pred-team-stack">'+
   teamLine('home',p.home,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.homeLogo,p.homeZh,PRED_LEAGUE_CODES[p.league]||'')+
   teamLine('away',p.away,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.awayLogo,p.awayZh,PRED_LEAGUE_CODES[p.league]||'')+
@@ -964,7 +992,7 @@ function renderReview(){
  const checked=state.reviewUpdatedAt?fTaiwan(state.reviewUpdatedAt).time:'';
  $('reviewFreshness').textContent=state.reviewLoading?'更新比分中…':
    checked?'更新 '+checked+(state.reviewErrors.length?' · 部分賽事尚未更新':''):'尚未更新比分';
- $('reviewTable').innerHTML=rows.map(p=>{
+ $('reviewTable').innerHTML=rows.map((p,i)=>{
   const live=eventForPrediction(p,available);
   const liveScore=!!live&&['finished','inprogress','halftime'].includes(live.status)&&
     Number.isInteger(Number(live.scoreHome))&&live.scoreHome!==null&&live.scoreHome!==undefined&&
@@ -990,7 +1018,7 @@ function renderReview(){
   }
   const label=result||'—';
   const resultClass=result==='贏'?'win':result==='輸'?'loss':'neutral';
-  return '<tr><td class="review-time"><strong>'+escapeHtml(p.time)+'</strong></td>'+
+  return '<tr class="clickable-match" tabindex="0" role="button" data-review-index="'+i+'" aria-label="查看'+escapeHtml(localizedTeamName(p.home,p.homeZh))+'對'+escapeHtml(localizedTeamName(p.away,p.awayZh))+'的進球詳情"><td class="review-time"><strong>'+escapeHtml(p.time)+'</strong></td>'+
     '<td class="review-match"><div class="review-teams">'+
     teamLine('home',p.home,'',live?.homeLogo,p.homeZh,PRED_LEAGUE_CODES[p.league]||'',live?.homeAbbr||'')+
     teamLine('away',p.away,'',live?.awayLogo,p.awayZh,PRED_LEAGUE_CODES[p.league]||'',live?.awayAbbr||'')+
@@ -999,6 +1027,35 @@ function renderReview(){
     '<td class="review-score"><strong>'+(h!==null&&a!==null?escapeHtml(h)+' : '+escapeHtml(a):'—')+'</strong></td>'+
     '<td class="review-result-cell"><strong class="review-result '+resultClass+'">'+escapeHtml(label)+'</strong></td></tr>';
  }).join('');
+ renderReviewArticle(rows,available);
+}
+function renderReviewArticle(rows,fixtures){
+ const body=$('reviewArticleBody');
+ if(state.report?.reviewArticle){
+  body.textContent=displayCleanText(state.report.reviewArticle);
+  return;
+ }
+ const settled=[];
+ for(const p of rows){
+  const f=eventForPrediction(p,fixtures);
+  const score=f?resultScoreFromFixture(p,f):null;
+  const stored=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
+  const h=stored?p.homeScore:score?.h,a=stored?p.awayScore:score?.a;
+  if(!Number.isInteger(h)||!Number.isInteger(a))continue;
+  const grade=HISTORY?.evaluate(p,h,a);
+  if(!grade)continue;
+  settled.push({p,h,a,grade});
+ }
+ if(!settled.length){body.textContent='目前尚無可結算的終場賽果，復盤內容會隨實際比分更新。';return}
+ const won=settled.filter(x=>x.grade==='win'||x.grade==='halfwin').length;
+ const lost=settled.filter(x=>x.grade==='loss'||x.grade==='halfloss').length;
+ const push=settled.filter(x=>x.grade==='push').length;
+ const intro='本日已取得 '+settled.length+' 場可判定的賽果，贏 '+won+' 場、輸 '+lost+' 場、走盤 '+push+' 場。以下依正式發布的原始盤口與實際終場比分整理，不補造賽事判斷。';
+ const details=settled.map(({p,h,a,grade})=>{
+  const outcome=grade==='win'?'贏':grade==='halfwin'?'半贏':grade==='loss'?'輸':grade==='halfloss'?'半輸':'走盤';
+  return p.time+'　'+localizedTeamName(p.home,p.homeZh)+' '+h+'：'+a+' '+localizedTeamName(p.away,p.awayZh)+'；'+displayCleanText(p.market)+'（'+outcome+'）';
+ });
+ body.textContent=intro+'\n\n'+details.join('\n');
 }
 
 const HISTORY=window.FootballHistory||null;
@@ -1249,7 +1306,7 @@ function render(){
  const t=names[state.view];$('viewTitle').textContent=t[0];$('breadcrumb').textContent=t[1];
  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===state.view));
  $('schedulePanel').classList.toggle('hidden',state.view!=='schedule');
- $('predictionsPanel').classList.toggle('hidden',!['schedule','predictions'].includes(state.view));
+ $('predictionsPanel').classList.toggle('hidden',state.view!=='predictions');
  $('reviewPanel').classList.toggle('hidden',state.view!=='reviews');
  $('historyPanel').classList.toggle('hidden',state.view!=='history');
  updateFilter();renderSchedule();renderPredictions();renderReview();renderHistory()
@@ -1315,6 +1372,12 @@ function init(){
  };
  // Live-only ESPN summary refresh; source-reported match minute is not locally fabricated.
  setInterval(()=>pollLiveMatches(),35000);
+ // Review is independently refreshed while visible; finished fixtures settle from actual data.
+ setInterval(()=>{
+  if(document.visibilityState!=='visible'||state.view!=='reviews'||state.reviewLoading)return;
+  const delta=Math.abs(Date.parse(state.day+'T00:00:00Z')-Date.parse(todayTaiwan()+'T00:00:00Z'));
+  if(delta<=2*86400000)loadReviewScores(false);
+ },60000);
  // Use a slower schedule outside live matches; background tabs do not poll.
  setInterval(()=>{
   if(document.visibilityState==='hidden'||state.reviewLoading||state.loading)return;
@@ -1361,6 +1424,22 @@ function init(){
   const f=fixturesForView()[Number(row.dataset.matchIndex)];
   if(f)openMatchDetail(f);
  });
+ const bindPredictionDetails=(container,indexAttr,items)=>{
+  const open=event=>{
+   const row=event.target.closest('['+indexAttr+']');
+   if(!row||!container.contains(row))return;
+   if(event.type==='keydown'){
+    if(event.key!=='Enter'&&event.key!==' ')return;
+    event.preventDefault();
+   }
+   const p=items()[Number(row.getAttribute(indexAttr))];
+   if(p)openPredictionMatchDetail(p);
+  };
+  container.addEventListener('click',open);
+  container.addEventListener('keydown',open);
+ };
+ bindPredictionDetails($('predictionsGrid'),'data-prediction-index',predsForView);
+ bindPredictionDetails($('reviewTable'),'data-review-index',predsForView);
  $('matchCloseBtn').addEventListener('click',closeMatchDetail);
  $('matchModal').addEventListener('click',event=>{
    if(event.target===$('matchModal'))closeMatchDetail();
