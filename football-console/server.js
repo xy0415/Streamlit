@@ -47,7 +47,7 @@ function scoreboardTtl(date){
  const distance=Date.now()-dateMs;
  if(distance>36*3600000)return 8*3600000;
  if(distance< -36*3600000)return 6*3600000;
- return 90*1000;
+ return 40*1000;
 }
 const FIFA_RANK_SNAPSHOT={data:null,expires:0};
 async function currentFifaRankingSnapshot(){
@@ -99,7 +99,8 @@ function fetchScriptJson(url,remaining=4) {
     const chunks=[];let size=0;
     response.on('data',chunk=>{
       size+=chunk.length;if(size>3*1024*1024){request.destroy(Error('資料來源回應過大'));return}
-      // Decode after joining all bytes: UTF-8 Chinese characters may span chunks.
+      // UTF-8 code points can span TCP chunks. Decode the complete byte stream
+      // only once; per-chunk toString('utf8') inserts U+FFFD into Chinese text.
       chunks.push(chunk);
     });
     response.on('end',()=>{
