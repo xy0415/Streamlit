@@ -38,7 +38,6 @@ const definitions=[
  ['mex.1',[262],['Liga MX'],'Mexico'],
  ['ksa.1',[307],['Pro League','Saudi Pro League'],'Saudi-Arabia'],
  ['jpn.1',[98],['J1 League'],'Japan'],
- ['kor.1',[292],['K League 1'],'South-Korea'],
  ['aus.1',[188],['A-League','A-League Men'],'Australia'],
  ['uefa.champions',[2],['UEFA Champions League','Champions League'],'World'],
  ['uefa.europa',[3],['UEFA Europa League','Europa League'],'World'],
