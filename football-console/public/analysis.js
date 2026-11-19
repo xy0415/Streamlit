@@ -1163,11 +1163,12 @@ function renderSchedule(){
 }
 function renderPredictions(){
  const rows=predsForView(),pending=state.feedStatus==='loading',failed=state.feedStatus==='error';
- const emptyTitle=pending?'正在同步預測':failed?'暫時無法同步預測':state.report?.matches.length?'目前篩選沒有相符的預測':'當日無正式預測';
- $('predictionCount').textContent=rows.length||(!pending&&!failed?0:'—');
+ const originalOnly=Boolean(state.report?.article&&!state.report.matches.length);
+ const emptyTitle=originalOnly?'已發布原始全文':pending?'正在同步預測':failed?'暫時無法同步預測':state.report?.matches.length?'目前篩選沒有相符的預測':'當日無正式預測';
+ $('predictionCount').textContent=rows.length||(!pending&&!failed&&!originalOnly?0:'—');
  $('predictionEmpty').classList.toggle('hidden',rows.length>0);
  $('predictionEmptyTitle').textContent=emptyTitle;
- $('predictionEmptyNote').textContent=pending?'正在讀取正式預測紀錄。':failed?'請重新同步，或查閱其他日期的已保留紀錄。':'已發布的預測會保留原始方向與機率。';
+ $('predictionEmptyNote').textContent=originalOnly?'這天的存檔可透過「查看原始全文」閱讀。':pending?'正在讀取正式預測紀錄。':failed?'請重新同步，或查閱其他日期的已保留紀錄。':'已發布的預測會保留原始方向與機率。';
  $('retryPredictions').classList.toggle('hidden',!failed);
  $('publishedStamp').textContent=failed&&rows.length?'同步暫時失敗 · 顯示已保留紀錄':
    state.report?.publishedAt?'發布：'+state.report.publishedAt:pending?'正在同步':'正式發布紀錄';
