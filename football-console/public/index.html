@@ -29,8 +29,13 @@
       <div class="topright"><span id="todayLabel"></span><span class="separator"></span><span class="clocktag">台灣時間 UTC+8</span></div>
     </header>
     <div class="content">
+      <section class="panel sync-record" aria-labelledby="syncTitle">
+        <div class="section-title"><h2 id="syncTitle">資料同步紀錄</h2><button type="button" id="refreshSync" class="btn ghost">更新狀態</button></div>
+        <p id="syncMessage" role="status">讀取同步紀錄中…</p>
+        <dl id="syncDetails"></dl>
+      </section>
       <div class="pageheading"><div><h1>足球賽程資料驗證與分析控制台</h1></div>
-        <div class="heading-actions"><button id="importBtn" class="btn ghost"><span>＋</span> 匯入資料</button><button id="exportBtn" class="btn ghost">匯出結果 <span>↗</span></button><button id="runBtn" class="btn primary"><span id="runGlyph">↻</span> <span id="runText">開始檢查</span></button></div>
+        <div class="heading-actions"><a class="btn ghost" href="/analysis.html?search=1#predictions">搜尋</a><button id="importBtn" class="btn ghost"><span>＋</span> 匯入資料</button><button id="exportBtn" class="btn ghost">匯出結果 <span>↗</span></button><button id="runBtn" class="btn primary"><span id="runGlyph">↻</span> <span id="runText">開始檢查</span></button></div>
       </div>
       <section class="config-panel panel">
         <div class="section-title"><div><span class="section-index">01</span> 查核條件</div><span class="hint">所有比賽日期與顯示時間以台灣時間為準</span></div>
@@ -86,4 +91,5 @@
 <div id="exportModal" class="modal-overlay hidden"><div class="modal"><div class="modal-head"><div><div class="eyebrow">EXPORT</div><h2>匯出查核結果</h2></div><button class="close-btn" data-close="exportModal">×</button></div><div class="export-list"><button id="exportJson"><strong>完整查核報告 JSON</strong><small>含賽事、請求、原始回應與異常</small><span>↗</span></button><button id="exportCsv"><strong>去重賽程 CSV</strong><small>依目前篩選結果匯出</small><span>↗</span></button><button id="exportIssues"><strong>異常紀錄 CSV</strong><small>錯誤、重複、缺漏與欄位驗證</small><span>↗</span></button></div><div class="modal-foot"><button class="btn ghost" data-close="exportModal">關閉</button></div></div></div>
 <div id="toast" class="toast hidden"></div>
 <script src="/app.js" defer></script>
+<script src="/sync-status.js" defer></script>
 </body></html>

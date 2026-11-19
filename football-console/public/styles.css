@@ -336,3 +336,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,
 @media(prefers-reduced-motion:reduce){
  .toggle-surface,.toggle-surface:before,.btn,.nav-item{transition:none!important}
 }
+
+.sync-record { margin-bottom:14px; }
+.sync-record h2 { font-size:15px; margin:0; }
+.sync-record > p { padding:0 15px; margin:8px 0; }
+.sync-record dl { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:0; }
+.sync-record dl > div { border-top:1px solid var(--line); padding:10px 15px; }
+.sync-record dl > div + div { border-left:1px solid var(--line); }
+.sync-record dt { font-weight:750; }
+.sync-record dd { margin:4px 0 0; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.sync-record small { display:block; margin-top:3px; color:#525651; }
+@media(max-width:700px) {
+ .sync-record dl { grid-template-columns:1fr; }
+ .sync-record dl > div + div { border-left:0; }
+}

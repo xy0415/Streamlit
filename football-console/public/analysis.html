@@ -34,7 +34,7 @@
   <a class="mobile-item more-link" href="/index.html">資料驗證</a>
  </nav>
  <div class="content">
-   <div class="heading"><div><h1 id="viewTitle">每日賽程</h1></div><div class="actions"><button class="btn secondary" id="exportDaily">匯出資料</button><button class="btn primary" id="refreshAll">更新資料</button></div></div>
+   <div class="heading"><div><h1 id="viewTitle">每日賽程</h1></div><div class="actions"><button class="btn secondary" id="openSiteSearch">搜尋</button><button class="btn secondary" id="exportDaily">匯出資料</button><button class="btn primary" id="refreshAll">更新資料</button></div></div>
    <div class="controls panel">
     <div class="inputset"><label for="selectedDay">台灣日期</label><div class="date-row"><button class="direction" id="prevDay" title="前一天">‹</button><input id="selectedDay" type="date"><button class="direction" id="nextDay" title="後一天">›</button></div></div>
     <div class="inputset league-select"><label for="leagueFilter">聯賽</label><select id="leagueFilter"><option value="">所有聯賽</option></select></div>
@@ -50,6 +50,7 @@
    <section id="reviewPanel" class="panel mainsection"><div class="sectionhead"><div><h2>賽後復盤</h2><span class="bubble" id="reviewCount">0</span></div><div class="sectionactions"><span class="sectionhint" id="reviewFreshness">比分待查詢</span><button class="linkbtn" id="refreshReview">更新比分</button></div></div>
       
       <div class="tablewrap"><table class="review-table"><thead><tr><th>開賽</th><th>對戰球隊（主／客）</th><th>原始選項</th><th>比分</th><th>結算</th></tr></thead><tbody id="reviewTable"></tbody></table></div><div class="empty" id="reviewEmpty"><strong>沒有可顯示的復盤紀錄</strong><small>需要已公開的原始預測及可核對終場結果</small></div>
+      <section class="parlay-review" id="parlayReview"><h3>串關復盤</h3><div id="parlayReviewBody"></div></section>
       <div class="review-article" id="reviewArticleSection"><h3>復盤檢討</h3><div id="reviewArticleBody"></div></div>
    </section>
    <section id="historyPanel" class="panel mainsection"><div class="sectionhead"><div><h2>歷史績效</h2></div><div class="sectionactions"><span class="sectionhint" id="historyProgress">歷史比分等待查核</span><button class="linkbtn" id="historyRefresh">更新</button></div></div>
@@ -114,5 +115,18 @@
 <script src="/history-engine.js" defer></script>
 <script src="/history-charts.js" defer></script>
 <script src="/prediction-insights.js" defer></script>
+<dialog id="siteSearch" class="fxi-search">
+  <form method="dialog" class="search-close"><h2>全站搜尋</h2><button class="btn secondary" type="submit" aria-label="關閉搜尋">關閉</button></form>
+  <form id="searchForm" class="search-form">
+    <label>球隊<input id="siteSearchQuery" type="search" maxlength="80" placeholder="輸入中文或英文隊名" required></label>
+    <label>日期<input id="siteSearchDate" type="date"></label>
+    <label>聯賽<select id="siteSearchLeague"><option value="">所有聯賽</option></select></label>
+    <button class="btn primary" type="submit">搜尋</button>
+  </form>
+  <p class="search-hint">日期留空時，搜尋當日賽程與全部預測存檔。</p>
+  <p id="siteSearchStatus" role="status"></p>
+  <div id="siteSearchResults"></div>
+</dialog>
 <script src="/analysis.js" defer></script>
+<script src="/site-explorer.js" defer></script>
 </body></html>

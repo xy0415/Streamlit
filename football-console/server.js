@@ -30,6 +30,26 @@ const counters = new Map();
 const UPSTREAM_CACHE = new Map();
 const UPSTREAM_INFLIGHT = new Map();
 const SOURCE_HEALTH = new Map();
+const SYNC_STATUS = {fixtures:{},scores:{},predictions:{}};
+function recordSync(key,ok,at=new Date().toISOString()){
+ const entry=SYNC_STATUS[key];
+ entry.checkedAt=at;
+ entry.ok=ok;
+ if(ok)entry.lastSuccess=at;
+}
+function recordScoreboard(target,response){
+ const url=new URL(target);
+ if(url.hostname!=='site.api.espn.com'||!url.pathname.endsWith('/scoreboard'))return;
+ const valid=response?.status===200&&Array.isArray(response.data?.events);
+ recordSync('fixtures',valid);
+ if(!valid){recordSync('scores',false);return}
+ const hasScore=response.data.events.some(event=>{
+  const teams=event.competitions?.[0]?.competitors;
+  return ['in','post'].includes(event.status?.type?.state)&&teams?.length===2&&
+   teams.every(team=>/^\d+$/.test(String(team.score)));
+ });
+ if(hasScore)recordSync('scores',true);
+}
 async function cachedRemoteGet(target,ttlMs,headers={}) {
  const now=Date.now(),cached=UPSTREAM_CACHE.get(target);
  if(cached&&cached.expires>now)return cached.response;
@@ -40,8 +60,10 @@ async function cachedRemoteGet(target,ttlMs,headers={}) {
    response=await remoteGet(target,headers);
    if([502,503,504].includes(response.status))response=await remoteGet(target,headers);
    SOURCE_HEALTH.set(new URL(target).hostname,{ok:response.status===200,checkedAt:Date.now()});
+   recordScoreboard(target,response);
   }catch(error){
    SOURCE_HEALTH.set(new URL(target).hostname,{ok:false,checkedAt:Date.now()});
+   recordScoreboard(target,null);
    throw error;
   }
   if(response.status===200){
@@ -185,6 +207,32 @@ function remoteGet(target, headers={}) {
    });request.on('timeout',()=>request.destroy(new Error('上游連線逾時（14秒）')));request.on('error',reject);
  });
 }
+let feedRequest=null;
+let feedFailure=null;
+async function currentReports(){
+ const target=String(process.env.FOOTBALL_REPORT_FEED_URL||'').trim();
+ if(!target)return fallbackReports();
+ if(feedRequest)return feedRequest;
+ if(feedFailure&&Date.now()-feedFailure.time<15000)return feedFailure.response;
+ if(FEED_CACHE.data&&Date.now()-FEED_CACHE.time<30000)return FEED_CACHE.data;
+ feedRequest=(async()=>{
+  try{
+   if(!/^https:\/\/script\.google\.com\/macros\/s\/[-\w]+\/exec(?:\?.*)?$/.test(target))throw Error('Google Apps Script 部署網址格式不正確');
+   const payload=await fetchScriptJson(target);
+   if(!payload||!Array.isArray(payload.reports)||payload.connected!==true)throw Error(payload&&payload.error||'來源未完成初始化');
+   const data=sanitizePublicReports(payload);
+   FEED_CACHE.time=Date.now();FEED_CACHE.data=data;feedFailure=null;
+   recordSync('predictions',true);
+   return data;
+  }catch(error){
+   recordSync('predictions',false);
+   const response=FEED_CACHE.data?{...FEED_CACHE.data,connected:false,syncError:String(error.message||error)}:fallbackReports(error);
+   feedFailure={time:Date.now(),response};
+   return response;
+  }
+ })().finally(()=>{feedRequest=null});
+ return feedRequest;
+}
 async function api(req,res,route){
  if(!rateOk(req))return send(res,429,{error:'請求過於頻繁，請稍後再試'});
  if(route.pathname==='/api/health')return send(res,200,{ok:true,serverTime:new Date().toISOString(),sources:['ESPN','TheSportsDB','football-data.org',...(process.env.API_FOOTBALL_KEY?['API-FOOTBALL']:[])],apiFootball:apiFootball.publicQuota(),reportSyncConfigured:Boolean(process.env.FOOTBALL_REPORT_FEED_URL),upstreamHealth:Object.fromEntries(SOURCE_HEALTH),sharedCacheEntries:UPSTREAM_CACHE.size});
@@ -215,20 +263,15 @@ async function api(req,res,route){
    return send(res,data.ok?200:503,data);
   }catch(error){return send(res,502,{ok:false,error:String(error.message||error),events:[]})}
  }
- if(route.pathname==='/api/reports'&&req.method==='GET'){
-  const target=String(process.env.FOOTBALL_REPORT_FEED_URL||'').trim();
-  if(!target)return send(res,200,fallbackReports());
-  if(FEED_CACHE.data&&Date.now()-FEED_CACHE.time<30000)return send(res,200,FEED_CACHE.data);
-  if(!/^https:\/\/script\.google\.com\/macros\/s\/[-\w]+\/exec(?:\?.*)?$/.test(target)){
-   return send(res,200,fallbackReports('Google Apps Script 部署網址格式不正確'));
-  }
-  try{
-   const payload=await fetchScriptJson(target);
-   if(!payload||!Array.isArray(payload.reports)||payload.connected!==true)throw Error(payload&&payload.error||'來源未完成初始化');
-   const sanitized=sanitizePublicReports(payload);
-   FEED_CACHE.time=Date.now();FEED_CACHE.data=sanitized;
-   return send(res,200,sanitized);
-  }catch(error){return send(res,200,fallbackReports(error))}
+ if(route.pathname==='/api/reports'&&req.method==='GET')return send(res,200,await currentReports());
+ if(route.pathname==='/api/sync-status'&&req.method==='GET'){
+  const feed=await currentReports();
+  return send(res,200,{
+   timezone:'Asia/Taipei',
+   fixtures:SYNC_STATUS.fixtures,
+   predictions:{...SYNC_STATUS.predictions,publishedAt:FEED_CACHE.data?.syncedAt||'',configured:Boolean(process.env.FOOTBALL_REPORT_FEED_URL)},
+   scores:{...SYNC_STATUS.scores,upstreamCheckedAt:FEED_CACHE.data?.scoresCheckedAt||feed.scoresCheckedAt||''},
+  });
  }
  if(route.pathname==='/api/match-lookup'&&req.method==='GET'){
    const date=route.searchParams.get('date'),home=String(route.searchParams.get('home')||''),away=String(route.searchParams.get('away')||'');
@@ -337,13 +380,8 @@ server.listen(PORT,'0.0.0.0',()=>{
 
  currentFifaRankingSnapshot().catch(err=>
   console.warn('[fifa] ranking data unavailable:',String(err.message||err)));
- const feed=String(process.env.FOOTBALL_REPORT_FEED_URL||'').trim();
- if(feed&&/^https:\/\/script\.google\.com\/macros\/s\/[-\w]+\/exec(?:\?.*)?$/.test(feed)){
-  fetchScriptJson(feed).then(data=>{
-   if(!data||data.connected!==true||!Array.isArray(data.reports))throw Error(data&&data.error||'同步回應未通過驗證');
-   const normalized=sanitizePublicReports(data);
-   FEED_CACHE.time=Date.now();FEED_CACHE.data=normalized;
-   console.log('[football] Google Apps Script sync confirmed:',JSON.stringify({reports:normalized.reports.length,matches:normalized.reports.reduce((n,r)=>n+r.matches.length,0),newestDate:normalized.reports[0]?.date||null}));
-  }).catch(err=>console.warn('[football] Google Apps Script sync not confirmed:',String(err.message||err)));
- }
+ if(process.env.FOOTBALL_REPORT_FEED_URL)currentReports().then(feed=>{
+  if(feed.connected)console.log('[football] Google Apps Script sync confirmed:',JSON.stringify({reports:feed.reports.length,newestDate:feed.reports[0]?.date||null}));
+  else console.warn('[football] Google Apps Script sync not confirmed:',feed.syncError||'來源未連線');
+ });
 });

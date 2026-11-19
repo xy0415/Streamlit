@@ -197,7 +197,16 @@ main { min-width: 0; }
 
 .overview .tile-meta { color:var(--muted); font-size:.875rem; }
 @media (max-width:640px) {
- .hero-copy { margin-top:12px; }
- .headline { font-size:clamp(74px,23cqw,138px); }
- .hero-copy p { margin-top:26px; }
+  .rail { padding-top: 8px; }
+  .brand .fxi-mark-home { width: 54px; }
+  .navigation { margin-top: 4px; }
+  .navigation a { min-height: 41px; }
+  .hero { padding-block: 10px 15px; }
+  .hero-top { min-height: 28px; }
+  .hero-copy { margin-top: 8px; }
+  .headline { font-size: clamp(58px, min(19.5cqw, 12svh), 114px); }
+  .hero-copy p { margin: 19px 0 10px; }
+  .overview article { padding-block: 13px 16px; }
+  .overview h2 { margin-bottom: 8px; }
+  .overview p { margin-bottom: 8px; }
 }

@@ -429,10 +429,10 @@ async function readScoreboard(league,date,force){
  try{return await promise}catch(e){state.scoreboardCache.delete(key);throw e}
 }
 
-async function readBatchScoreboards(day,leagues){
+async function readBatchScoreboards(day,leagues,signal){
  const response=await fetch('/api/fixtures/batch',{
   method:'POST',headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({day,leagues}),cache:'no-store'
+  body:JSON.stringify({day,leagues}),cache:'no-store',signal
  });
  if(!response.ok)throw Error('批次賽程查詢 HTTP '+response.status);
  const payload=await response.json();
@@ -630,7 +630,7 @@ function normalizeReport(r){
    settlement:m.settlement||'待核實',verified:m.verified===true||m.verified==='true',
    analysis:m.analysis||m.rationale||'',risk:m.risk||'',
    publishedOdds:INSIGHTS?.originalOdds(m,r.publishedAt||r.sentAt),
-   source:m.source||'正式 Gmail',sourceUrl:m.sourceUrl||'',group:m.group||'串關單',order:Number(m.order)||i+1
+   source:m.source||'正式 Gmail',sourceUrl:m.sourceUrl||'',group:m.group||'串關單',groupPublished:Boolean(m.group),order:Number(m.order)||i+1
   }))};
 }
 let feedRequest=0;
@@ -660,6 +660,7 @@ async function loadFeed(){
  }
  primeHistoryFromFeed();
  setReport();render();
+ document.dispatchEvent(new Event('fxi-feed-updated'));
  if(state.view==='history')loadHistoryResults(false);
 }
 function setReport(){
@@ -1201,6 +1202,38 @@ function reviewResultLabel(settlement){
  if(/走盤|退款|退回本金|無效/.test(value))return '走盤';
  return '';
 }
+function renderParlays(report,fixtures){
+ const groups=new Map(),affected=new Map();
+ const key=p=>[p.date,p.time,nameKey(p.home),nameKey(p.away)].join('|');
+ for(const p of report?.matches||[]){
+  if(!p.groupPublished)continue;
+  if(!groups.has(p.group))groups.set(p.group,[]);
+  groups.get(p.group).push(p);
+  if(!affected.has(key(p)))affected.set(key(p),new Set());
+  affected.get(key(p)).add(p.group);
+ }
+ const output=[...groups].map(([group,picks])=>{
+  const legs=picks.map(p=>{
+   const event=eventForPrediction(p,fixtures);
+   const live=resultScoreFromFixture(p,event);
+   const stored=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
+   const conflict=event?.scoreConflict||(stored&&live&&(live.h!==p.homeScore||live.a!==p.awayScore));
+   const score=conflict?null:stored?{h:p.homeScore,a:p.awayScore}:live;
+   return {p,score,grade:gradeHistory(p,score)||(stored&&!conflict?HISTORY?.settledFromString(p.settlement):null)};
+  });
+  const status=INSIGHTS.parlayStatus(legs.map(leg=>leg.grade));
+  return '<article class="parlay-group"><header><h4>'+escapeHtml(group)+'</h4><span>'+legs.length+' 關 · '+status+'</span></header><ol>'+
+   legs.map(({p,score,grade},index)=>{
+    const shared=[...affected.get(key(p))].filter(item=>item!==group);
+    return '<li><div><a href="'+escapeHtml(INSIGHTS.matchLink(p,'reviews','review'))+'"><strong>'+
+     escapeHtml((index+1)+'. '+localizedTeamName(p.home,p.homeZh)+' vs '+localizedTeamName(p.away,p.awayZh))+
+     '</strong></a>'+(shared.length?'<div class="search-meta">同場亦見於 '+escapeHtml(shared.join('、'))+'</div>':'')+
+     '</div><span class="parlay-market">'+escapeHtml(displayCleanText(p.market))+'</span><span class="parlay-result">'+
+     (score?score.h+' : '+score.a+' · ':'')+(gradeLabels[grade]||'待結算')+'</span></li>';
+   }).join('')+'</ol></article>';
+ }).join('');
+ $('parlayReviewBody').innerHTML=output||'<p class="search-meta">此日沒有可核對的已發布串關組合。</p>';
+}
 function renderReview(){
  const rows=predsForView(),available=state.reviewFixtures.concat(state.fixtures);
  $('reviewCount').textContent=rows.length;
@@ -1244,6 +1277,7 @@ function renderReview(){
     '<td class="review-result-cell"><strong class="review-result '+resultClass+'">'+escapeHtml(label)+'</strong></td></tr>';
  });
  $('reviewTable').innerHTML=leagueGroupedRows(rows,reviewRows,p=>p.league,'reviews');
+ if(INSIGHTS&&state.view==='reviews')renderParlays(state.report,available);
  renderReviewArticle(state.report?.matches||[],available);
 }
 function renderReviewArticle(rows,fixtures){

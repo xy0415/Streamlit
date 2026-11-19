@@ -56,3 +56,21 @@ test('Structured details from the published card augment an already imported for
  assert.equal(withFinal.publishedOdds,1.92);
  assert.equal(withFinal.verified,true);
 });
+
+test('Parlay settlement does not turn unresolved, refunded or partial legs into wins',()=>{
+ assert.equal(insights.parlayStatus(['win',null]),'待結算');
+ assert.equal(insights.parlayStatus(['loss',null]),'未全中');
+ assert.equal(insights.parlayStatus(['win','push']),'其餘關卡全贏');
+ assert.equal(insights.parlayStatus(['push','push']),'全走盤');
+ assert.equal(insights.parlayStatus(['win','halfloss']),'含半贏／半輸');
+ assert.equal(insights.parlayStatus(['win','win']),'全中');
+});
+
+test('The same selection in two explicit parlay groups stays visible in each group',()=>{
+ const leg=['① 06:30｜巴甲','**Coritiba（科里蒂巴）vs Santos（桑托斯）**','全場總進球小 3.5｜估計命中機率 79%'];
+ const article=['分析日期：'+date,'### 🎯｜組合一',...leg,'### 🎯｜組合二',...leg].join('\n');
+ const parsed=parsePublishedCards(article,date);
+ assert.deepEqual(parsed.map(entry=>entry.group),['組合一','組合二']);
+ assert.notEqual(parsed[0].id,parsed[1].id);
+ assert.equal(includePublishedCards(article,date,[{...parsed[0],verified:true}]).length,2);
+});

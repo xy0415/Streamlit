@@ -61,5 +61,14 @@
     return Object.hasOwn(values, grade) ? values[grade] : null;
   }
 
-  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, matchLink, readMatchLink, originalOdds, unitReturn});
+  function parlayStatus(grades) {
+    if (grades.includes('loss')) return '未全中';
+    if (!grades.length || grades.some(grade=>!grade)) return '待結算';
+    if (grades.includes('halfloss') || grades.includes('halfwin')) return '含半贏／半輸';
+    if (grades.every(grade=>grade==='push')) return '全走盤';
+    if (grades.includes('push')) return '其餘關卡全贏';
+    return '全中';
+  }
+
+  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, matchLink, readMatchLink, originalOdds, unitReturn, parlayStatus});
 })(window);
