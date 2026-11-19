@@ -10,7 +10,18 @@ const { URL } = require('node:url');
 const PORT = Number(process.env.PORT || 3000);
 const BASE = path.join(__dirname, 'public');
 const MAX_BODY = 4096;
-const ALLOWED = new Set(['eng.1','eng.2','eng.fa','esp.1','esp.copa_del_rey','ger.1','ita.1','fra.1','ned.1','por.1','usa.1','bra.1','arg.1','ksa.1','jpn.1','mex.1','uefa.champions','uefa.europa','uefa.europa.conf','uefa.nations','fifa.world','fifa.friendly','conmebol.libertadores','concacaf.champions','afc.champions','aus.1','sco.1','bel.1','tur.1','chn.1','fifa.worldq.uefa','fifa.worldq.conmebol','caf.nations','caf.nations_qual']);
+// Only competition slugs verified to return a valid ESPN scoreboard belong here.
+// Include supported cups and lower divisions, otherwise their match days disappear.
+const ALLOWED = new Set([
+ 'eng.1','eng.2','eng.3','eng.fa','eng.league_cup','esp.1','esp.2','esp.copa_del_rey',
+ 'ger.1','ger.dfb_pokal','ita.1','ita.2','ita.coppa_italia','fra.1','fra.coupe_de_france',
+ 'ned.1','por.1','por.taca.portugal','usa.1','bra.1','bra.2','bra.copa_do_brazil',
+ 'arg.1','arg.copa','ksa.1','jpn.1','mex.1','uefa.champions','uefa.europa',
+ 'uefa.europa.conf','uefa.nations','fifa.world','fifa.friendly',
+ 'conmebol.libertadores','conmebol.sudamericana','concacaf.champions','afc.champions',
+ 'aus.1','aus.w.1','sco.1','bel.1','tur.1','chn.1','fifa.worldq.uefa',
+ 'fifa.worldq.conmebol','caf.nations','caf.nations_qual'
+]);
 const FD_ALLOWED = new Set(['PL','ELC','PD','BL1','SA','FL1','DED','PPL','BSA','CL','WC']);
 const STANDINGS_ALLOWED = new Set(['eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','ned.1','por.1','bra.1','arg.1','usa.1','ksa.1','jpn.1','mex.1','tur.1','bel.1','sco.1','chn.1','aus.1']);
 const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.ico':'image/x-icon'};
@@ -254,6 +265,43 @@ async function api(req,res,route){
    }catch(error){
      return send(res,502,{provider:'ESPN',error:String(error.message||error)});
    }
+ }
+ // A single browser request replaces 2 x N scoreboard requests. This prevents
+ // the per-visitor rate limiter from dropping matches on broad schedule dates.
+ if(route.pathname==='/api/fixtures/batch'&&req.method==='POST'){
+   let raw='';
+   try{
+     for await(const chunk of req){
+       raw+=chunk;
+       if(raw.length>MAX_BODY)throw Error('查詢清單過大');
+     }
+   }catch{return send(res,413,{error:'查詢清單過大'})}
+   let input;
+   try{input=JSON.parse(raw)}catch{return send(res,400,{error:'JSON 格式錯誤'})}
+   const day=input?.day,leagues=input?.leagues;
+   if(!dateOk(day)||!Array.isArray(leagues)||leagues.length<1||leagues.length>60||
+      new Set(leagues).size!==leagues.length||leagues.some(code=>typeof code!=='string'||!ALLOWED.has(code)))
+     return send(res,400,{error:'日期或聯賽查詢清單不正確'});
+   const prior=new Date(Date.parse(day+'T00:00:00Z')-86400000).toISOString().slice(0,10);
+   const queries=leagues.flatMap(league=>[prior,day].map(date=>({league,date})));
+   const results=new Array(queries.length);
+   let cursor=0;
+   async function worker(){
+     for(;;){
+       const index=cursor++;
+       if(index>=queries.length)break;
+       const {league,date}=queries[index];
+       const target='https://site.api.espn.com/apis/site/v2/sports/soccer/'+encodeURIComponent(league)+'/scoreboard?dates='+date.replaceAll('-','');
+       try{
+         const up=await cachedRemoteGet(target,scoreboardTtl(date));
+         results[index]={league,date,upstreamStatus:up.status,
+           events:up.status===200&&Array.isArray(up.data?.events)?up.data.events:[],
+           ...(up.status!==200?{error:'來源 HTTP '+up.status}:{})};
+       }catch(error){results[index]={league,date,upstreamStatus:0,events:[],error:String(error.message||error)}}
+     }
+   }
+   await Promise.all(Array.from({length:Math.min(8,queries.length)},worker));
+   return send(res,200,{day,results});
  }
  if(route.pathname==='/api/fixtures'&&req.method==='GET'){
    const provider=route.searchParams.get('provider'),league=route.searchParams.get('league'),date=route.searchParams.get('date');
