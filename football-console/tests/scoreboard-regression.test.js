@@ -194,3 +194,22 @@ test('Prediction and review entries expose accessible clickable detail targets',
  assert.match(document.getElementById('predictionsGrid').innerHTML,/data-prediction-index="0"/);
  assert.match(document.getElementById('reviewTable').innerHTML,/data-review-index="0"/);
 });
+test('Review reuses newer final score from schedule when its own snapshot is stale',()=>{
+ const {context,state,document}=setup();
+ const p={date:'2026-11-18',time:'03:45',order:1,league:'歐國聯',
+  home:'France',homeZh:'法國',away:'Turkey',awayZh:'土耳其',
+  market:'全場總進球小 3.5',verified:false};
+ const base={id:'12345678',date:p.date,time:p.time,leagueCode:'uefa.nations',
+  home:p.home,away:p.away,scoreHome:null,scoreAway:null,status:'scheduled'};
+ state.day=p.date;state.report={date:p.date,matches:[p]};
+ state.reviewFixtures=[base];state.fixtures=[{...base,status:'finished',scoreHome:2,scoreAway:1}];
+ document.getElementById('leagueFilter').value='';document.getElementById('statusFilter').value='';
+ assert.equal(context.eventForPrediction(p,state.reviewFixtures.concat(state.fixtures)).scoreHome,2);
+ context.renderReview();
+ assert.match(document.getElementById('reviewTable').innerHTML,/2 : 1/);
+ assert.match(document.getElementById('reviewTable').innerHTML,/review-result win/);
+ assert.equal(context.predsForView().length,1);
+ // The old condition accidentally excluded verified picks with the default filter.
+ state.report.matches[0].verified=true;
+ assert.equal(context.predsForView().length,1);
+});
