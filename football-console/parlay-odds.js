@@ -2,6 +2,8 @@
 
 const apiFootball=require('./api-football');
 const {selection}=require('./public/history-engine');
+const {tipsterQuotes}=require('./tipster-odds');
+const archive=require('./parlay-odds-archive.json');
 
 const books=new Map([
  ['1xbet','1xBet'],['pinnacle','Pinnacle'],['bet365','Bet365'],
@@ -9,7 +11,7 @@ const books=new Map([
 ]);
 const aliases={
  'western sydney wanderers':'western sydney','ws wanderers':'western sydney',
- 'atletico pr':'athletico paranaense','athletico pr':'athletico paranaense',
+ 'atletico mg':'atletico mineiro','atletico pr':'athletico paranaense','athletico pr':'athletico paranaense',
  'czechia':'czech republic','turkiye':'turkey','republic of ireland':'ireland',
  'north macedonia':'macedonia','northern ireland':'north ireland',
  'inter milan':'inter','internazionale':'inter','paris saint germain':'psg',
@@ -18,8 +20,9 @@ const aliases={
 
 function teamKey(name){
  const clean=String(name||'').normalize('NFKD').toLowerCase().replace(/\p{M}/gu,'')
-  .replace(/[^a-z0-9]+/g,' ').trim().replace(/^(?:fc|cr|sc|ec) | (?:fc|cr|sc|ec|rj|sp)$/g,'');
- return aliases[clean]||clean;
+  .replace(/[^a-z0-9]+/g,' ').trim();
+ const stripped=clean.replace(/^(?:fc|cr|sc|ec) | (?:fc|cr|sc|ec|rj|sp|rs|pa|pr|mg|ba)$/g,'');
+ return aliases[clean]||aliases[stripped]||stripped;
 }
 
 function matchFixture(pick,fixtures){
@@ -75,20 +78,40 @@ function taiwanDay(){
  return new Date(Date.now()+8*60*60*1000).toISOString().slice(0,10);
 }
 
-async function reportOdds(report,provider=apiFootball){
+function archiveKey(p){
+ return [p.date,p.time,p.home,p.away,p.market,p.group].join('|');
+}
+
+async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes){
  const days=(Date.parse(taiwanDay())-Date.parse(report.date))/86400000;
- if(days< -2||days>7)return {status:'outside_window',legs:{}};
  const picks=(report.matches||[]).filter(p=>p.id&&p.group&&selection(p));
- if(!picks.length)return {status:'ready',legs:{}};
+ const legs={},scores={};
+ for(const pick of picks){
+  const record=archive[archiveKey(pick)];
+  if(!record)continue;
+  legs[pick.id]=[...books.keys()].filter(book=>record.prices[book]).map(book=>({
+   book,source:books.get(book),price:record.prices[book],capturedAt:record.capturedAt,kind:'prematch',url:record.url
+  }));
+  if(record.score)scores[pick.id]={h:record.score[0],a:record.score[1]};
+ }
+ if(days< -2||days>7)return {status:'outside_window',legs,scores};
+ const missing=picks.filter(p=>!legs[p.id]?.length);
+ for(let i=0;i<missing.length;i+=4){
+  await Promise.all(missing.slice(i,i+4).map(async pick=>{
+   const quotes=await publicQuotes(pick,selection(pick),teamKey,books);
+   if(quotes.length)legs[pick.id]=quotes;
+  }));
+ }
+ const unmatched=picks.filter(p=>!legs[p.id]?.length);
+ if(!unmatched.length)return {status:'ready',legs,scores};
  const fixtures=await provider.getFixtures(report.date);
  if(!fixtures.ok)return {
-  status:fixtures.reason==='free_quota_reserved_or_rate_limited'?'rate_limited':'unavailable',legs:{}
+  status:fixtures.reason==='free_quota_reserved_or_rate_limited'?'rate_limited':
+   Object.keys(legs).length?'partial':'unavailable',legs,scores
  };
- const legs={};
- let rateLimited=false, incomplete=false;
- // Work in small batches to share the provider's per-minute budget with live scores.
- for(let i=0;i<picks.length;i+=3){
-  await Promise.all(picks.slice(i,i+3).map(async p=>{
+ let rateLimited=false,incomplete=false;
+ for(let i=0;i<unmatched.length;i+=3){
+  await Promise.all(unmatched.slice(i,i+3).map(async p=>{
    const fixture=matchFixture(p,fixtures.fixtures);
    if(!fixture)return;
    const odds=await provider.getFixtureOdds(fixture.apiFixtureId);
@@ -99,7 +122,7 @@ async function reportOdds(report,provider=apiFootball){
   }));
   if(rateLimited)break;
  }
- return {status:rateLimited?'rate_limited':incomplete?'partial':'ready',legs};
+ return {status:rateLimited?'rate_limited':incomplete?'partial':'ready',legs,scores};
 }
 
-module.exports={reportOdds,matchFixture,quotesFor};
+module.exports={reportOdds,matchFixture,quotesFor,teamKey};

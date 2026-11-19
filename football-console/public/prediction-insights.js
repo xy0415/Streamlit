@@ -40,17 +40,18 @@
     }
   }
 
+  function oddsTimestamp(time) {
+    const value=String(time||'').trim().replace(' ','T').replace(/T(\d):/,'T0$1:');
+    if(!value)return NaN;
+    return Date.parse(/(?:Z|[+-]\d{2}:\d{2})$/i.test(value)?value:value+'+08:00');
+  }
+
   function originalOdds(row, publishedAt) {
     const price = Number(row.publishedOdds);
     const capturedAt = String(row.publishedOddsAt || '');
     const source = String(row.publishedOddsSource || '').trim();
-    const timestamp = time => {
-      const value = String(time || '').trim().replace(' ', 'T');
-      const explicitZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
-      return value ? Date.parse(explicitZone ? value : value + '+08:00') : NaN;
-    };
-    const captured = timestamp(capturedAt);
-    const released = timestamp(publishedAt);
+    const captured = oddsTimestamp(capturedAt);
+    const released = oddsTimestamp(publishedAt);
     if (!(price > 1) || !Number.isFinite(price) || !source ||
         !Number.isFinite(captured) || !Number.isFinite(released) || captured > released) return null;
     return {price, source, capturedAt};
@@ -76,7 +77,7 @@
   }
 
   function parlayPrices(legs,quotes,publishedAt) {
-    const published=Date.parse(String(publishedAt||'').replace(' ','T').replace(/(\d\d:\d\d(?::\d\d)?)$/,'$1+08:00'));
+    const published=oddsTimestamp(publishedAt);
     const options=legs.map(leg=>leg.publishedOdds?[{...leg.publishedOdds,kind:'published',book:priceBook(leg.publishedOdds.source)}]:
       [...(quotes[leg.id]||[])].sort((a,b)=>
         Number(Date.parse(b.capturedAt)<=published)-Number(Date.parse(a.capturedAt)<=published)));
@@ -103,5 +104,5 @@
     return returns.reduce((product,net)=>product*(1+net),1)-1;
   }
 
-  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, matchLink, readMatchLink, originalOdds, unitReturn, parlayStatus, parlayPrices, parlayProduct, parlayNet});
+  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, matchLink, readMatchLink, originalOdds, oddsTimestamp, unitReturn, parlayStatus, parlayPrices, parlayProduct, parlayNet});
 })(window);

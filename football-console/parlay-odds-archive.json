@@ -1,0 +1,566 @@
+{
+  "2026-11-20|06:30|Vasco da Gama|Internacional|全場總進球大 1.5|串關單": {
+    "prices": {
+      "1xbet": 1.22,
+      "betfair": 1.2,
+      "unibet": 1.23
+    },
+    "capturedAt": "2026-11-19T16:00:00Z",
+    "url": "https://tipsterarea.com/match/vasco-da-gama-rj-internacional-rs-serie-a-brazil-955852"
+  },
+  "2026-11-20|08:30|São Paulo|Fluminense|全場總進球小 3.5|串關單": {
+    "prices": {
+      "1xbet": 1.26,
+      "betfair": 1.22,
+      "unibet": 1.24
+    },
+    "capturedAt": "2026-11-19T16:00:00Z",
+    "url": "https://tipsterarea.com/match/sao-paulo-sp-fluminense-rj-serie-a-brazil-955854"
+  },
+  "2026-11-20|16:40|Western Sydney Wanderers|Adelaide United|西悉尼流浪者不敗（主勝或和局）|串關單": {
+    "prices": {
+      "1xbet": 1.21,
+      "betfair": 1.17,
+      "unibet": 1.2
+    },
+    "capturedAt": "2026-11-19T16:00:00Z",
+    "url": "https://tipsterarea.com/match/western-sydney-wanderers-adelaide-united-a-league-australia-955857"
+  },
+  "2026-11-19|06:30|Coritiba|Santos|全場總進球小 3.5|串關單": {
+    "prices": {
+      "1xbet": 1.48,
+      "betfair": 1.4,
+      "unibet": 1.46
+    },
+    "capturedAt": "2026-11-18T20:03:00Z",
+    "url": "https://tipsterarea.com/match/coritiba-pr-santos-sp-serie-a-brazil-955790",
+    "score": [
+      0,
+      1
+    ]
+  },
+  "2026-11-19|07:00|Remo|Chapecoense|雷莫不敗（主勝或和局）|串關單": {
+    "prices": {
+      "1xbet": 1.1,
+      "betfair": 1.1,
+      "unibet": 1.11
+    },
+    "capturedAt": "2026-11-18T20:03:00Z",
+    "url": "https://tipsterarea.com/match/remo-pa-chapecoense-sc-serie-a-brazil-955791",
+    "score": [
+      2,
+      0
+    ]
+  },
+  "2026-11-19|07:30|Cruzeiro|Palmeiras|全場總進球小 3.5|串關單": {
+    "prices": {
+      "1xbet": 1.47,
+      "betfair": 1.47,
+      "unibet": 1.41
+    },
+    "capturedAt": "2026-11-18T20:03:00Z",
+    "url": "https://tipsterarea.com/match/cruzeiro-mg-palmeiras-sp-serie-a-brazil-955792",
+    "score": [
+      2,
+      1
+    ]
+  },
+  "2026-11-19|07:30|Flamengo|Athletico Paranaense|全場總進球大 1.5|串關單": {
+    "prices": {
+      "1xbet": 1.12,
+      "betfair": 1.13,
+      "unibet": 1.1
+    },
+    "capturedAt": "2026-11-18T20:03:00Z",
+    "url": "https://tipsterarea.com/match/flamengo-rj-atletico-pr-serie-a-brazil-955793",
+    "score": [
+      2,
+      1
+    ]
+  },
+  "2026-11-19|08:30|Corinthians|Botafogo|全場總進球小 3.5|串關單": {
+    "prices": {
+      "1xbet": 1.36,
+      "betfair": 1.36,
+      "unibet": 1.4
+    },
+    "capturedAt": "2026-11-18T20:03:00Z",
+    "url": "https://tipsterarea.com/match/corinthians-sp-botafogo-rj-serie-a-brazil-955794",
+    "score": [
+      4,
+      0
+    ]
+  },
+  "2026-11-19|08:30|Grêmio|Bahia|全場總進球大 1.5|串關單": {
+    "prices": {
+      "1xbet": 1.21,
+      "betfair": 1.2,
+      "unibet": 1.2
+    },
+    "capturedAt": "2026-11-18T20:03:00Z",
+    "url": "https://tipsterarea.com/match/gremio-rs-bahia-ba-serie-a-brazil-955795",
+    "score": [
+      0,
+      0
+    ]
+  },
+  "2026-11-18|03:45|Denmark|Norway|全場總進球大 1.5|串關單": {
+    "prices": {
+      "1xbet": 1.1,
+      "betfair": 1.1,
+      "unibet": 1.11
+    },
+    "capturedAt": "2026-11-17T16:05:00Z",
+    "url": "https://tipsterarea.com/match/denmark-norway-uefa-nations-league-group-stage-955679",
+    "score": [
+      2,
+      3
+    ]
+  },
+  "2026-11-18|03:45|Wales|Portugal|葡萄牙不敗（客勝或和局）|串關單": {
+    "prices": {
+      "1xbet": 1.12,
+      "betfair": 1.08,
+      "unibet": 1.07
+    },
+    "capturedAt": "2026-11-17T16:05:00Z",
+    "url": "https://tipsterarea.com/match/wales-portugal-uefa-nations-league-group-stage-955680",
+    "score": [
+      2,
+      3
+    ]
+  },
+  "2026-11-18|03:45|Hungary|Northern Ireland|全場總進球小 3.5|串關單": {
+    "prices": {
+      "1xbet": 1.21,
+      "betfair": 1.2,
+      "unibet": 1.19
+    },
+    "capturedAt": "2026-11-17T16:05:00Z",
+    "url": "https://tipsterarea.com/match/hungary-northern-ireland-uefa-nations-league-group-stage-955681",
+    "score": [
+      1,
+      1
+    ]
+  },
+  "2026-11-18|03:45|Ukraine|Georgia|全場總進球小 3.5|串關單": {
+    "prices": {
+      "1xbet": 1.23,
+      "betfair": 1.2,
+      "unibet": 1.22
+    },
+    "capturedAt": "2026-11-17T16:05:00Z",
+    "url": "https://tipsterarea.com/match/ukraine-georgia-uefa-nations-league-group-stage-955682",
+    "score": [
+      1,
+      0
+    ]
+  },
+  "2026-11-18|03:45|Republic of Ireland|Kosovo|全場總進球小 3.5|串關單": {
+    "prices": {
+      "1xbet": 1.2,
+      "betfair": 1.2,
+      "unibet": 1.17
+    },
+    "capturedAt": "2026-11-17T16:05:00Z",
+    "url": "https://tipsterarea.com/match/ireland-kosovo-uefa-nations-league-group-stage-955683",
+    "score": [
+      3,
+      0
+    ]
+  },
+  "2026-11-18|07:00|Argentina|Costa Rica|阿根廷獲勝|串關單": {
+    "prices": {
+      "1xbet": 1.11,
+      "betfair": 1.07,
+      "unibet": 1.09
+    },
+    "capturedAt": "2026-11-17T20:03:00Z",
+    "url": "https://tipsterarea.com/match/argentina-costa-rica-national-friendly-955742",
+    "score": [
+      7,
+      0
+    ]
+  },
+  "2026-11-18|07:30|Uruguay|Dominican Republic|烏拉圭獲勝|串關單": {
+    "prices": {
+      "1xbet": 1.08,
+      "betfair": 1.07,
+      "unibet": 1.11
+    },
+    "capturedAt": "2026-11-17T20:03:00Z",
+    "url": "https://tipsterarea.com/match/uruguay-dominican-republic-national-friendly-955745",
+    "score": [
+      5,
+      0
+    ]
+  },
+  "2026-11-17|01:00|Estonia|Bulgaria|全場總進球小 3.5|串關單": {
+    "prices": {
+      "1xbet": 1.23,
+      "betfair": 1.2,
+      "unibet": 1.17
+    },
+    "capturedAt": "2026-11-16T16:01:00Z",
+    "url": "https://tipsterarea.com/match/estonia-bulgaria-uefa-nations-league-group-stage-955644",
+    "score": [
+      2,
+      1
+    ]
+  },
+  "2026-11-17|01:00|Iceland|Luxembourg|冰島獲勝|串關單": {
+    "prices": {
+      "1xbet": 1.26,
+      "betfair": 1.15,
+      "unibet": 1.25
+    },
+    "capturedAt": "2026-11-16T16:01:00Z",
+    "url": "https://tipsterarea.com/match/iceland-luxembourg-uefa-nations-league-group-stage-955645",
+    "score": [
+      3,
+      0
+    ]
+  },
+  "2026-11-17|01:00|Lithuania|Liechtenstein|立陶宛獲勝|串關單": {
+    "prices": {
+      "1xbet": 1.13,
+      "betfair": 1.07,
+      "unibet": 1.1
+    },
+    "capturedAt": "2026-11-16T16:01:00Z",
+    "url": "https://tipsterarea.com/match/lithuania-liechtenstein-uefa-nations-league-group-stage-955647",
+    "score": [
+      2,
+      1
+    ]
+  },
+  "2026-11-17|03:45|Germany|Netherlands|全場總進球大 1.5|串關單": {
+    "prices": {
+      "1xbet": 1.1,
+      "betfair": 1.1,
+      "unibet": 1.1
+    },
+    "capturedAt": "2026-11-16T16:01:00Z",
+    "url": "https://tipsterarea.com/match/germany-netherlands-uefa-nations-league-group-stage-955638",
+    "score": [
+      5,
+      0
+    ]
+  },
+  "2026-11-17|03:45|North Macedonia|Slovenia|斯洛維尼亞不敗（客勝或和局）|串關單": {
+    "prices": {
+      "1xbet": 1.11,
+      "betfair": 1.1,
+      "unibet": 1.08
+    },
+    "capturedAt": "2026-11-16T16:01:00Z",
+    "url": "https://tipsterarea.com/match/north-macedonia-slovenia-uefa-nations-league-group-stage-955640",
+    "score": [
+      0,
+      3
+    ]
+  },
+  "2026-11-17|03:45|Switzerland|Scotland|全場總進球小 3.5|串關單": {
+    "prices": {
+      "1xbet": 1.36,
+      "betfair": 1.36,
+      "unibet": 1.3
+    },
+    "capturedAt": "2026-11-16T16:01:00Z",
+    "url": "https://tipsterarea.com/match/switzerland-scotland-uefa-nations-league-group-stage-955641",
+    "score": [
+      4,
+      0
+    ]
+  },
+  "2026-11-17|18:00|Singapore|Brazil|巴西獲勝|串關單": {
+    "prices": {
+      "1xbet": 1.02,
+      "betfair": 1.01,
+      "unibet": 1.01
+    },
+    "capturedAt": "2026-11-17T08:02:00Z",
+    "url": "https://tipsterarea.com/match/singapore-brazil-national-friendly-955702",
+    "score": [
+      0,
+      7
+    ]
+  },
+  "2026-11-16|01:00|Finland|San Marino|芬蘭獲勝|保守組": {
+    "prices": {
+      "1xbet": 1.04,
+      "betfair": 1.02,
+      "unibet": 1.02
+    },
+    "capturedAt": "2026-11-15T16:01:00Z",
+    "url": "https://tipsterarea.com/match/finland-san-marino-uefa-nations-league-group-stage-955476",
+    "score": [
+      7,
+      2
+    ]
+  },
+  "2026-11-16|03:45|Croatia|Czechia|克羅埃西亞不敗（主勝或和局）|保守組": {
+    "prices": {
+      "1xbet": 1.13,
+      "betfair": 1.08,
+      "unibet": 1.12
+    },
+    "capturedAt": "2026-11-15T16:01:00Z",
+    "url": "https://tipsterarea.com/match/croatia-czech-republic-uefa-nations-league-group-stage-955473",
+    "score": [
+      2,
+      1
+    ]
+  },
+  "2026-11-16|03:45|Spain|England|西班牙不敗（主勝或和局）|保守組": {
+    "prices": {
+      "1xbet": 1.3,
+      "betfair": 1.25,
+      "unibet": 1.32
+    },
+    "capturedAt": "2026-11-15T16:01:00Z",
+    "url": "https://tipsterarea.com/match/spain-england-uefa-nations-league-group-stage-955474",
+    "score": [
+      2,
+      3
+    ]
+  },
+  "2026-11-16|03:45|France|Türkiye|法國獲勝|保守組": {
+    "prices": {
+      "1xbet": 1.17,
+      "betfair": 1.15,
+      "unibet": 1.15
+    },
+    "capturedAt": "2026-11-15T16:01:00Z",
+    "url": "https://tipsterarea.com/match/france-turkiye-uefa-nations-league-group-stage-955472",
+    "score": [
+      2,
+      1
+    ]
+  },
+  "2026-11-16|01:00|Belarus|Albania|全場總進球小2.5|激進組": {
+    "prices": {
+      "1xbet": 1.6,
+      "betfair": 1.5,
+      "unibet": 1.61
+    },
+    "capturedAt": "2026-11-15T16:01:00Z",
+    "url": "https://tipsterarea.com/match/belarus-albania-uefa-nations-league-group-stage-955475",
+    "score": [
+      0,
+      2
+    ]
+  },
+  "2026-11-16|03:45|Belgium|Italy|雙方進球：是|激進組": {
+    "prices": {
+      "1xbet": 1.52,
+      "betfair": 1.5,
+      "unibet": 1.54
+    },
+    "capturedAt": "2026-11-15T16:01:00Z",
+    "url": "https://tipsterarea.com/match/belgium-italy-uefa-nations-league-group-stage-955471",
+    "score": [
+      4,
+      1
+    ]
+  },
+  "2026-11-16|23:00|Faroe Islands|Moldova|雙方進球：是|激進組": {
+    "prices": {
+      "1xbet": 2.06,
+      "betfair": 2.05,
+      "unibet": 2.04
+    },
+    "capturedAt": "2026-11-16T12:00:00Z",
+    "url": "https://tipsterarea.com/match/faroe-islands-moldova-uefa-nations-league-group-stage-955642",
+    "score": [
+      1,
+      0
+    ]
+  },
+  "2026-11-15|03:45|Sweden|Bosnia and Herzegovina|瑞典不敗（主勝或和局）|保守組": {
+    "prices": {
+      "1xbet": 1.12,
+      "betfair": 1.08,
+      "unibet": 1.09
+    },
+    "capturedAt": "2026-11-14T16:01:00Z",
+    "url": "https://tipsterarea.com/match/sweden-bosnia-and-herzegovina-uefa-nations-league-group-stage-955310"
+  },
+  "2026-11-15|07:30|Chapecoense|Vasco da Gama|瓦斯科達伽馬不敗（客勝或和局）|保守組": {
+    "prices": {
+      "1xbet": 1.1,
+      "betfair": 1.08,
+      "unibet": 1.11
+    },
+    "capturedAt": "2026-11-14T20:06:00Z",
+    "url": "https://tipsterarea.com/match/chapecoense-sc-vasco-da-gama-rj-serie-a-brazil-955513",
+    "score": [
+      0,
+      2
+    ]
+  },
+  "2026-11-15|01:00|Norway|Wales|挪威獲勝|保守組": {
+    "prices": {
+      "1xbet": 1.22,
+      "betfair": 1.22,
+      "unibet": 1.21
+    },
+    "capturedAt": "2026-11-14T16:01:00Z",
+    "url": "https://tipsterarea.com/match/norway-wales-uefa-nations-league-group-stage-955303",
+    "score": [
+      3,
+      1
+    ]
+  },
+  "2026-11-15|01:00|Georgia|Hungary|全場總進球小2.5|保守組": {
+    "prices": {
+      "1xbet": 1.62,
+      "betfair": 1.53,
+      "unibet": 1.52
+    },
+    "capturedAt": "2026-11-14T16:01:00Z",
+    "url": "https://tipsterarea.com/match/georgia-hungary-uefa-nations-league-group-stage-955305",
+    "score": [
+      0,
+      2
+    ]
+  },
+  "2026-11-15|03:45|Northern Ireland|Ukraine|雙方進球：否|激進組": {
+    "prices": {
+      "1xbet": 1.7,
+      "betfair": 1.73,
+      "unibet": 1.72
+    },
+    "capturedAt": "2026-11-14T16:01:00Z",
+    "url": "https://tipsterarea.com/match/northern-ireland-ukraine-uefa-nations-league-group-stage-955306",
+    "score": [
+      1,
+      0
+    ]
+  },
+  "2026-11-15|03:45|Portugal|Denmark|雙方進球：是|激進組": {
+    "prices": {
+      "1xbet": 1.57,
+      "betfair": 1.6,
+      "unibet": 1.67
+    },
+    "capturedAt": "2026-11-14T16:01:00Z",
+    "url": "https://tipsterarea.com/match/portugal-denmark-uefa-nations-league-group-stage-955304",
+    "score": [
+      1,
+      4
+    ]
+  },
+  "2026-11-15|22:00|Cyprus|Montenegro|雙方進球：是|激進組": {
+    "prices": {
+      "1xbet": 1.69,
+      "betfair": 1.67,
+      "unibet": 1.71
+    },
+    "capturedAt": "2026-11-15T12:03:00Z",
+    "url": "https://tipsterarea.com/match/cyprus-montenegro-uefa-nations-league-group-stage-955477",
+    "score": [
+      1,
+      4
+    ]
+  },
+  "2026-11-14|03:45|Serbia|Germany|德國不敗（客勝或和局）|保守組": {
+    "prices": {
+      "1xbet": 1.07,
+      "betfair": 1.04,
+      "unibet": 1.05
+    },
+    "capturedAt": "2026-11-13T16:00:00Z",
+    "url": "https://tipsterarea.com/match/serbia-germany-uefa-nations-league-group-stage-955258",
+    "score": [
+      1,
+      3
+    ]
+  },
+  "2026-11-14|03:45|Liechtenstein|Azerbaijan|雙方進球：否|保守組": {
+    "prices": {
+      "1xbet": 1.34,
+      "betfair": 1.33,
+      "unibet": 1.33
+    },
+    "capturedAt": "2026-11-13T16:00:00Z",
+    "url": "https://tipsterarea.com/match/liechtenstein-azerbaijan-uefa-nations-league-group-stage-955266",
+    "score": [
+      0,
+      1
+    ]
+  },
+  "2026-11-14|03:45|Slovenia|Switzerland|瑞士不敗（客勝或和局）|保守組": {
+    "prices": {
+      "1xbet": 1.17,
+      "betfair": 1.13,
+      "unibet": 1.13
+    },
+    "capturedAt": "2026-11-13T16:00:00Z",
+    "url": "https://tipsterarea.com/match/slovenia-switzerland-uefa-nations-league-group-stage-955260",
+    "score": [
+      0,
+      0
+    ]
+  },
+  "2026-11-14|03:45|Scotland|North Macedonia|蘇格蘭獲勝|保守組": {
+    "prices": {
+      "1xbet": 1.22,
+      "betfair": 1.15,
+      "unibet": 1.18
+    },
+    "capturedAt": "2026-11-13T16:00:00Z",
+    "url": "https://tipsterarea.com/match/scotland-north-macedonia-uefa-nations-league-group-stage-955259",
+    "score": [
+      2,
+      1
+    ]
+  },
+  "2026-11-14|04:00|Salamanca CF UDS|Celta Vigo|塞爾塔獲勝|保守組": {
+    "prices": {
+      "1xbet": 1.24,
+      "unibet": 1.25
+    },
+    "capturedAt": "2026-11-13T16:00:00Z",
+    "url": "https://tipsterarea.com/match/salamanca-cf-uds-celta-vigo-copa-del-rey-spain-955273"
+  },
+  "2026-11-14|07:00|Argentina|Uruguay|全場總進球小2.5|激進組": {
+    "prices": {
+      "1xbet": 1.82,
+      "betfair": 1.73,
+      "unibet": 1.7
+    },
+    "capturedAt": "2026-11-13T20:05:00Z",
+    "url": "https://tipsterarea.com/match/argentina-uruguay-national-friendly-955314",
+    "score": [
+      1,
+      2
+    ]
+  },
+  "2026-11-14|03:45|Netherlands|Greece|雙方進球：是|激進組": {
+    "prices": {
+      "1xbet": 1.66,
+      "betfair": 1.62,
+      "unibet": 1.66
+    },
+    "capturedAt": "2026-11-13T16:00:00Z",
+    "url": "https://tipsterarea.com/match/netherlands-greece-uefa-nations-league-group-stage-955257",
+    "score": [
+      7,
+      0
+    ]
+  },
+  "2026-11-14|18:15|Japan|Brazil|雙方進球：是|激進組": {
+    "prices": {
+      "1xbet": 1.59,
+      "betfair": 1.6,
+      "unibet": 1.58
+    },
+    "capturedAt": "2026-11-14T08:05:00Z",
+    "url": "https://tipsterarea.com/match/japan-brazil-national-friendly-955319",
+    "score": [
+      3,
+      2
+    ]
+  }
+}

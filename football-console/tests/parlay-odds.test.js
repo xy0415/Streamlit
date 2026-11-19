@@ -45,3 +45,20 @@ test('use a common bookmaker and account for half win, half loss and refunded st
  assert.equal(mixed.commonBook,false);
  assert.equal(mixed.kind,'reference');
 });
+
+test('published public odds retain their market, signed kickoff and source timestamp',()=>{
+ const {parsePage}=require('../tipster-odds');
+ const html='<div itemprop="startDate" content="2026-11-19T22:30"></div>'+
+  '<table class="odds"><tr><th class="odds-type" colspan="2">BTS</th></tr>'+
+  '<tr><td><img class="bookie" alt="1xbet"></td><td class="center">&nbsp;</td>'+
+  '<td class="odd odd-up">1.73</td><td class="odd odd-down">2.01</td></tr></table>'+
+  '<p>Odds are accurate at last update 19.11.2026 16:00.</p>';
+ const books=new Map([['1xbet','1xBet']]);
+ const pick={market:'btts',side:'no'};
+ const kickoff='2026-11-19T22:30:00Z';
+ const quote=parsePage(html,'/match/example-1',pick,kickoff,books)[0];
+ assert.equal(quote.price,2.01);
+ assert.equal(quote.capturedAt,'2026-11-19T16:00:00Z');
+ assert.equal(quote.url,'https://tipsterarea.com/match/example-1');
+ assert.deepEqual(parsePage(html,'/match/example-1',pick,'2026-11-19T22:31:00Z',books),[]);
+});

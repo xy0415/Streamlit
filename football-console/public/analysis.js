@@ -1233,6 +1233,7 @@ async function loadParlayOdds(report,force=false){
    if(!res.ok)throw Error('Odds HTTP '+res.status);
    const data=await res.json();
    entry.legs={...entry.legs,...data.legs};
+   entry.scores={...entry.scores,...data.scores};
    entry.status=data.status;
    entry.complete=['ready','outside_window'].includes(data.status);
   }catch{
@@ -1282,7 +1283,12 @@ function renderParlayHistory(){
   const odds=parlayValues(picks,report);
   const grades=picks.map(p=>{
    const score=state.historyScores.get(historyId(p));
-   return score?.verified?score.grade:null;
+   if(score?.status==='conflict')return null;
+   const verified=parlayOddsByDate.get(report.date)?.scores?.[p.id];
+   if(!verified)return score?.verified?score.grade:null;
+   if(score&&Number.isInteger(score.h)&&(score.h!==verified.h||score.a!==verified.a))return null;
+   return gradeHistory(p,verified);
+
   });
   const net=odds.product&&odds.commonBook?INSIGHTS.parlayNet(grades,odds.prices):null;
   const status=odds.duplicate?'同場多關':picks.length<2?'單場':!odds.product?(parlayOddsByDate.get(report.date)?.status==='rate_limited'?'賠率待查詢':'缺賠率'):
@@ -1320,9 +1326,12 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
   const odds=parlayValues(picks,report);
   const legs=picks.map(p=>{
    const event=review?eventForPrediction(p,fixtures):null;
-   const live=resultScoreFromFixture(p,event);
+   const eventScore=resultScoreFromFixture(p,event);
+   const archived=review?entry?.scores?.[p.id]:null;
+   const live=archived?{...archived,scoreVerified:true}:eventScore;
+   const different=archived&&eventScore&&(archived.h!==eventScore.h||archived.a!==eventScore.a);
    const stored=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
-   const conflict=event?.scoreConflict||(stored&&live&&(live.h!==p.homeScore||live.a!==p.awayScore));
+   const conflict=different||event?.scoreConflict||(stored&&live&&(live.h!==p.homeScore||live.a!==p.awayScore));
    const score=conflict?null:stored?{h:p.homeScore,a:p.awayScore}:live;
    return {p,score,verified:!conflict&&(stored||live?.scoreVerified),grade:gradeHistory(p,score)||
     (stored&&!conflict?HISTORY?.settledFromString(p.settlement):null)};
@@ -1336,13 +1345,14 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
    legs.map(({p,score,grade},index)=>{
     const quote=odds.prices[index];
     const shared=[...affected.get(parlayMatchKey(p))].filter(item=>item!==group);
-    const stamp=quote&&fTaiwan(quote.capturedAt.replace(' ','T').replace(/(\d\d:\d\d(?::\d\d)?)$/,'$1+08:00'));
+    const stamp=quote&&fTaiwan(INSIGHTS.oddsTimestamp(quote.capturedAt));
     return '<li><div><a href="'+escapeHtml(INSIGHTS.matchLink(p,review?'reviews':'predictions',review?'review':'prediction'))+'"><strong>'+
      escapeHtml((index+1)+'. '+localizedTeamName(p.home,p.homeZh)+' vs '+localizedTeamName(p.away,p.awayZh))+
      '</strong></a>'+(shared.length?'<div class="search-meta">同場亦見於 '+escapeHtml(shared.join('、'))+'</div>':'')+
      '</div><span class="parlay-market">'+escapeHtml(displayCleanText(p.market))+'</span><div class="parlay-result"><strong>'+
      (quote?quote.price.toFixed(2):'—')+'</strong>'+(quote?'<small>'+escapeHtml(quote.source+' · '+(quote.kind==='published'?'發布原價':'賽前價')+
-     (stamp?' · '+stamp.stamp:''))+'</small>':'')+(review?'<small>'+(score?score.h+' : '+score.a+' · ':'')+
+     (stamp?' · '+stamp.stamp:''))+(quote.url&&/^https:\/\/tipsterarea\.com\/match\/[a-z0-9-]+$/.test(quote.url)?
+     ' · <a href="'+escapeHtml(quote.url)+'" target="_blank" rel="noopener noreferrer">來源</a>':'')+'</small>':'')+(review?'<small>'+(score?score.h+' : '+score.a+' · ':'')+
      (gradeLabels[grade]||'待結算')+'</small>':'')+'</div></li>';
    }).join('')+'</ol><footer><span>'+foot+'</span><strong>綜合賠率 '+(odds.product?odds.product.toFixed(2):'—')+
    (net===null?'':' · 損益 '+signedUnits(net)+' 單位')+'</strong></footer></article>';
