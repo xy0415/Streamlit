@@ -18,6 +18,8 @@ const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[]
   summaryCache:new Map(),activeMatchId:'',matchDetailPayload:null,
   historyScores:new Map(),historyLoading:false,historyChecks:0,historyErrors:0,
   historyRequired:0,historyCheckedAt:0,historyBatch:0,tsdbNextRequestAt:0,lastAutoRefresh:0};
+const standingsLeagues=LEAGUES.filter(([code])=>new Set(['eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','ned.1','por.1','bra.1','arg.1','usa.1','ksa.1','jpn.1','kor.1','mex.1','tur.1','bel.1','sco.1','chn.1','aus.1']).has(code));
+const standingsState={league:'eng.1',snapshots:new Map(),busy:false,sequence:0};
 
 const SCOREBOARD_TTL=45000; // Recent scoreboard refresh; older dates stay cached longer.
 const LIVE=typeof window!=='undefined'?window.FootballLive:null;
@@ -1365,15 +1367,49 @@ function renderHistory(){
    '<button class="mlauto" data-load-day="'+escapeHtml(day)+'">查看</button></div>';
  }).join('')||'<div class="empty">尚無歷史預測</div>';
 }
+function renderStandings(){
+ const select=$('standingsLeague'),content=$('standingsContent'),status=$('standingsUpdated');
+ if(!select||!content)return;
+ const cached=standingsState.snapshots.get(standingsState.league);
+ if(!cached){content.innerHTML='<div class="standings-message">正在取得聯賽積分榜…</div>';status.textContent='';return}
+ if(cached.error){content.innerHTML='<div class="standings-message">'+escapeHtml(cached.error)+'</div>';status.textContent='';return}
+ const stamp=new Date(cached.checkedAt);
+ status.textContent='ESPN · 查詢 '+(Number.isFinite(stamp.getTime())?stamp.toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—');
+ content.innerHTML='<div class="standings-season">'+escapeHtml(KN[standingsState.league]||standingsState.league)+(cached.season?' · '+escapeHtml(cached.season):'')+'</div>'+
+ cached.groups.map(group=>'<section class="standings-group">'+(cached.groups.length>1?'<h3>'+escapeHtml(group.name||'分組')+'</h3>':'')+
+ '<div class="standings-scroll"><table class="standings-table"><thead><tr><th>#</th><th>球隊</th><th>賽</th><th>勝</th><th>和</th><th>負</th><th>進–失</th><th>淨勝</th><th>積分</th></tr></thead><tbody>'+
+ group.rows.map(row=>'<tr><td class="standing-rank">'+row.rank+'</td><td class="standing-team">'+teamLogo(row.logo,row.name)+'<strong>'+escapeHtml(localizedTeamName(row.name))+'</strong></td><td>'+row.played+'</td><td>'+row.won+'</td><td>'+row.drawn+'</td><td>'+row.lost+'</td><td>'+row.goalsFor+'–'+row.goalsAgainst+'</td><td>'+(row.goalDifference>0?'+':'')+row.goalDifference+'</td><td class="standing-points">'+row.points+'</td></tr>').join('')+'</tbody></table></div></section>').join('');
+}
+async function loadStandings(force=false){
+ if(standingsState.busy)return;
+ const league=standingsState.league,prior=standingsState.snapshots.get(league);
+ if(!force&&prior&&!prior.error&&Date.now()-Date.parse(prior.checkedAt)<35000){renderStandings();return}
+ standingsState.busy=true;const request=++standingsState.sequence;
+ $('standingsRefresh').disabled=true;
+ try{
+  const response=await fetch('/api/standings?league='+encodeURIComponent(league),{cache:'no-store'});
+  const data=await response.json();
+  if(!response.ok||!data.groups?.length||data.groups.some(g=>!g.rows?.length))throw Error(data.error||'目前無法取得完整積分榜');
+  standingsState.snapshots.set(league,data);
+ }catch(error){
+  // Keep a previously verified snapshot rather than replacing it with broken rows.
+  if(!prior||prior.error)standingsState.snapshots.set(league,{error:String(error.message||error)});
+ }finally{
+  standingsState.busy=false;$('standingsRefresh').disabled=false;
+  if(request===standingsState.sequence&&standingsState.league===league)renderStandings();
+ }
+}
 function render(){
  $('nowDate').textContent=todayTaiwan().replaceAll('-','/');
- const names={schedule:['每日賽程','每日賽程'],predictions:['分析預測','正式預測'],reviews:['賽後復盤','賽後復盤'],history:['歷史統計','歷史統計']};
+ const names={schedule:['每日賽程','每日賽程'],predictions:['分析預測','正式預測'],reviews:['賽後復盤','賽後復盤'],history:['歷史統計','歷史統計'],standings:['聯賽積分榜','聯賽積分榜']};
  const t=names[state.view];$('viewTitle').textContent=t[0];$('breadcrumb').textContent=t[1];
  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===state.view));
  $('schedulePanel').classList.toggle('hidden',state.view!=='schedule');
  $('predictionsPanel').classList.toggle('hidden',state.view!=='predictions');
  $('reviewPanel').classList.toggle('hidden',state.view!=='reviews');
  $('historyPanel').classList.toggle('hidden',state.view!=='history');
+ $('standingsPanel').classList.toggle('hidden',state.view!=='standings');
+ if(state.view==='standings')renderStandings();
  updateFilter();renderSchedule();renderPredictions();renderReview();renderHistory()
 }
 function openModal(id){$(id).classList.remove('hidden')}
@@ -1389,6 +1425,10 @@ function getDailyExport(){
  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='football-'+state.day+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 function init(){
+ $('standingsLeague').innerHTML=standingsLeagues.map(([code,name])=>'<option value="'+code+'">'+escapeHtml(name)+'</option>').join('');
+ $('standingsLeague').value=standingsState.league;
+ $('standingsLeague').onchange=event=>{standingsState.league=event.target.value;renderStandings();loadStandings(false)};
+ $('standingsRefresh').onclick=()=>loadStandings(true);
  try{const saved=JSON.parse(localStorage.getItem('football-dashboard-leagues')||'null');if(Array.isArray(saved)&&saved.length)state.leagues=new Set(saved.filter(x=>KN[x]))}catch{}
  // One-time migration: include both AFCON competitions for existing visitors.
  try{if(localStorage.getItem('football-afcon-migration-v1')!=='done'){
@@ -1401,6 +1441,7 @@ function init(){
    if(state.view==='reviews')loadReviewScores(false);
    else if(state.view==='schedule')loadFixtures(false);
    else if(state.view==='history')loadHistoryResults(false);
+   else if(state.view==='standings')loadStandings(false);
  }));
  $('selectedDay').onchange=e=>pickDay(e.target.value);
  $('prevDay').onclick=()=>pickDay(addDay(state.day,-1));
@@ -1421,6 +1462,8 @@ function init(){
    await loadFeed();
    if(state.view==='history'){
      if(!state.historyLoading)await loadHistoryResults(true);
+   }else if(state.view==='standings'){
+     await loadStandings(true);
    }else if(state.view==='reviews'){
      await loadReviewScores(true);
    }else{
@@ -1437,6 +1480,8 @@ function init(){
  };
  // Live-only ESPN summary refresh; source-reported match minute is not locally fabricated.
  setInterval(()=>pollLiveMatches(),35000);
+ // The upstream shared cache is 45 seconds; refresh only while the table is visible.
+ setInterval(()=>{if(document.visibilityState==='visible'&&state.view==='standings')loadStandings(false)},45000);
  // Review is independently refreshed while visible; finished fixtures settle from actual data.
  setInterval(()=>{
   if(document.visibilityState!=='visible'||state.view!=='reviews'||state.reviewLoading)return;
