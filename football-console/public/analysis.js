@@ -1102,6 +1102,8 @@ function renderReviewArticle(rows,fixtures){
   const f=eventForPrediction(p,fixtures);
   const score=f?resultScoreFromFixture(p,f):null;
   const stored=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
+  if(stored&&f?.scoreConflict)continue;
+  if(stored&&score&&(p.homeScore!==score.h||p.awayScore!==score.a))continue;
   const h=stored?p.homeScore:score?.h,a=stored?p.awayScore:score?.a;
   if(!Number.isInteger(h)||!Number.isInteger(a))continue;
   const grade=HISTORY?.evaluate(p,h,a);
@@ -1109,27 +1111,81 @@ function renderReviewArticle(rows,fixtures){
   settled.push({p,h,a,grade});
  }
  if(!settled.length){body.textContent='目前尚無可核實的終場結果，待實際賽果確認後更新檢討。';return}
- const won=settled.filter(x=>x.grade==='win'||x.grade==='halfwin').length;
+ const won=settled.filter(x=>x.grade==='win'||x.grade==='halfwin');
  const losses=settled.filter(x=>x.grade==='loss'||x.grade==='halfloss');
- const push=settled.filter(x=>x.grade==='push').length;
+ const push=settled.filter(x=>x.grade==='push');
  const pending=Math.max(0,rows.length-settled.length);
- const intro='本日已結算 '+settled.length+' 場推薦，贏 '+won+' 場、輸 '+losses.length+' 場、走盤 '+push+' 場。'+
+ const intro='本日已結算 '+settled.length+' 場推薦，贏 '+won.length+' 場、輸 '+losses.length+' 場、走盤 '+push.length+' 場。'+
   (pending?'另有 '+pending+' 場尚未取得可核實的結算結果，暫不納入檢討。':'');
  const lessons=[];
  for(const {p,h,a} of losses){
   const market=displayCleanText(p.market),goals=h+a;
   const description=localizedTeamName(p.home,p.homeZh)+'對'+localizedTeamName(p.away,p.awayZh);
-  if(/(?:小|Under|under)\s*3[.,]5/.test(market)&&goals>=4){
-   lessons.push(description+'的小 3.5 失利，提醒小球不能只看平均總進球，還須檢查單隊高比分及比賽尾端風險。');
-  }else if(/(?:大|Over|over)\s*1[.,]5/.test(market)&&goals<=1){
-   lessons.push(description+'的大 1.5 失利，提醒進球預期偏高不代表能排除零至一球的結果。');
+  const total=reviewTotalLine(market);
+  if(total?.direction==='小'){
+   const concentration=Math.max(h,a)>=4?'其中單隊高比分已足以突破盤線，':'';
+   lessons.push(description+'的小 '+total.line+' 失利：實際總進球 '+goals+' 球，'+concentration+'往後應逐一估算高比分尾端情境，而非僅以場均進球支撐小球判斷。');
+  }else if(total?.direction==='大'){
+   lessons.push(description+'的大 '+total.line+' 失利：實際總進球 '+goals+' 球，顯示低進球情境仍不可忽略；需重估雙方的零至一球風險及進攻效率假設。');
+  }else if(/不敗|勝或和局|勝或平局/.test(market)){
+   lessons.push(description+'的不敗盤失利：不敗只防和局，無法防守選定球隊落敗；應重估對手贏球的機率及盤口容錯。');
   }else{
-   lessons.push(description+'的推薦失利，應重新檢查原始數據、盤口防守性及事前風險權重。');
+   lessons.push(description+'的'+market+'失利，需回查賽前選盤依據、失敗情境與實際盤線，而非用賽後比分倒推原先應選的方向。');
   }
  }
- const finding=losses.length?'需要改進的是：'+lessons.join(' '):'本日已結算的推薦沒有失利，但不能單靠命中判定原始分析完全正確。';
- const enduring='長期應保留的經驗是，盤口應依球隊特性、數據與風險分布選擇，不因單次輸贏就否定或固定採用某種盤口。每場無論對錯，都須回顧賽前邏輯、估計機率、可能的爆冷路徑及串關共同風險，並將累積結果用於往後的機率校準。';
- body.textContent=intro+'\n\n'+finding+'\n\n'+enduring;
+ const finding=losses.length?'失利檢討：'+lessons.join(' '):'失利檢討：本日已結算的推薦沒有失利，但命中並不能證明賽前機率估計完全正確。';
+ const borderline=won.find(({p,h,a})=>{
+  const total=reviewTotalLine(p.market);
+  return !!total&&Math.abs((h+a)-total.line)===0.5;
+ });
+ let success='命中檢討：'+(won.length?'本日命中的選項仍須區分合理判斷與比分波動，避免將一次命中當作原有假設全數成立。':'沒有已核實的命中場次可用來評估成功理由。');
+ if(borderline){
+  const {p,h,a}=borderline;
+  success+='例如'+localizedTeamName(p.home,p.homeZh)+'對'+localizedTeamName(p.away,p.awayZh)+'的'+displayCleanText(p.market)+'雖然命中，實際總進球為 '+(h+a)+' 球，距盤線僅半球；這類接近邊界的勝出仍須檢查容錯。';
+ }
+ const calibrated=settled.filter(({p,grade})=>(grade==='win'||grade==='loss')&&Number.isFinite(p.probability)&&p.probability>0&&p.probability<100);
+ const calibration=calibrated.length>=3?'機率檢查：'+calibrated.length+' 場有原始估計機率且可作全贏／全輸比較，平均預估 '+Math.round(calibrated.reduce((sum,x)=>sum+x.p.probability,0)/calibrated.length)+'%，實際全贏 '+Math.round(calibrated.filter(x=>x.grade==='win').length/calibrated.length*100)+'%。這只是一日落差，需和跨日同市場結果累積比較，不能直接當成機率校準結論。':'';
+ const history=reviewHistoricalComparison(losses);
+ const enduring='長期應保留的經驗：每次推薦都要對照歷史中相同盤口、聯賽及比分分布，重新檢查低進球、高比分尾端和熱門隊失利情境；再比較可核實盤線的全贏、走盤與全輸風險。對勝出的場次也檢查盤線是否過窄，將發現放入跨日樣本檢驗，不因單日輸贏固定選用某種盤口。';
+ body.textContent=[intro,finding,success,calibration,history,enduring].filter(Boolean).join('\n\n');
+}
+
+function reviewTotalLine(market){
+ const raw=String(market||'').replace(/\s+/g,'');
+ const hit=raw.match(/(?:全場)?(?:總進球|進球數)(大|小)(\d+(?:[.,]\d+)?)/)||raw.match(/全場(大|小)(\d+(?:[.,]\d+)?)/);
+ if(!hit)return null;
+ const line=Number(hit[2].replace(',','.'));
+ return Number.isFinite(line)?{direction:hit[1],line}:null;
+}
+function reviewHistoricalComparison(losses){
+ if(!losses.length||!state.feed?.reports||!HISTORY)return '';
+ const current=state.report?.date||state.day;
+ const keys=new Set(),sentences=[];
+ for(const {p} of losses){
+  const market=displayCleanText(p.market).replace(/\s+/g,'');
+  if(keys.has(market))continue;
+  keys.add(market);
+  const seen=new Set(),older=[];
+  for(const report of state.feed.reports){
+   if(!report.date||report.date>=current)continue;
+   for(const old of report.matches||[]){
+    if(!old.verified||displayCleanText(old.market).replace(/\s+/g,'')!==market)continue;
+    if(!Number.isInteger(old.homeScore)||!Number.isInteger(old.awayScore))continue;
+    const id=historyId(old);
+    if(seen.has(id))continue;
+    seen.add(id);
+    const grade=HISTORY.evaluate(old,old.homeScore,old.awayScore);
+    if(grade)older.push(grade);
+   }
+  }
+  if(older.length<3)continue;
+  const hits=older.filter(x=>x==='win'||x==='halfwin').length;
+  const misses=older.filter(x=>x==='loss'||x==='halfloss').length;
+  const pushes=older.filter(x=>x==='push').length;
+  sentences.push(market+'過往已核實 '+older.length+' 場，贏 '+hits+'、輸 '+misses+'、走盤 '+pushes+'；');
+  if(sentences.length===2)break;
+ }
+ return sentences.length?'歷史對照：'+sentences.join('')+'這是已發布推薦的選擇性樣本，僅用來找出應進一步核查的風險，不直接推論未來勝率。':'';
 }
 
 const HISTORY=window.FootballHistory||null;
