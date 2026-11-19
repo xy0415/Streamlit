@@ -723,7 +723,7 @@ function predsForView(){
   if(st==='scheduled')return !x.verified&&fixture?.status!=='finished';
   if(st==='inprogress')return fixture?.status==='inprogress'||fixture?.status==='halftime';
   return true;
- });
+ }).sort((a,b)=>String(a.time||'').localeCompare(String(b.time||''))||(Number(a.order)||0)-(Number(b.order)||0));
 }
 function updateFilter(){
  const l=$('leagueFilter'),old=l.value;
