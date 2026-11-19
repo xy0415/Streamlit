@@ -92,7 +92,9 @@ async function loadLatestReport() {
     if (next) {
       featured.textContent = sideName(next,'home')+' vs '+sideName(next,'away');
       meta('featured-time',formatDay(next.date)+' '+next.time+' · '+next.league);
-      document.querySelector('#featured-link').href = insights.matchLink(next,'predictions','prediction');
+      const link = document.querySelector('#featured-link');
+      link.href = insights.matchLink(next,'predictions','prediction');
+      link.textContent = '查看比賽詳情';
     } else {
       featured.textContent = data.connected?'暫無即將開賽的已發布預測':'暫時無法確認重點賽事';
     }
