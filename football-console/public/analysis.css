@@ -790,3 +790,39 @@ tbody tr:hover{background:#fcfdff}
  .history-item{gap:7px 11px}
  .history-item .history-percentage{margin-left:0}
 }
+
+/* Dense, chronological match lists on phones; the whole card stays tappable. */
+@media(max-width:700px){
+ .schedule-table tbody,.review-table tbody{gap:6px;padding:0 10px 12px}
+ .schedule-table tbody tr{
+  grid-template-columns:62px minmax(0,1fr) auto;
+  grid-template-areas:"time league outcome" "teams teams teams";
+  gap:5px 7px;min-height:0;padding:9px 11px;border-radius:9px
+ }
+ .schedule-table td:nth-child(3){padding-top:5px!important;border-top:1px solid #eef2f6}
+ .schedule-table .fixture-time .fixture-day{font-size:10px}
+ .schedule-table .fixture-time strong{font-size:14px}
+ .schedule-table .league-token{font-size:10.5px;padding:3px 6px}
+ .schedule-table .fixture-outcome>div{margin-bottom:2px}
+ .schedule-table .match-score{font-size:17px}
+ .schedule-table .fixture-outcome .pill{font-size:9.5px;padding:2px 6px}
+ .schedule-table .teams-stack{gap:2px}
+ .schedule-table .match-team{gap:6px;min-height:27px}
+ .schedule-table .team-position{flex-basis:19px;width:19px;height:19px;font-size:10px}
+ .schedule-table .team-crest{flex-basis:24px;width:24px;height:24px}
+ .schedule-table .team-names{gap:5px}
+ .schedule-table .team-names strong{font-size:13.5px}
+ .schedule-table .team-names small{font-size:10.5px}
+ .predictiongrid{gap:7px;padding:0 10px 12px}
+ .prediction{padding:11px 12px;border-radius:9px}
+ .pred-top{margin-bottom:7px}
+ .pred-team-stack{margin:4px 0 9px;gap:4px}
+ .pred-team-stack .team-crest{height:24px;width:24px;flex-basis:24px}
+ .pred-team-stack .team-names strong{font-size:14px}
+ .pred-choice{padding-top:9px}
+ .review-table tbody tr{padding:10px 12px;gap:5px 9px}
+ .review-teams{gap:3px}
+ .review-table .team-crest{height:24px;width:24px;flex-basis:24px}
+ .review-table .team-names strong{font-size:14px}
+ .review-table .review-score strong{font-size:17px}
+}
