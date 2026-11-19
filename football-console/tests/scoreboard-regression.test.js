@@ -198,6 +198,38 @@ test('Review commentary names actual losing markets without duplicating score li
  assert.match(article,/零至一球/);
  assert.doesNotMatch(article,/08:30.*4：0/);
 });
+test('Review checks borderline wins, original probabilities and earlier verified market results',()=>{
+ const {context,state,document}=setup();
+ state.day='2026-11-19';state.report={date:state.day,matches:[]};
+ const base={league:'巴甲',market:'全場總進球小 3.5',verified:true,probability:76,probabilityType:'全贏'};
+ state.feed={reports:[{date:'2026-11-18',matches:[
+  {...base,date:'2026-11-18',time:'02:00',home:'A',away:'B',homeScore:1,awayScore:1,order:1},
+  {...base,date:'2026-11-18',time:'04:00',home:'C',away:'D',homeScore:0,awayScore:1,order:2},
+  {...base,date:'2026-11-18',time:'06:00',home:'E',away:'F',homeScore:2,awayScore:2,order:3}
+ ]}]};
+ const current=[
+  {...base,date:state.day,time:'08:30',home:'Corinthians',away:'Botafogo',homeScore:4,awayScore:0,order:1},
+  {...base,date:state.day,time:'07:00',home:'G',away:'H',homeScore:2,awayScore:1,order:2},
+  {...base,date:state.day,time:'06:30',home:'I',away:'J',homeScore:1,awayScore:0,order:3}
+ ];
+ context.renderReviewArticle(current,[]);
+ const article=document.getElementById('reviewArticleBody').textContent;
+ assert.match(article,/失利檢討/);
+ assert.match(article,/命中檢討/);
+ assert.match(article,/距盤線僅半球/);
+ assert.match(article,/平均預估 76%/);
+ assert.match(article,/歷史對照/);
+ assert.match(article,/過往已核實 3 場，贏 2、輸 1、走盤 0/);
+ assert.match(article,/選擇性樣本/);
+});
+test('Review does not publish a result while stored and live final scores conflict',()=>{
+ const {context,state,document}=setup();
+ state.report={date:'2026-11-19',matches:[]};
+ const p={date:'2026-11-19',time:'08:30',league:'巴甲',home:'Corinthians',away:'Botafogo',market:'全場總進球小 3.5',verified:true,homeScore:4,awayScore:0};
+ const f={id:'score-conflict',date:p.date,time:p.time,leagueCode:'bra.1',home:p.home,away:p.away,status:'finished',scoreHome:1,scoreAway:1};
+ context.renderReviewArticle([p],[f]);
+ assert.match(document.getElementById('reviewArticleBody').textContent,/尚無可核實/);
+});
 test('Prediction and review entries expose accessible clickable detail targets',()=>{
  const {context,state,document}=setup();
  const p={date:'2026-11-18',time:'03:45',order:1,league:'歐國聯',
