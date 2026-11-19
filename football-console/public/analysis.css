@@ -711,6 +711,13 @@ tbody tr:hover{background:#fcfdff}
 .review-result.loss{color:#c83b49}
 .review-result.neutral{color:#91a0b1;font-weight:650}
 .review-score strong{font-size:19px}
+.prediction.clickable-match,.review-table tr.clickable-match{cursor:pointer}
+.prediction.clickable-match:hover,.review-table tr.clickable-match:hover{background:#f5f9ff}
+.prediction.clickable-match:focus-visible,.review-table tr.clickable-match:focus-visible{outline:2px solid #356bd1;outline-offset:-2px}
+.review-article{margin:18px 20px 22px;padding:18px 20px;border:1px solid #e6edf6;border-radius:10px;background:#fbfcff}
+.review-article h3{font-size:16px;color:#243b5b;margin:0 0 12px}
+#reviewArticleBody{white-space:pre-wrap;line-height:1.9;color:#42546b;font-size:14px;overflow-wrap:anywhere}
+@media(max-width:680px){.review-article{margin:14px 12px;padding:15px}#reviewArticleBody{font-size:14px}}
 @media(max-width:1100px) and (min-width:701px){
  .review-table{min-width:770px}
  .review-table th:nth-child(2){min-width:235px}
