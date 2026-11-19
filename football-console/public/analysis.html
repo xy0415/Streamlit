@@ -5,17 +5,17 @@
 <link rel="stylesheet" href="/analysis.css"></head>
 <body><div class="layout">
 <aside class="sidebar">
- <a class="brand" href="/"><span class="brandmark">◈</span><span><strong>FOOTBALL</strong><small>ANALYTICS</small></span></a>
+ <a class="brand" href="/"><span class="brandmark" aria-hidden="true"></span><span><strong>FOOTBALL</strong><small>ANALYTICS</small></span></a>
  
  <nav class="sidenav">
-  <button class="navitem active" data-view="schedule"><span>▦</span>每日賽程</button>
-  <button class="navitem" data-view="predictions"><span>◎</span>分析預測</button>
-  <button class="navitem" data-view="reviews"><span>✓</span>賽後復盤</button>
-  <button class="navitem" data-view="history"><span>▤</span>歷史統計</button>
-  <button class="navitem" data-view="standings"><span>▥</span>聯賽積分榜</button>
+  <button class="navitem active" data-view="schedule"><span aria-hidden="true">01</span>每日賽程</button>
+  <button class="navitem" data-view="predictions"><span aria-hidden="true">02</span>分析預測</button>
+  <button class="navitem" data-view="reviews"><span aria-hidden="true">03</span>賽後復盤</button>
+  <button class="navitem" data-view="history"><span aria-hidden="true">04</span>歷史統計</button>
+  <button class="navitem" data-view="standings"><span aria-hidden="true">05</span>聯賽積分榜</button>
  </nav>
  <div class="navtitle second">TOOLS</div>
- <a class="navitem" href="/index.html"><span>⇄</span>賽程資料驗證 <span class="arrow">↗</span></a>
+ <a class="navitem" href="/index.html"><span aria-hidden="true">↗</span>賽程資料驗證</a>
  <div class="sidebarfoot"><div class="syncdot"></div><div><strong id="sideSync">正式預測檔案已載入</strong><small id="sideTime">等待同步</small></div></div>
 </aside>
 <main class="main">
@@ -26,34 +26,34 @@
   <button class="mobile-item" data-view="reviews">賽後復盤</button>
   <button class="mobile-item" data-view="history">歷史統計</button>
   <button class="mobile-item" data-view="standings">聯賽積分榜</button>
-  <a class="mobile-item more-link" href="/index.html">資料驗證 ↗</a>
+  <a class="mobile-item more-link" href="/index.html">資料驗證</a>
  </nav>
  <div class="content">
-   <div class="heading"><div><h1 id="viewTitle">每日賽程</h1></div><div class="actions"><button class="btn secondary" id="exportDaily">匯出當日資料 ↗</button><button class="btn primary" id="refreshAll">↻ 更新資料</button></div></div>
+   <div class="heading"><div><h1 id="viewTitle">每日賽程</h1></div><div class="actions"><button class="btn secondary" id="exportDaily">匯出資料</button><button class="btn primary" id="refreshAll">更新資料</button></div></div>
    <div class="controls panel">
     <div class="inputset"><label for="selectedDay">台灣日期</label><div class="date-row"><button class="direction" id="prevDay" title="前一天">‹</button><input id="selectedDay" type="date"><button class="direction" id="nextDay" title="後一天">›</button></div></div>
     <div class="inputset league-select"><label for="leagueFilter">聯賽</label><select id="leagueFilter"><option value="">所有聯賽</option></select></div>
     <div class="inputset status-select"><label for="statusFilter">狀態</label><select id="statusFilter"><option value="">所有狀態</option><option value="scheduled">未開賽</option><option value="inprogress">進行中</option><option value="finished">已完賽</option></select></div>
     <div class="grow"></div><div class="data-provider"><span class="live-light"></span><span id="sourceSummary">查核資料等待更新</span></div>
    </div>
-   <section id="schedulePanel" class="panel mainsection"><div class="sectionhead"><div><h2>當日賽程</h2><span class="bubble" id="fixtureCount">0</span></div><div class="sectionactions"><button class="linkbtn" id="leagueChooserBtn">查核聯賽設定 ⚙</button><button class="linkbtn" id="reloadFixtures">重新抓取 ↻</button></div></div>
+   <section id="schedulePanel" class="panel mainsection"><div class="sectionhead"><div><h2>當日賽程</h2><span class="bubble" id="fixtureCount">0</span></div><div class="sectionactions"><button class="linkbtn" id="leagueChooserBtn">聯賽設定</button><button class="linkbtn" id="reloadFixtures">重新抓取</button></div></div>
    <div class="notice hidden" id="fixtureNotice" role="status"></div>
    <div class="tablewrap"><table class="schedule-table"><thead><tr><th>台灣時間</th><th>聯賽</th><th>對戰球隊（主／客）</th><th>比分與狀態</th></tr></thead><tbody id="fixtureTable"></tbody></table></div><div id="fixtureEmpty" class="empty"><strong>尚未取得賽程</strong><small>選取日期並按「重新抓取」</small></div></section>
-   <section id="predictionsPanel" class="panel mainsection"><div class="sectionhead"><div><h2>正式分析預測</h2><span class="bubble" id="predictionCount">0</span></div><div class="sectionactions"><span class="sectionhint" id="publishedStamp">僅採已正式寄出的預測</span><button class="linkbtn" id="showOriginal">查看原始全文 ↗</button></div></div>
+   <section id="predictionsPanel" class="panel mainsection"><div class="sectionhead"><div><h2>正式分析預測</h2><span class="bubble" id="predictionCount">0</span></div><div class="sectionactions"><span class="sectionhint" id="publishedStamp">僅採已正式寄出的預測</span><button class="linkbtn" id="showOriginal">查看原始全文</button></div></div>
      <div id="predictionsGrid" class="predictiongrid"></div><div class="empty" id="predictionEmpty"><strong>沒有這天的正式預測紀錄</strong><small>已寄出的預測會保留原始日期、方向與機率</small></div>
    </section>
-   <section id="reviewPanel" class="panel mainsection"><div class="sectionhead"><div><h2>賽後復盤</h2><span class="bubble" id="reviewCount">0</span></div><div class="sectionactions"><span class="sectionhint" id="reviewFreshness">比分待查詢</span><button class="linkbtn" id="refreshReview">↻ 即時更新比分</button></div></div>
+   <section id="reviewPanel" class="panel mainsection"><div class="sectionhead"><div><h2>賽後復盤</h2><span class="bubble" id="reviewCount">0</span></div><div class="sectionactions"><span class="sectionhint" id="reviewFreshness">比分待查詢</span><button class="linkbtn" id="refreshReview">更新比分</button></div></div>
       
       <div class="tablewrap"><table class="review-table"><thead><tr><th>開賽</th><th>對戰球隊（主／客）</th><th>原始選項</th><th>比分</th><th>結算</th></tr></thead><tbody id="reviewTable"></tbody></table></div><div class="empty" id="reviewEmpty"><strong>沒有可顯示的復盤紀錄</strong><small>需要已公開的原始預測及可核對終場結果</small></div>
       <div class="review-article" id="reviewArticleSection"><h3>復盤檢討</h3><div id="reviewArticleBody"></div></div>
    </section>
-   <section id="historyPanel" class="panel mainsection"><div class="sectionhead"><div><h2>歷史績效</h2></div><div class="sectionactions"><span class="sectionhint" id="historyProgress">歷史比分等待查核</span><button class="linkbtn" id="historyRefresh">↻ 更新</button></div></div>
+   <section id="historyPanel" class="panel mainsection"><div class="sectionhead"><div><h2>歷史績效</h2></div><div class="sectionactions"><span class="sectionhint" id="historyProgress">歷史比分等待查核</span><button class="linkbtn" id="historyRefresh">更新</button></div></div>
     <div class="history-filters"><div class="inputset"><label for="historyLeague">聯賽</label><select id="historyLeague"><option value="">全部聯賽</option></select></div><div class="inputset"><label for="historyPeriod">期間</label><select id="historyPeriod"><option value="all">全部期間</option><option value="30">近 30 天</option><option value="90">近 90 天</option><option value="365">近一年</option></select></div></div>
     <div class="statgrid history-statgrid"><div><label>預測選項</label><strong id="historyTotal">0</strong></div><div><label>已結算</label><strong id="historyVerified">0</strong></div><div><label>贏（含半贏）</label><strong id="historyWin">—</strong></div><div><label>輸（含半輸）</label><strong id="historyLoss">—</strong></div><div><label>走盤</label><strong id="historyPush">—</strong></div><div><label>命中率</label><strong id="historyRate">—</strong></div></div>
     <p class="history-explain">命中率 =（全贏 + 半贏 × 0.5）÷（全贏 + 半贏 + 全輸 + 半輸），走盤不計。未取得可靠賽果的不納入命中率。</p>
     <div class="history-table"><div class="history-heading">各聯賽表現</div><div class="tablewrap"><table class="history-league-table"><thead><tr><th>聯賽</th><th>預測</th><th>已結算</th><th>贏</th><th>輸</th><th>走盤</th><th>命中率</th></tr></thead><tbody id="historyLeagueRows"></tbody></table></div><div class="history-heading">每日紀錄</div><div id="historyRows"></div></div>
    </section>
-   <section id="standingsPanel" class="panel mainsection hidden"><div class="sectionhead"><div><h2>聯賽積分榜</h2></div><div class="sectionactions"><button class="linkbtn" id="standingsRefresh">↻ 更新積分榜</button></div></div>
+   <section id="standingsPanel" class="panel mainsection hidden"><div class="sectionhead"><div><h2>聯賽積分榜</h2></div><div class="sectionactions"><button class="linkbtn" id="standingsRefresh">更新積分榜</button></div></div>
     <div class="standings-controls"><div class="inputset"><label for="standingsLeague">聯賽</label><select id="standingsLeague"></select></div><span id="standingsUpdated" class="standings-updated" role="status"></span></div>
     <div id="standingsContent" class="standings-content"></div>
    </section>
