@@ -1399,6 +1399,7 @@ async function loadStandings(force=false){
  }finally{
   standingsState.busy=false;$('standingsRefresh').disabled=false;
   if(request===standingsState.sequence&&standingsState.league===league)renderStandings();
+  else if(state.view==='standings'&&standingsState.league!==league)loadStandings(false);
  }
 }
 function render(){
