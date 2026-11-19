@@ -4,12 +4,14 @@ const LEAGUES=[
 ['esp.1','西甲'],['esp.copa_del_rey','西班牙國王盃'],['eng.fa','英格蘭足總盃'],['ger.1','德甲'],['ita.1','義甲'],['fra.1','法甲'],['ned.1','荷甲'],
 ['por.1','葡超'],['uefa.champions','歐冠'],['uefa.europa','歐霸'],['uefa.europa.conf','歐協聯'],
 ['bra.1','巴甲'],['arg.1','阿甲'],['usa.1','美職聯'],['ksa.1','沙職'],['jpn.1','日職'],
-['kor.1','韓職'],['aus.1','澳甲'],['fifa.world','世界盃'],['fifa.worldq.uefa','世界盃歐洲區資格賽'],
+['aus.1','澳甲'],['fifa.world','世界盃'],['fifa.worldq.uefa','世界盃歐洲區資格賽'],
 ['fifa.worldq.conmebol','世界盃南美區資格賽'],['concacaf.champions','中北美冠軍盃'],['afc.champions','亞冠'],
 ['mex.1','墨超'],['tur.1','土超'],['bel.1','比甲'],['sco.1','蘇超'],['chn.1','中超']
 ];
 const KN=Object.fromEntries(LEAGUES);
-const defaultLeagues=['uefa.nations','caf.nations','caf.nations_qual','fifa.friendly','eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','bra.1','usa.1','ksa.1','aus.1'];
+// All supported sources are on by default. The unavailable K League feed is
+// intentionally not in LEAGUES; never request or advertise broken coverage.
+const defaultLeagues=LEAGUES.map(([code])=>code);
 const $=id=>document.getElementById(id);
 const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[],loading:false,dayManuallyChosen:false,
   leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),resultLookupCache:new Map(),verifiedResultsPromise:null,scheduleQueued:false,
@@ -683,7 +685,7 @@ async function loadFixtures(force){
    $('sourceSummary').textContent='賽程來源查詢 '+finished+' / '+queries.length;
   }
  }
- await Promise.all(Array.from({length:Math.min(3,queries.length)},worker));
+ await Promise.all(Array.from({length:Math.min(6,queries.length)},worker));
  const seen=new Map();
  for(const e of results){const f=parseScore(e);if(!f||f.date!==day)continue;
   const identity=f.leagueCode+'|'+f.date+'|'+nameKey(f.home)+'|'+nameKey(f.away)+'|'+f.time;
@@ -1532,6 +1534,13 @@ function init(){
    state.leagues.add('aus.1');
    localStorage.setItem('football-dashboard-leagues',JSON.stringify([...state.leagues]));
    localStorage.setItem('football-aus-migration-v1','done');
+ }}catch{}
+ // Existing browsers once stored a narrow default set; upgrade it only once.
+ // Later manual checkbox changes remain untouched across reloads.
+ try{if(localStorage.getItem('football-dashboard-all-leagues-v1')!=='done'){
+   state.leagues=new Set(defaultLeagues);
+   localStorage.setItem('football-dashboard-leagues',JSON.stringify(defaultLeagues));
+   localStorage.setItem('football-dashboard-all-leagues-v1','done');
  }}catch{}
  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
    state.view=b.dataset.view;
