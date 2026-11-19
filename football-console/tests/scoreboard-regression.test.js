@@ -177,11 +177,26 @@ test('Review article uses verified results and keeps unsupported results out',()
   home:'France',homeZh:'法國',away:'Turkey',awayZh:'土耳其',
   market:'全場總進球小 3.5',verified:true,homeScore:2,awayScore:1};
  context.renderReviewArticle([p],[]);
- assert.match(document.getElementById('reviewArticleBody').textContent,/已取得 1 場/);
- assert.match(document.getElementById('reviewArticleBody').textContent,/2：1/);
+ assert.match(document.getElementById('reviewArticleBody').textContent,/已結算 1 場/);
+ assert.doesNotMatch(document.getElementById('reviewArticleBody').textContent,/2：1/);
  assert.match(document.getElementById('reviewArticleBody').textContent,/贏/);
+ assert.match(document.getElementById('reviewArticleBody').textContent,/長期應保留的經驗/);
  context.renderReviewArticle([{...p,market:'總角球大 9.5'}],[]);
- assert.match(document.getElementById('reviewArticleBody').textContent,/尚無可結算/);
+ assert.match(document.getElementById('reviewArticleBody').textContent,/尚無可核實/);
+});
+test('Review commentary names actual losing markets without duplicating score lists',()=>{
+ const {context,state,document}=setup();
+ state.report={date:'2026-11-19',matches:[]};
+ const base={date:'2026-11-19',league:'巴甲',verified:true,time:'08:30'};
+ context.renderReviewArticle([
+  {...base,home:'Corinthians',away:'Botafogo',market:'全場總進球小 3.5',homeScore:4,awayScore:0},
+  {...base,home:'Gremio',away:'Bahia',market:'全場總進球大 1.5',homeScore:0,awayScore:0}
+ ],[]);
+ const article=document.getElementById('reviewArticleBody').textContent;
+ assert.match(article,/輸 2 場/);
+ assert.match(article,/單隊高比分/);
+ assert.match(article,/零至一球/);
+ assert.doesNotMatch(article,/08:30.*4：0/);
 });
 test('Prediction and review entries expose accessible clickable detail targets',()=>{
  const {context,state,document}=setup();
