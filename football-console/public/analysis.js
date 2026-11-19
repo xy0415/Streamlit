@@ -971,25 +971,42 @@ function closeMatchDetail(){
  matchReturnFocus=null;
 }
 
+const collapsedMatchLeagues={schedule:new Set(),reviews:new Set()};
+function leagueGroupedRows(rows,rendered,leagueOf,view){
+ const groups=new Map();
+ rows.forEach((item,i)=>{
+  const league=String(leagueOf(item)||'其他聯賽');
+  if(!groups.has(league))groups.set(league,[]);
+  groups.get(league).push(rendered[i]);
+ });
+ const collapsed=collapsedMatchLeagues[view];
+ return [...groups].map(([league,matches])=>{
+  const key=encodeURIComponent(league),shut=collapsed.has(league);
+  return '<tr class="match-league-heading"><td colspan="'+(view==='schedule'?4:5)+'"><button type="button" class="match-league-toggle" data-league-toggle="'+escapeHtml(key)+'" data-match-view="'+view+'" aria-expanded="'+(!shut)+'"><span>'+escapeHtml(league)+'</span><span class="match-league-meta">'+matches.length+' 場</span><span class="match-league-arrow" aria-hidden="true">⌄</span></button></td></tr>'+
+   matches.map(html=>html.replace('<tr class="clickable-match"','<tr'+(shut?' hidden':'')+' class="clickable-match league-match-row"')).join('');
+ }).join('');
+}
 function renderSchedule(){
  const rows=fixturesForView();$('fixtureCount').textContent=rows.length;$('fixtureEmpty').classList.toggle('hidden',rows.length>0);
- $('fixtureTable').innerHTML=rows.map((x,i)=>{
+ const rendered=rows.map((x,i)=>{
   const p=predictionForEvent(x),when=state.day.slice(5).replace('-','/'),
    effective=displayFixtureStatus(x),
    score=(x.status==='finished'||x.status==='inprogress'||x.status==='halftime')&&
         x.scoreHome!==null&&x.scoreHome!==undefined&&x.scoreAway!==null&&x.scoreAway!==undefined
       ?'<span class="match-score">'+escapeHtml(x.scoreHome)+' : '+escapeHtml(x.scoreAway)+'</span>'
       :elapsedStatus(x)==='scheduled'?'<span class="schedule-vs">VS</span>':'<span class="schedule-vs">— : —</span>';
-  return '<tr class="clickable-match" tabindex="0" role="button" aria-label="查看'+escapeHtml(localizedTeamName(x.home))+'對'+escapeHtml(localizedTeamName(x.away))+'的比賽詳情" data-match-index="'+i+'"><td class="fixture-time"><span class="fixture-day">'+escapeHtml(when)+'</span><strong>'+escapeHtml(x.time)+'</strong></td>'+
+  return '<tr class="clickable-match" tabindex="0" role="button" aria-label="查看'+escapeHtml(localizedTeamName(x.home))+'對'+escapeHtml(localizedTeamName(x.away))+'的比賽詳情" data-match-index="'+i+'"><td class="fixture-time"><span class="fixture-day">'+escapeHtml(when)+'</span><strong>'+escapeHtml(x.time)+'</strong><span class="mobile-fixture-status">'+escapeHtml(effective.text)+'</span></td>'+
    '<td class="fixture-league"><span class="league-token">'+escapeHtml(x.league)+'</span></td>'+
    '<td class="fixture-match"><div class="teams-stack">'+
    teamLine('home',x.home,x.homeShort,x.homeLogo,p?.homeZh,x.leagueCode,x.homeAbbr)+
+   '<span class="inline-match-score">'+score+'</span>'+
    teamLine('away',x.away,x.awayShort,x.awayLogo,p?.awayZh,x.leagueCode,x.awayAbbr)+
    '</div></td>'+
    '<td class="fixture-outcome"><div>'+score+'</div>'+
    statusPill(effective.text,effective.tone)+
    '</td></tr>'
- }).join('');
+ });
+ $('fixtureTable').innerHTML=leagueGroupedRows(rows,rendered,x=>x.league,'schedule');
  const failures=state.sources.filter(x=>x.status==='error').length;
  const staleCount=state.fixtures.filter(x=>['stale','pending','conflict'].includes(elapsedStatus(x))).length;
  if(!state.loading){
@@ -1026,7 +1043,7 @@ function renderReview(){
  const checked=state.reviewUpdatedAt?fTaiwan(state.reviewUpdatedAt).time:'';
  $('reviewFreshness').textContent=state.reviewLoading?'更新比分中…':
    checked?'更新 '+checked+(state.reviewErrors.length?' · 部分賽事尚未更新':''):'尚未更新比分';
- $('reviewTable').innerHTML=rows.map((p,i)=>{
+ const reviewRows=rows.map((p,i)=>{
   const live=eventForPrediction(p,available);
   const liveScore=!!live&&['finished','inprogress','halftime'].includes(live.status)&&
     Number.isInteger(Number(live.scoreHome))&&live.scoreHome!==null&&live.scoreHome!==undefined&&
@@ -1060,7 +1077,8 @@ function renderReview(){
     '<td class="review-market">'+escapeHtml(displayCleanText(p.market))+'</td>'+
     '<td class="review-score"><strong>'+(h!==null&&a!==null?escapeHtml(h)+' : '+escapeHtml(a):'—')+'</strong></td>'+
     '<td class="review-result-cell"><strong class="review-result '+resultClass+'">'+escapeHtml(label)+'</strong></td></tr>';
- }).join('');
+ });
+ $('reviewTable').innerHTML=leagueGroupedRows(rows,reviewRows,p=>p.league,'reviews');
  renderReviewArticle(state.report?.matches||[],available);
 }
 function renderReviewArticle(rows,fixtures){
@@ -1461,6 +1479,17 @@ function init(){
  $('showOriginal').onclick=()=>{if(!state.report)return;$('originalDate').textContent=state.report.date;$('originalArticle').textContent=displayCleanText(state.report.article||'當天未提供可公開原始全文');openModal('originalModal')};
  $('historyRows').onclick=e=>{const b=e.target.closest('[data-load-day]');if(!b)return;pickDay(b.dataset.loadDay);state.view='predictions';render()};
  state.day=todayTaiwan();loadFeed().then(()=>loadFixtures(false));render();
+ document.addEventListener('click',event=>{
+  const toggle=event.target.closest('[data-league-toggle]');
+  if(!toggle)return;
+  const league=decodeURIComponent(toggle.dataset.leagueToggle||'');
+  const collapsed=collapsedMatchLeagues[toggle.dataset.matchView];
+  if(!collapsed)return;
+  if(collapsed.has(league))collapsed.delete(league);else collapsed.add(league);
+  const group=toggle.closest('tr');
+  for(let row=group?.nextElementSibling;row&&!row.classList.contains('match-league-heading');row=row.nextElementSibling)row.hidden=collapsed.has(league);
+  toggle.setAttribute('aria-expanded',String(!collapsed.has(league)));
+ });
  $('fixtureTable').addEventListener('click',event=>{
   const row=event.target.closest('tr[data-match-index]');
   if(!row)return;
