@@ -976,3 +976,60 @@ tbody tr:hover{background:#fcfdff}
  .history-statgrid>div{padding:11px}
  .history-statgrid strong{margin-top:6px;font-size:22px}
 }
+
+/* Compact data overview: show all six historical totals at a glance. */
+.history-statgrid{
+ max-width:none;
+ grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:7px;
+ padding:5px 16px 12px;
+}
+.history-statgrid>div{
+ min-width:0;
+ min-height:64px;
+ padding:9px 12px;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ gap:5px;
+}
+.history-statgrid label{
+ font-size:12px;
+ line-height:1.25;
+ white-space:nowrap;
+}
+.history-statgrid strong{
+ margin:0;
+ font-size:23px;
+ line-height:1.1;
+ font-variant-numeric:tabular-nums;
+}
+.history-filters{gap:9px;padding:8px 16px 4px}
+.history-filters .inputset select{height:35px}
+.history-explain{padding:0 16px 12px;line-height:1.5}
+.history-heading{padding:11px 16px}
+.history-league-table{width:790px;max-width:100%;min-width:620px;table-layout:fixed}
+.history-league-table th:first-child,.history-league-table td:first-child{width:180px}
+.history-league-table th:last-child,.history-league-table td:last-child{width:85px}
+.history-league-table th,.history-league-table td{padding-left:9px;padding-right:9px}
+
+@media(min-width:1150px){
+ .history-statgrid{grid-template-columns:repeat(6,minmax(0,1fr))}
+}
+@media(min-width:701px){
+ .mainsection .sectionhead{min-height:50px}
+ .predictiongrid{grid-template-columns:repeat(auto-fit,minmax(min(100%,305px),1fr));gap:8px}
+}
+@media(max-width:700px){
+ .history-statgrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:5px 10px 11px}
+ .history-statgrid>div{min-height:59px;padding:8px 9px;gap:4px}
+ .history-statgrid label{font-size:11px;white-space:normal}
+ .history-statgrid strong{font-size:21px;margin:0}
+ .history-filters{gap:7px;padding:7px 10px 4px}
+ .history-explain{padding:0 10px 10px}
+ .history-heading{padding:10px 12px}
+ .history-league-table{width:620px;max-width:none}
+}
+@media(max-width:370px){
+ .history-statgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
