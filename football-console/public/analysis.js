@@ -1703,7 +1703,19 @@ function init(){
  $('exportDaily').onclick=getDailyExport;
  $('showOriginal').onclick=()=>{if(!state.report)return;$('originalDate').textContent=state.report.date;$('originalArticle').textContent=displayCleanText(state.report.article||'當天未提供可公開原始全文');openModal('originalModal')};
  $('historyRows').onclick=e=>{const b=e.target.closest('[data-load-day]');if(!b)return;pickDay(b.dataset.loadDay);state.view='predictions';render()};
- state.day=todayTaiwan();loadFeed().then(()=>loadFixtures(false));render();
+ const entryView=window.location.hash.slice(1);
+ if(['schedule','predictions','reviews','history','standings'].includes(entryView))state.view=entryView;
+ const entryDay=new URLSearchParams(window.location.search).get('day');
+ const validEntryDay=/^\d{4}-\d{2}-\d{2}$/.test(entryDay||'')&&Number.isFinite(Date.parse(entryDay+'T00:00:00Z'))&&addDay(entryDay,0)===entryDay;
+ state.dayManuallyChosen=validEntryDay;
+ state.day=validEntryDay?entryDay:todayTaiwan();
+ $('selectedDay').value=state.day;
+ loadFeed().then(()=>{
+  if(state.view==='schedule')loadFixtures(false);
+  if(state.view==='reviews')loadReviewScores(false);
+ });
+ if(state.view==='standings')loadStandings(false);
+ render();
  document.addEventListener('click',event=>{
   const toggle=event.target.closest('[data-league-toggle]');
   if(!toggle)return;

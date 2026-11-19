@@ -5,15 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="足球賽程資料驗證與分析控制台">
-  <title>足球賽程資料驗證與分析控制台</title>
+  <title>FXI｜賽程資料驗證</title>
+  <link rel="icon" href="/fxi.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar">
-    <div class="brand"><div class="brand-icon"><span></span></div><div><strong>FOOTBALL</strong><small>DATA CONTROL</small></div></div>
+    <div class="brand"><div class="brand-icon"><span></span></div><div><strong>FXI</strong><small>DATA CONTROL</small></div></div>
     <div class="nav-caption">WORKSPACE</div>
-    <a class="nav-item" href="/" style="text-decoration:none"><span class="nav-glyph">◎</span>每日賽程與預測</a><button class="nav-item active" data-page="fixtures"><span class="nav-glyph">▦</span>賽程總覽</button>
+    <a class="nav-item" href="/analysis.html#schedule" style="text-decoration:none"><span class="nav-glyph">◎</span>每日賽程與預測</a><button class="nav-item active" data-page="fixtures"><span class="nav-glyph">▦</span>賽程總覽</button>
     <button class="nav-item" data-page="requests"><span class="nav-glyph">⇄</span>請求紀錄 <span id="navRequestCount" class="nav-count">0</span></button>
     <button class="nav-item" data-page="issues"><span class="nav-glyph">◇</span>驗證異常 <span id="navIssueCount" class="nav-count">0</span></button>
     <button class="nav-item" data-page="responses"><span class="nav-glyph">{ }</span>原始回應</button>
@@ -21,7 +22,7 @@
   </aside>
   <main class="main">
     <header class="topbar">
-      <div class="breadcrumb"><a class="backhome" href="/">← 每日賽程</a><span>／</span><strong id="crumbName">賽程總覽</strong></div>
+      <div class="breadcrumb"><a class="backhome" href="/">← FXI 首頁</a><span>／</span><strong id="crumbName">賽程總覽</strong></div>
       <div class="topright"><span id="todayLabel"></span><span class="separator"></span><span class="clocktag">台灣時間 UTC+8</span></div>
     </header>
     <div class="content">

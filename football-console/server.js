@@ -24,7 +24,7 @@ const ALLOWED = new Set([
 ]);
 const FD_ALLOWED = new Set(['PL','ELC','PD','BL1','SA','FL1','DED','PPL','BSA','CL','WC']);
 const STANDINGS_ALLOWED = new Set(['eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','ned.1','por.1','bra.1','arg.1','usa.1','ksa.1','jpn.1','mex.1','tur.1','bel.1','sco.1','chn.1','aus.1']);
-const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.ico':'image/x-icon'};
+const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.ico':'image/x-icon','.woff':'font/woff','.txt':'text/plain; charset=utf-8'};
 const counters = new Map();
 // Shared upstream cache across visitors. A rejected request is never cached as valid data.
 const UPSTREAM_CACHE = new Map();
@@ -327,7 +327,7 @@ const server=http.createServer(async(req,res)=>{
   if(url.pathname.startsWith('/api/'))return await api(req,res,url);
   if(req.method!=='GET')return send(res,405,{error:'Method not allowed'});
   const safePath=path.normalize(decodeURIComponent(url.pathname)).replace(/^([/\\]*\.\.[/\\])+/, '');
-  const file=path.resolve(BASE,'.'+(safePath==='/'?'/analysis.html':safePath));
+  const file=path.resolve(BASE,'.'+(safePath==='/'?'/home.html':safePath));
   if(!file.startsWith(BASE+path.sep))return send(res,403,{error:'Forbidden'});
   fs.readFile(file,(err,buf)=>{if(err)return send(res,404,{error:'Not found'});res.writeHead(200,{'content-type':MIME[path.extname(file)]||'application/octet-stream','x-content-type-options':'nosniff','referrer-policy':'no-referrer','cache-control':/\.(?:html|css|js|json)$/i.test(file)?'no-cache, max-age=0, must-revalidate':'public, max-age=3600'});res.end(buf)});
  }catch(e){send(res,500,{error:'伺服器處理失敗',detail:String(e.message||e)})}
