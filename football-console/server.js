@@ -1,6 +1,7 @@
 const http = require('node:http');
 const apiFootball = require('./api-football');
 const {parseStandings} = require('./standings');
+const {includePublishedCards} = require('./report-cards');
 const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -144,7 +145,8 @@ function sanitizePublicReports(payload){
  const reports=payload.reports.slice(0,120).map(report=>{
   const date=canonicalReportDate(report.date,report.article);
   if(!date)return null;
-  const matches=Array.isArray(report.matches)?report.matches.map(m=>({...m,date,time:canonicalClock(m.time)})):[];
+  const stored=Array.isArray(report.matches)?report.matches.map(m=>({...m,date,time:canonicalClock(m.time)})):[];
+  const matches=includePublishedCards(report.article,date,stored);
   return {...report,date,matches};
  }).filter(Boolean).sort((a,b)=>b.date.localeCompare(a.date));
  return {version:1,connected:true,syncedAt:payload.syncedAt||'',scoresCheckedAt:payload.scoresCheckedAt||'',reports};
@@ -205,7 +207,7 @@ async function api(req,res,route){
  if(route.pathname==='/api/reports'&&req.method==='GET'){
   const target=String(process.env.FOOTBALL_REPORT_FEED_URL||'').trim();
   if(!target)return send(res,200,fallbackReports());
-  if(FEED_CACHE.data&&Date.now()-FEED_CACHE.time<120000)return send(res,200,FEED_CACHE.data);
+  if(FEED_CACHE.data&&Date.now()-FEED_CACHE.time<30000)return send(res,200,FEED_CACHE.data);
   if(!/^https:\/\/script\.google\.com\/macros\/s\/[-\w]+\/exec(?:\?.*)?$/.test(target)){
    return send(res,200,fallbackReports('Google Apps Script 部署網址格式不正確'));
   }
