@@ -1,10 +1,15 @@
 'use strict';
 const LEAGUES=[
-['uefa.nations','歐國聯'],['caf.nations','非洲盃'],['caf.nations_qual','非洲盃資格賽'],['fifa.friendly','國際友誼賽'],['eng.1','英超'],['eng.2','英冠'],
-['esp.1','西甲'],['esp.copa_del_rey','西班牙國王盃'],['eng.fa','英格蘭足總盃'],['ger.1','德甲'],['ita.1','義甲'],['fra.1','法甲'],['ned.1','荷甲'],
-['por.1','葡超'],['uefa.champions','歐冠'],['uefa.europa','歐霸'],['uefa.europa.conf','歐協聯'],
-['bra.1','巴甲'],['arg.1','阿甲'],['usa.1','美職聯'],['ksa.1','沙職'],['jpn.1','日職'],
-['aus.1','澳甲'],['fifa.world','世界盃'],['fifa.worldq.uefa','世界盃歐洲區資格賽'],
+['uefa.nations','歐國聯'],['caf.nations','非洲盃'],['caf.nations_qual','非洲盃資格賽'],['fifa.friendly','國際友誼賽'],
+['eng.1','英超'],['eng.2','英冠'],['eng.3','英甲'],['eng.fa','英格蘭足總盃'],['eng.league_cup','英格蘭聯賽盃'],
+['esp.1','西甲'],['esp.2','西乙'],['esp.copa_del_rey','西班牙國王盃'],
+['ger.1','德甲'],['ger.dfb_pokal','德國盃'],['ita.1','義甲'],['ita.2','義乙'],['ita.coppa_italia','義大利盃'],
+['fra.1','法甲'],['fra.coupe_de_france','法國盃'],['ned.1','荷甲'],['por.1','葡超'],['por.taca.portugal','葡萄牙盃'],
+['uefa.champions','歐冠'],['uefa.europa','歐霸'],['uefa.europa.conf','歐協聯'],
+['bra.1','巴甲'],['bra.2','巴乙'],['bra.copa_do_brazil','巴西盃'],['arg.1','阿甲'],['arg.copa','阿根廷盃'],
+['conmebol.libertadores','南美自由盃'],['conmebol.sudamericana','南美俱樂部盃'],
+['usa.1','美職聯'],['ksa.1','沙職'],['jpn.1','日職'],
+['aus.1','澳甲'],['aus.w.1','澳洲女足甲級聯賽'],['fifa.world','世界盃'],['fifa.worldq.uefa','世界盃歐洲區資格賽'],
 ['fifa.worldq.conmebol','世界盃南美區資格賽'],['concacaf.champions','中北美冠軍盃'],['afc.champions','亞冠'],
 ['mex.1','墨超'],['tur.1','土超'],['bel.1','比甲'],['sco.1','蘇超'],['chn.1','中超']
 ];
@@ -30,12 +35,19 @@ const PRED_LEAGUE_CODES={
  '歐國聯':'uefa.nations','歐洲國家聯賽':'uefa.nations','國際友誼賽':'fifa.friendly',
  '非洲國家盃':'caf.nations','非洲盃':'caf.nations','AFCON':'caf.nations',
  '非洲國家盃資格賽':'caf.nations_qual','非洲盃資格賽':'caf.nations_qual','AFCON資格賽':'caf.nations_qual',
- '英超':'eng.1','英冠':'eng.2','英格蘭足總盃':'eng.fa','西班牙國王盃':'esp.copa_del_rey',
- '西甲':'esp.1','德甲':'ger.1','義甲':'ita.1','法甲':'fra.1',
- '荷甲':'ned.1','葡超':'por.1','歐冠':'uefa.champions','歐霸':'uefa.europa',
+ '英超':'eng.1','英冠':'eng.2','英甲':'eng.3','英格蘭足總盃':'eng.fa',
+ '英格蘭聯賽盃':'eng.league_cup','英聯盃':'eng.league_cup','西班牙國王盃':'esp.copa_del_rey',
+ '西甲':'esp.1','西乙':'esp.2','德甲':'ger.1','德國盃':'ger.dfb_pokal',
+ '義甲':'ita.1','義乙':'ita.2','義大利盃':'ita.coppa_italia',
+ '法甲':'fra.1','法國盃':'fra.coupe_de_france',
+ '荷甲':'ned.1','葡超':'por.1','葡萄牙盃':'por.taca.portugal',
+ '巴西盃':'bra.copa_do_brazil','阿根廷盃':'arg.copa',
+ '歐冠':'uefa.champions','歐霸':'uefa.europa',
  '歐協聯':'uefa.europa.conf','歐洲協會聯賽':'uefa.europa.conf',
- '巴甲':'bra.1','阿甲':'arg.1','美職聯':'usa.1','沙職':'ksa.1',
+ '巴甲':'bra.1','巴乙':'bra.2','阿甲':'arg.1','美職聯':'usa.1','沙職':'ksa.1',
+ '南美自由盃':'conmebol.libertadores','南美俱樂部盃':'conmebol.sudamericana',
  '日職':'jpn.1','韓職':'kor.1','澳甲':'aus.1','澳職':'aus.1','澳洲甲級聯賽':'aus.1','澳洲職業聯賽':'aus.1','A-League':'aus.1',
+ '澳洲女足甲級聯賽':'aus.w.1',
  '世界盃':'fifa.world','世歐預':'fifa.worldq.uefa','世南預':'fifa.worldq.conmebol',
  '亞冠':'afc.champions','中北美冠軍盃':'concacaf.champions'
 };
@@ -416,6 +428,36 @@ async function readScoreboard(league,date,force){
  try{return await promise}catch(e){state.scoreboardCache.delete(key);throw e}
 }
 
+async function readBatchScoreboards(day,leagues){
+ const response=await fetch('/api/fixtures/batch',{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({day,leagues}),cache:'no-store'
+ });
+ if(!response.ok)throw Error('批次賽程查詢 HTTP '+response.status);
+ const payload=await response.json();
+ if(payload.day!==day||!Array.isArray(payload.results))throw Error('批次賽程格式不正確');
+ const expected=new Set(leagues.flatMap(league=>[addDay(day,-1),day].map(date=>league+'|'+date)));
+ const delivered=new Set(),events=[],sources=[];
+ for(const item of payload.results){
+  const key=item.league+'|'+item.date;
+  if(!expected.has(key)||delivered.has(key))throw Error('批次賽程來源重複或未知');
+  delivered.add(key);
+  if(item.upstreamStatus!==200||!Array.isArray(item.events)){
+   sources.push({league:item.league,date:item.date,status:'error',message:item.error||'來源未正常回應'});
+   continue;
+  }
+  const mapped=item.events.map(event=>({...event,_league:item.league}));
+  events.push(...mapped);
+  sources.push({league:item.league,date:item.date,status:'ok',count:mapped.length});
+  const distance=Math.abs(Date.parse(item.date+'T00:00:00Z')-Date.parse(todayTaiwan()+'T00:00:00Z'));
+  state.scoreboardCache.set(key,{
+   expiresAt:Date.now()+(distance>2*86400000?6*3600000:SCOREBOARD_TTL),promise:Promise.resolve(mapped)
+  });
+ }
+ if(delivered.size!==expected.size)throw Error('批次賽程回傳筆數不足');
+ return {events,sources};
+}
+
 const API_FOOTBALL_RECENCY_MS=18*86400000;
 const apiFootballFetchedDays=new Map();
 function apiFootballAllowedDay(date){
@@ -669,23 +711,33 @@ async function loadFixtures(force){
  if(state.leagues.size===0){state.fixtures=[];state.sources=[];render();toast('請至少選擇一個查核聯賽');return}
  state.loading=true;$('reloadFixtures').disabled=true;$('refreshAll').disabled=true;
  $('fixtureNotice').textContent='正在取得賽程資料…';$('fixtureNotice').classList.remove('hidden');
- const queries=[];
- for(const league of state.leagues)for(const date of [addDay(state.day,-1),state.day])queries.push({league,date});
- let cursor=0,finished=0;const results=[],sources=[];
- async function worker(){
-  for(;;){
-   const ix=cursor++;if(ix>=queries.length)break;
-   const q=queries[ix];
-   try{
-    const events=await readScoreboard(q.league,q.date,force);
-    sources.push({league:q.league,date:q.date,status:'ok',count:events.length});
-    for(const event of events)results.push(event)
-   }catch(e){sources.push({league:q.league,date:q.date,status:'error',message:String(e.message||e)})}
-   finished++;
-   $('sourceSummary').textContent='賽程來源查詢 '+finished+' / '+queries.length;
+ const leagues=[...state.leagues],queries=[];
+ for(const league of leagues)for(const date of [addDay(day,-1),day])queries.push({league,date});
+ const results=[],sources=[];
+ try{
+  const batch=await readBatchScoreboards(day,leagues);
+  results.push(...batch.events);
+  sources.push(...batch.sources);
+  $('sourceSummary').textContent='賽程來源查詢 '+sources.length+' / '+queries.length;
+ }catch(error){
+  // Compatibility with an older deployment and fallback for a batch outage.
+  console.warn('Batch scoreboard failed, retrying individual requests:',String(error.message||error));
+  let cursor=0,finished=0;
+  async function worker(){
+   for(;;){
+    const ix=cursor++;if(ix>=queries.length)break;
+    const q=queries[ix];
+    try{
+     const events=await readScoreboard(q.league,q.date,force);
+     sources.push({league:q.league,date:q.date,status:'ok',count:events.length});
+     results.push(...events);
+    }catch(e){sources.push({league:q.league,date:q.date,status:'error',message:String(e.message||e)})}
+    finished++;
+    $('sourceSummary').textContent='賽程來源查詢 '+finished+' / '+queries.length;
+   }
   }
+  await Promise.all(Array.from({length:Math.min(6,queries.length)},worker));
  }
- await Promise.all(Array.from({length:Math.min(6,queries.length)},worker));
  const seen=new Map();
  for(const e of results){const f=parseScore(e);if(!f||f.date!==day)continue;
   const identity=f.leagueCode+'|'+f.date+'|'+nameKey(f.home)+'|'+nameKey(f.away)+'|'+f.time;
@@ -1541,6 +1593,16 @@ function init(){
    state.leagues=new Set(defaultLeagues);
    localStorage.setItem('football-dashboard-leagues',JSON.stringify(defaultLeagues));
    localStorage.setItem('football-dashboard-all-leagues-v1','done');
+ }}catch{}
+ // Add newly source-verified cups/divisions on existing devices once. Keep
+ // earlier manually disabled competitions disabled after this migration.
+ try{if(localStorage.getItem('football-dashboard-expanded-cups-v2')!=='done'){
+   for(const code of ['eng.3','eng.league_cup','esp.2','ger.dfb_pokal','ita.2',
+      'ita.coppa_italia','fra.coupe_de_france','por.taca.portugal','bra.2',
+      'bra.copa_do_brazil','arg.copa','conmebol.libertadores',
+      'conmebol.sudamericana','aus.w.1'])state.leagues.add(code);
+   localStorage.setItem('football-dashboard-leagues',JSON.stringify([...state.leagues]));
+   localStorage.setItem('football-dashboard-expanded-cups-v2','done');
  }}catch{}
  document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
    state.view=b.dataset.view;
