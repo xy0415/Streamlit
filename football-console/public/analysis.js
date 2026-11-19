@@ -14,15 +14,16 @@ const LEAGUES=[
 ['mex.1','墨超'],['tur.1','土超'],['bel.1','比甲'],['sco.1','蘇超'],['chn.1','中超']
 ];
 const KN=Object.fromEntries(LEAGUES);
+const INSIGHTS=window.FXIPredictionInsights;
 // All supported sources are on by default. The unavailable K League feed is
 // intentionally not in LEAGUES; never request or advertise broken coverage.
 const defaultLeagues=LEAGUES.map(([code])=>code);
 const $=id=>document.getElementById(id);
-const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[],loading:false,dayManuallyChosen:false,
+const state={day:'',view:'schedule',feed:null,feedStatus:'loading',report:null,fixtures:[],sources:[],loading:false,dayManuallyChosen:false,
   leagues:new Set(defaultLeagues),cache:new Map(),scoreboardCache:new Map(),resultLookupCache:new Map(),verifiedResultsPromise:null,scheduleQueued:false,
   reviewFixtures:[],reviewErrors:[],reviewLoading:false,reviewUpdatedAt:0,reviewDate:'',
   fifaRanks:new Map(),fifaRanksBusy:false,fifaRankPubDate:'',livePolling:false,
-  summaryCache:new Map(),activeMatchId:'',matchDetailPayload:null,
+  summaryCache:new Map(),activeMatchId:'',matchDetailPayload:null,matchLinkedPrediction:null,
   historyScores:new Map(),historyLoading:false,historyChecks:0,historyErrors:0,
   historyRequired:0,historyCheckedAt:0,historyBatch:0,tsdbNextRequestAt:0,lastAutoRefresh:0};
 const standingsLeagues=LEAGUES.filter(([code])=>new Set(['eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','ned.1','por.1','bra.1','arg.1','usa.1','ksa.1','jpn.1','kor.1','mex.1','tur.1','bel.1','sco.1','chn.1','aus.1']).has(code));
@@ -623,29 +624,40 @@ function normalizeReport(r){
   matches:matches.map((m,i)=>({
    id:m.id||r.date+'-'+i,date:m.date||r.date,time:m.time||'',league:m.league||'',round:m.round||'',
    home:m.home||'',homeZh:m.homeZh||m.home_zh||'',away:m.away||'',awayZh:m.awayZh||m.away_zh||'',
-   market:m.market||'',probability:m.probability===''?null:Number(m.probability),probabilityType:m.probabilityType||'命中',
+   market:m.market||'',probability:m.probability===null||m.probability===undefined||m.probability===''?null:Number(m.probability),probabilityType:m.probabilityType||'命中',
    status:m.status||m.scoreStatus||'待核對',homeScore:m.homeScore===null||m.homeScore===undefined||m.homeScore===''?null:Number(m.homeScore),
    awayScore:m.awayScore===null||m.awayScore===undefined||m.awayScore===''?null:Number(m.awayScore),
    settlement:m.settlement||'待核實',verified:m.verified===true||m.verified==='true',
+   analysis:m.analysis||m.rationale||'',risk:m.risk||'',
+   publishedOdds:INSIGHTS?.originalOdds(m,r.publishedAt||r.sentAt),
    source:m.source||'正式 Gmail',sourceUrl:m.sourceUrl||'',group:m.group||'串關單',order:Number(m.order)||i+1
   }))};
 }
+let feedRequest=0;
 async function loadFeed(){
+ const request=++feedRequest;
  try{
-  const response=await fetch('/api/reports',{cache:'no-store'});
+  const response=await fetch('/api/reports',{cache:'no-store',signal:AbortSignal.timeout(18000)});
   if(!response.ok)throw Error('HTTP '+response.status);
   const data=await response.json();
   if(!Array.isArray(data.reports))throw Error('回傳缺少 reports');
-  state.feed={...data,reports:data.reports.filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.date)).map(normalizeReport).sort((a,b)=>b.date.localeCompare(a.date))};
-  $('sideSync').textContent=data.connected?'正式預測同步已連接':'歷史正式預測已匯入';
-  $('sideTime').textContent=data.connected?'最後同步：'+(data.syncedAt||'尚未執行'):'自動更新尚待 Google 授權';
-  $('dataFooter').textContent=data.connected?'正式 Gmail 預測 · 公開賽事資料':'已匯入正式 Gmail 預測 · 自動同步尚待設定';
+  if(request!==feedRequest)return;
+  if(data.connected||!state.feed?.reports?.length)state.feed={...data,reports:data.reports.filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.date)).map(normalizeReport).sort((a,b)=>b.date.localeCompare(a.date))};
+  state.feedStatus=data.connected?'ready':'error';
+  $('sideSync').textContent=data.connected?'正式預測同步已連接':state.feed.reports.length?'顯示已保留的預測':'正式預測來源未連線';
+  $('sideTime').textContent=data.connected?'最後同步：'+(data.syncedAt||'尚未執行'):'來源暫時無法同步';
+  $('dataFooter').textContent=data.connected?'正式 Gmail 預測 · 公開賽事資料':'正式預測來源暫時無法同步';
   if(!state.day||state.feed.reports.length&&!state.feed.reports.some(r=>r.date===state.day)){
    if(!state.day)state.day=state.feed.reports[0]?.date||todayTaiwan();
   }
   selectLatestOfficialPrediction();
   $('selectedDay').value=state.day;
- }catch(e){state.feed={connected:false,reports:[]};$('sideSync').textContent='正式預測資料未連線';$('sideTime').textContent=String(e.message||e);toast('預測資料來源暫時無法讀取')}
+ }catch{
+  if(request!==feedRequest)return;
+  state.feedStatus='error';
+  $('sideSync').textContent='正式預測來源暫時無法同步';
+  $('sideTime').textContent=state.feed?.reports?.length?'顯示上次取得的預測':'等待重新同步';
+ }
  primeHistoryFromFeed();
  setReport();render();
  if(state.view==='history')loadHistoryResults(false);
@@ -980,63 +992,125 @@ async function pollLiveMatches(){
  if(state.view==='schedule'&&state.day===day)renderSchedule();
 }
 
-async function openMatchDetail(f){
- if(!f)return;
- const request=++matchDialogRequest;
- state.activeMatchId=f.id;
- matchReturnFocus=document.activeElement;
- $('matchDetailLeague').textContent=f.league||'比賽詳情';
- $('matchDetailTitle').textContent='比賽詳情';
- $('matchDetailBody').innerHTML=matchHero(f)+
-  '<div class="match-details-section"><h3>進球紀錄</h3>'+
-  '<div id="matchGoals" class="match-goals"><div class="match-detail-empty">正在查詢進球資料…</div></div></div>'+
-  '<div class="match-source-footer">比分：'+escapeHtml(f.source||'賽事來源')+
-  (f.scoreVerified?' · 已比對獨立來源':' · 未必經第二來源確認')+'</div>';
- openModal('matchModal');
- $('matchCloseBtn').focus();
- let summary;
- try{summary=await fetchMatchSummary(f)}catch{
-  if(request!==matchDialogRequest||$('matchModal').classList.contains('hidden'))return;
-  $('matchGoals').innerHTML='<div class="match-detail-empty">目前沒有可信的進球者與分鐘資料。</div>';
-  return;
- }
- if(request!==matchDialogRequest||$('matchModal').classList.contains('hidden'))return;
- $('matchGoals').innerHTML=goalDetailMarkup(goalEventsFromSummary(summary,f));
- const updated=applySummaryToFixture(f,summary);
- if(updated){
-   $('matchDetailBody').querySelector('.match-hero')?.replaceWith(htmlToNode(matchHero(f)));
-   renderSchedule();
- }
+const matchTabs={facts:'賽況',prediction:'賽前觀點',review:'賽後復盤',snapshot:'預測快照'};
+const gradeLabels={win:'全贏',halfwin:'半贏',loss:'全輸',halfloss:'半輸',push:'走盤'};
+let predictionOpenRequest=0;
+
+function matchReportRows(f){
+ return (state.feed?.reports||[state.report]).filter(Boolean).flatMap(report=>
+  (report.matches||[]).filter(p=>p===state.matchLinkedPrediction||
+   (p.date===f.date&&sameTeam(p.home,f.home)&&sameTeam(p.away,f.away)&&compareEventTime(p,f)))
+   .map(p=>({p,report})));
 }
-async function openPredictionMatchDetail(p){
- if(!p)return;
- const selectedDay=state.day;
- let fixture=eventForPrediction(p,state.reviewFixtures.concat(state.fixtures));
- if(!fixture){
-  const code=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
-  if(code){
-   const days=[addDay(p.date,-1),p.date];
-   const queries=await Promise.allSettled(days.map(day=>readScoreboard(code,day,false)));
-   const candidates=queries.flatMap(result=>result.status==='fulfilled'?result.value.map(parseScore).filter(Boolean):[]);
-   fixture=eventForPrediction(p,candidates);
-   if(fixture&&state.day===selectedDay){
-    state.reviewFixtures=[...state.reviewFixtures.filter(x=>x.id!==fixture.id),fixture];
-    renderReview();
+function matchFacts(rows){
+ return '<dl>'+rows.map(([label,value])=>'<dt>'+escapeHtml(label)+'</dt><dd>'+escapeHtml(value)+'</dd>').join('')+'</dl>';
+}
+function matchPredictionContent(f,tab){
+ const matches=matchReportRows(f);
+ if(!matches.length)return '<p>這場賽事沒有已發布的預測紀錄。</p>';
+ return matches.map(({p,report})=>{
+  const live=resultScoreFromFixture(p,f);
+  const stored=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
+  const conflict=f.scoreConflict||(stored&&live&&(p.homeScore!==live.h||p.awayScore!==live.a));
+  const score=conflict?null:live||(stored?{h:p.homeScore,a:p.awayScore,source:'已核實終場資料'}:null);
+  const grade=score?(gradeHistory(p,score)||(stored?HISTORY?.settledFromString(p.settlement):null)):null;
+  const probability=Number.isFinite(p.probability)?p.probability+'%':'未記錄';
+  const odds=p.publishedOdds;
+  const unit=odds&&grade?INSIGHTS?.unitReturn(grade,odds.price):null;
+  const outcome=gradeLabels[grade]||(conflict?'來源比分不一致，待核對':score?'玩法尚待核對':'等待核對完場比分');
+  const inputs=[['發布時間',report.publishedAt||'未記錄'],['估計'+p.probabilityType+'機率',probability]];
+  if(tab==='prediction'){
+   inputs.push(['主要依據',p.analysis||'原始紀錄未提供單場分析理由'],['主要變數',p.risk||'原始紀錄未記錄']);
+  }else{
+   inputs.push(['完場比分',score?score.h+' : '+score.a:'—'],['結算',outcome]);
+   if(tab==='review')inputs.push(['比分來源',score?.source||'待核對']);
+   if(tab==='snapshot'){
+    inputs.push(['發布時賠率',odds?String(odds.price)+' · '+odds.source:'—｜原始紀錄未收錄']);
+    if(odds)inputs.push(['擷取時間',odds.capturedAt]);
+    inputs.push(['每單位淨報酬',unit===null||unit===undefined?'—':(unit*100).toFixed(2).replace(/\.?0+$/,'')+'%']);
    }
   }
+  return '<article class="match-snapshot"><h4>'+escapeHtml(displayCleanText(p.market))+'</h4>'+matchFacts(inputs)+'</article>';
+ }).join('');
+}
+function setMatchTab(tab){
+ const body=$('matchDetailBody'),f=state.matchDetailPayload;
+ if(!f||!Object.hasOwn(matchTabs,tab))return;
+ state.matchTab=tab;
+ body.querySelectorAll('[data-match-tab]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.matchTab===tab)));
+ $('matchFactsPanel').hidden=tab!=='facts';
+ $('matchInsightPanel').hidden=tab==='facts';
+ if(tab!=='facts')$('matchInsightPanel').innerHTML='<h3>'+matchTabs[tab]+'</h3>'+matchPredictionContent(f,tab);
+}
+async function openMatchDetail(f,tab='facts',linkedPrediction=null,refresh=false){
+ if(!f)return;
+ ++predictionOpenRequest;
+ const request=++matchDialogRequest;
+ state.activeMatchId=f.id;
+ state.matchDetailPayload=f;
+ state.matchLinkedPrediction=linkedPrediction;
+ if(!refresh)matchReturnFocus=document.activeElement;
+ $('matchDetailLeague').textContent=f.league||'比賽詳情';
+ $('matchDetailTitle').textContent='比賽詳情';
+ $('matchShareStatus').textContent='';
+ $('matchLinkFallback').hidden=true;
+ $('matchDetailBody').innerHTML=matchHero(f)+
+  '<div class="match-insight-tabs" role="group" aria-label="比賽詳情內容">'+Object.entries(matchTabs).map(([key,label])=>
+   '<button type="button" class="btn secondary" data-match-tab="'+key+'">'+label+'</button>').join('')+'</div>'+
+  '<section id="matchFactsPanel" class="match-detail-view"><div class="match-details-section"><h3>進球紀錄</h3>'+
+  '<div id="matchGoals" class="match-goals" aria-live="polite"><div class="match-detail-empty">正在查詢進球資料…</div></div></div>'+
+  '<div class="match-source-footer">比分：'+escapeHtml(f.source||'賽事來源')+
+  (f.scoreVerified?' · 已比對獨立來源':' · 未必經第二來源確認')+'</div></section>'+
+  '<section id="matchInsightPanel" class="match-detail-view" hidden></section>';
+ setMatchTab(tab);
+ openModal('matchModal');
+ if(!refresh)$('matchCloseBtn').focus();
+ try{
+  const summary=await fetchMatchSummary(f);
+  if(request!==matchDialogRequest||$('matchModal').classList.contains('hidden'))return;
+  $('matchGoals').innerHTML=goalDetailMarkup(goalEventsFromSummary(summary,f));
+  if(applySummaryToFixture(f,summary)){
+   $('matchDetailBody').querySelector('.match-hero')?.replaceWith(htmlToNode(matchHero(f)));
+   if(state.matchTab!=='facts')setMatchTab(state.matchTab);
+   renderSchedule();
+  }
+ }catch{
+  if(request!==matchDialogRequest||$('matchModal').classList.contains('hidden'))return;
+  $('matchGoals').innerHTML='<div class="match-detail-empty">目前沒有可信的進球者與分鐘資料。</div>';
  }
- if(state.day!==selectedDay)return;
- if(!fixture){
-  // Preserve the exact published fixture without inventing an upstream event ID.
-  const recorded=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
-  fixture={id:'',date:p.date,time:p.time,league:p.league,
-   home:p.home,away:p.away,homeLogo:'',awayLogo:'',homeId:'',awayId:'',
-   status:recorded?'finished':'scheduled',scoreHome:recorded?p.homeScore:null,
-   scoreAway:recorded?p.awayScore:null,source:recorded?'已核實終場資料':'公開預測'};
+}
+async function openPredictionMatchDetail(p,tab='prediction'){
+ if(!p)return;
+ const fixture=eventForPrediction(p,state.reviewFixtures.concat(state.fixtures));
+ if(fixture){openMatchDetail(fixture,tab,p);return}
+ // Display the published information immediately, even if the scoreboard is slow.
+ const recorded=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
+ const fallback={id:'',date:p.date,time:p.time,league:p.league,
+  home:p.home,away:p.away,homeLogo:'',awayLogo:'',homeId:'',awayId:'',
+  status:recorded?'finished':'scheduled',scoreHome:recorded?p.homeScore:null,
+  scoreAway:recorded?p.awayScore:null,source:recorded?'已核實終場資料':'公開預測'};
+ openMatchDetail(fallback,tab,p);
+ const request=predictionOpenRequest;
+ const code=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
+ if(!code)return;
+ const days=[addDay(p.date,-1),p.date];
+ const queries=await Promise.allSettled(days.map(day=>readScoreboard(code,day,false)));
+ if(state.day!==p.date||request!==predictionOpenRequest)return;
+ const candidates=queries.flatMap(result=>result.status==='fulfilled'?result.value.map(parseScore).filter(Boolean):[]);
+ const resolved=eventForPrediction(p,candidates);
+ if(resolved){
+  state.reviewFixtures=[...state.reviewFixtures.filter(x=>x.id!==resolved.id),resolved];
+  const currentTab=state.matchTab;
+  const restoreTab=document.activeElement?.dataset?.matchTab;
+  openMatchDetail(resolved,currentTab,p,true);
+  if(restoreTab)$('matchDetailBody').querySelector('[data-match-tab="'+currentTab+'"]')?.focus();
+  renderReview();
  }
- openMatchDetail(fixture);
 }
 function closeMatchDetail(){
+ ++predictionOpenRequest;
+ state.matchDetailPayload=null;
+ state.matchLinkedPrediction=null;
  ++matchDialogRequest;
  state.activeMatchId='';
  closeModal('matchModal');
@@ -1088,18 +1162,36 @@ function renderSchedule(){
  if(!state.loading)$('sourceSummary').textContent=state.sources.length?(state.sources.some(s=>s.provider==='api-football')?'ESPN + API-FOOTBALL':'ESPN')+' · '+(state.sources.length-failures)+' / '+state.sources.length+' 請求成功':'尚未查詢賽程';
 }
 function renderPredictions(){
- const rows=predsForView();
- $('predictionCount').textContent=rows.length;$('predictionEmpty').classList.toggle('hidden',rows.length>0);
- $('publishedStamp').textContent=state.report?.cutoff?'資料截止：'+state.report.cutoff:'僅採已正式寄出的預測';
+ const rows=predsForView(),pending=state.feedStatus==='loading',failed=state.feedStatus==='error';
+ const emptyTitle=pending?'正在同步預測':failed?'暫時無法同步預測':state.report?.matches.length?'目前篩選沒有相符的預測':'當日無正式預測';
+ $('predictionCount').textContent=rows.length||(!pending&&!failed?0:'—');
+ $('predictionEmpty').classList.toggle('hidden',rows.length>0);
+ $('predictionEmptyTitle').textContent=emptyTitle;
+ $('predictionEmptyNote').textContent=pending?'正在讀取正式預測紀錄。':failed?'請重新同步，或查閱其他日期的已保留紀錄。':'已發布的預測會保留原始方向與機率。';
+ $('retryPredictions').classList.toggle('hidden',!failed);
+ $('publishedStamp').textContent=failed&&rows.length?'同步暫時失敗 · 顯示已保留紀錄':
+   state.report?.publishedAt?'發布：'+state.report.publishedAt:pending?'正在同步':'正式發布紀錄';
  $('showOriginal').disabled=!state.report;
- $('predictionsGrid').innerHTML=rows.map((p,i)=>
- '<article class="prediction clickable-match" tabindex="0" role="button" data-prediction-index="'+i+'" aria-label="查看'+escapeHtml(localizedTeamName(p.home,p.homeZh))+'對'+escapeHtml(localizedTeamName(p.away,p.awayZh))+'的進球詳情"><div class="pred-top"><span>第 '+p.order+' 關　'+escapeHtml(p.time)+'　·　'+escapeHtml(p.league)+(p.round?' · '+escapeHtml(p.round):'')+'</span>'+(p.group&&p.group!=='串關單'?'<span>'+escapeHtml(p.group)+'</span>':'')+'</div>'+
- '<div class="pred-team-stack">'+
-  teamLine('home',p.home,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.homeLogo,p.homeZh,PRED_LEAGUE_CODES[p.league]||'')+
-  teamLine('away',p.away,'',eventForPrediction(p,state.fixtures.concat(state.reviewFixtures))?.awayLogo,p.awayZh,PRED_LEAGUE_CODES[p.league]||'')+
- '</div>'+
- '<div class="pred-choice"><strong>'+escapeHtml(displayCleanText(p.market))+'</strong>'+(p.probability!==null&&Number.isFinite(p.probability)?'<span class="probability">'+p.probability+'%<small>估計'+escapeHtml(p.probabilityType)+'機率</small></span>':'')+'</div></article>'
- ).join('');
+ $('predictionsGrid').innerHTML=rows.map((p,i)=>{
+  const event=eventForPrediction(p,state.fixtures.concat(state.reviewFixtures));
+  const groups=[...new Set((state.report?.matches||[]).filter(other=>
+   other.date===p.date&&other.time===p.time&&sameTeam(other.home,p.home)&&sameTeam(other.away,p.away))
+   .map(other=>other.group).filter(Boolean))];
+  const markup='<div class="clickable-match" tabindex="0" role="button" data-prediction-index="'+i+'" aria-label="查看'+escapeHtml(localizedTeamName(p.home,p.homeZh))+'對'+escapeHtml(localizedTeamName(p.away,p.awayZh))+'的比賽詳情">'+
+   '<div class="pred-top"><span>'+escapeHtml(p.time)+' · '+escapeHtml(p.league)+(p.round?' · '+escapeHtml(p.round):'')+'</span>'+
+   '<span>'+escapeHtml(p.group||'串關單')+' · 第 '+p.order+' 關</span></div>'+
+   '<div class="pred-team-stack">'+
+   teamLine('home',p.home,'',event?.homeLogo,p.homeZh,PRED_LEAGUE_CODES[p.league]||'')+
+   teamLine('away',p.away,'',event?.awayLogo,p.awayZh,PRED_LEAGUE_CODES[p.league]||'')+'</div>'+
+   '<div class="pred-choice"><strong>'+escapeHtml(displayCleanText(p.market))+'</strong>'+(Number.isFinite(p.probability)?'<span class="probability">'+p.probability+'%<small>估計'+escapeHtml(p.probabilityType||'命中')+'機率</small></span>':'')+'</div></div>';
+  return '<article class="prediction">'+markup+'<div class="pred-discussion">'+
+   (p.analysis?'<p><strong>主要依據</strong> '+escapeHtml(p.analysis)+'</p>':'')+
+   (p.risk?'<p><strong>主要變數</strong> '+escapeHtml(p.risk)+'</p>':'')+
+   (groups.length>1?'<p>另見 '+escapeHtml(groups.filter(group=>group!==p.group).join('、'))+'</p>':'')+
+   '<details><summary>展開原始紀錄</summary><p>發布：'+escapeHtml(state.report?.publishedAt||'未記錄')+'</p>'+
+   (state.report?.cutoff?'<p>資料截止：'+escapeHtml(state.report.cutoff)+'</p>':'')+
+   (!p.analysis?'<p>原始紀錄未提供單場分析理由。</p>':'')+'</details></div></article>';
+ }).join('');
 }
 function reviewResultLabel(settlement){
  const value=String(settlement||'');
@@ -1260,7 +1352,7 @@ function historyReportRows(){
  return all.flatMap(r=>(r.matches||[]).map(p=>({p,reportDate:r.date,key:historyId(p)})));
 }
 function resultScoreFromFixture(p,f){
- if(!f||f.status!=='finished'||f.scoreConflict)return null;
+ if(!f||f.status!=='finished'||f.scoreConflict||f.scoreHome===null||f.scoreHome===''||f.scoreAway===null||f.scoreAway==='')return null;
  const raw=String(f.sourceStatus?.type?.name||'')+' '+String(f.sourceStatus?.type?.description||'')+' '+String(f.stateName||'');
  if(/\bAET\b|\bPEN\b|penalt(?:y|ies)|extra[ -]?time|加時|十二碼大戰/i.test(raw))return null;
  const h=Number(f.scoreHome),a=Number(f.scoreAway);
@@ -1445,7 +1537,12 @@ async function includeMissingClubPredictions(fixtures,force=false,selectedDay=st
 
 function renderHistory(){
  const all=historyReportRows();
- const leagueControl=$('historyLeague'),periodControl=$('historyPeriod');
+ const leagueControl=$('historyLeague'),periodControl=$('historyPeriod'),marketControl=$('historyMarket');
+ const markets=INSIGHTS?.marketLabels||{};
+ const previousMarket=marketControl.value;
+ marketControl.innerHTML='<option value="">全部玩法</option>'+Object.entries(markets).map(([id,label])=>
+  '<option value="'+id+'">'+label+'</option>').join('');
+ marketControl.value=Object.hasOwn(markets,previousMarket)?previousMarket:'';
  const previousLeague=leagueControl.value;
  const leagueLabel=name=>KN[PRED_LEAGUE_CODES[name]]||String(name||'').trim();
  const leagues=[...new Set(all.map(row=>leagueLabel(row.p.league)).filter(Boolean))]
@@ -1457,24 +1554,28 @@ function renderHistory(){
  const days=Number(periodControl.value);
  const limit=Number.isInteger(days)&&days>0?Date.parse(todayTaiwan()+'T00:00:00+08:00')-(days-1)*86400000:null;
  const inPeriod=all.filter(row=>limit===null||Date.parse(row.reportDate+'T00:00:00+08:00')>=limit);
- const source=inPeriod.filter(row=>!selectedLeague||leagueLabel(row.p.league)===selectedLeague);
- const rows=source.map(row=>({...row,result:state.historyScores.get(row.key)||null}));
+ const leagueRows=inPeriod.filter(row=>!selectedLeague||leagueLabel(row.p.league)===selectedLeague)
+  .map(row=>({...row,result:state.historyScores.get(row.key)||null,market:INSIGHTS?.marketType(row.p.market)}));
+ const rows=leagueRows.filter(row=>!marketControl.value||row.market===marketControl.value);
+ const missingFeed=!state.feed?.reports?.length&&state.feedStatus!=='ready';
+ const count=value=>missingFeed?'—':String(value);
  let summary={total:rows.length,finished:0,win:0,loss:0,halfwin:0,halfloss:0,push:0,pending:rows.length,unsupported:0,rate:null};
  if(HISTORY)summary=HISTORY.summarize(rows.map(x=>x.result?.grade?x.result:{status:x.result?.status||'pending'}));
- $('historyTotal').textContent=String(summary.total);
- $('historyVerified').textContent=String(summary.finished);
- $('historyWin').textContent=String(summary.win+summary.halfwin);
- $('historyLoss').textContent=String(summary.loss+summary.halfloss);
- $('historyPush').textContent=String(summary.push);
+ $('historyTotal').textContent=count(summary.total);
+ $('historyVerified').textContent=count(summary.finished);
+ $('historyWin').textContent=count(summary.win+summary.halfwin);
+ $('historyLoss').textContent=count(summary.loss+summary.halfloss);
+ $('historyPush').textContent=count(summary.push);
  $('historyRate').textContent=summary.rate===null?'—':summary.rate.toFixed(1)+'%';
- const label=state.historyLoading?
+ const label=missingFeed?(state.feedStatus==='loading'?'正在同步預測紀錄…':'正式預測來源暫時無法同步'):
+  state.historyLoading?
   '比對歷史比分 '+state.historyChecks+'/'+state.historyRequired+(state.historyErrors?' · 來源失敗 '+state.historyErrors:''):
   state.historyCheckedAt?'最近比對 '+fTaiwan(state.historyCheckedAt).stamp:
   summary.finished?'已取得部分終場資料':'尚未查核歷史比分';
  $('historyProgress').textContent=label;
  $('historyRefresh').disabled=state.historyLoading;
  const byLeague=new Map();
- for(const row of inPeriod){
+ for(const row of rows){
   const league=leagueLabel(row.p.league)||'其他';
   if(!byLeague.has(league))byLeague.set(league,[]);
   byLeague.get(league).push(row);
@@ -1486,7 +1587,18 @@ function renderHistory(){
   .map(({name,stats})=>'<tr><td><strong>'+escapeHtml(name)+'</strong></td><td>'+stats.total+'</td><td>'+stats.finished+'</td><td>'+(
    stats.win+stats.halfwin)+'</td><td>'+(stats.loss+stats.halfloss)+'</td><td>'+stats.push+'</td><td><strong>'+
    (stats.rate===null?'—':stats.rate.toFixed(1)+'%')+'</strong></td></tr>').join('')||
-  '<tr><td colspan="7" class="history-no-data">所選範圍尚無預測紀錄</td></tr>';
+  '<tr><td colspan="7" class="history-no-data">'+(missingFeed?escapeHtml(label):'所選範圍尚無預測紀錄')+'</td></tr>';
+ const marketRows=Object.entries(markets).filter(([id])=>!marketControl.value||marketControl.value===id).flatMap(([id,title])=>{
+  const group=rows.filter(row=>row.market===id);
+  return group.length&&HISTORY?[{title,stats:HISTORY.summarize(group.map(row=>row.result||{}))}]:[];
+ });
+ $('historyMarketRows').innerHTML=marketRows.map(({title,stats})=>{
+  const n=stats.finished-stats.push;
+  const wins=stats.win+.5*stats.halfwin;
+  return '<tr><td><strong>'+title+'</strong></td><td>'+n+'</td><td><div class="history-market-meter">'+
+   (stats.rate===null?'—':'<meter min="0" max="100" value="'+stats.rate+'" aria-label="'+title+'命中率"></meter><strong>'+
+    stats.rate.toFixed(1)+'%（'+wins+'/'+n+'）</strong>')+'</div></td></tr>';
+ }).join('')||'<tr><td colspan="3" class="history-no-data">'+(missingFeed?escapeHtml(label):'所選範圍尚無玩法紀錄')+'</td></tr>';
  const byDay=new Map();
  for(const row of rows){
   if(!byDay.has(row.reportDate))byDay.set(row.reportDate,[]);
@@ -1496,7 +1608,9 @@ function renderHistory(){
   day,
   stats:HISTORY?HISTORY.summarize(group.map(x=>x.result?.grade?x.result:{status:x.result?.status||'pending'})):{...summary,total:group.length}
  }));
- window.FootballHistoryCharts?.render($('historyMixChart'),$('historyTrendChart'),summary,daily);
+ if(missingFeed){
+  for(const id of ['historyMixChart','historyTrendChart','historyRollingChart'])$(id).innerHTML='<p class="history-chart-empty">'+escapeHtml(label)+'</p>';
+ }else window.FootballHistoryCharts?.render($('historyMixChart'),$('historyTrendChart'),summary,daily,$('historyRollingChart'),rows);
  const date=$('historyDate').value;
  $('clearHistoryDate').disabled=!date;
  $('historyRows').innerHTML=daily.filter(item=>!date||item.day===date).reverse().map(({day,stats})=>{
@@ -1509,7 +1623,7 @@ function renderHistory(){
    '<span class="history-loss">輸 '+loss+'</span>'+
    '<span class="history-percentage">'+(stats.rate===null?'—':stats.rate.toFixed(1)+'%')+'</span>'+
    '<button class="mlauto" data-load-day="'+escapeHtml(day)+'">查看</button></div>';
- }).join('')||'<div class="empty">'+(date?'所選日期在目前篩選範圍內沒有預測紀錄':'尚無歷史預測')+'</div>';
+ }).join('')||'<div class="empty">'+(missingFeed?escapeHtml(label):date?'所選日期在目前篩選範圍內沒有預測紀錄':'尚無歷史預測')+'</div>';
 }
 function renderStandings(){
  const select=$('standingsLeague'),content=$('standingsContent'),status=$('standingsUpdated');
@@ -1548,7 +1662,7 @@ async function loadStandings(force=false){
 }
 function render(){
  $('nowDate').textContent=todayTaiwan().replaceAll('-','/');
- const names={schedule:['每日賽程','每日賽程'],predictions:['分析預測','正式預測'],reviews:['賽後復盤','賽後復盤'],history:['歷史統計','歷史統計'],standings:['聯賽積分榜','聯賽積分榜']};
+ const names={schedule:['每日賽程','每日賽程'],predictions:['預測分析','預測分析'],reviews:['賽後復盤','賽後復盤'],history:['歷史統計','歷史統計'],standings:['聯賽積分榜','聯賽積分榜']};
  const t=names[state.view];$('viewTitle').textContent=t[0];$('breadcrumb').textContent=t[1];
  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===state.view));
  $('schedulePanel').classList.toggle('hidden',state.view!=='schedule');
@@ -1654,6 +1768,7 @@ function init(){
  $('historyRefresh').onclick=()=>loadHistoryResults(true);
  $('historyLeague').onchange=renderHistory;
  $('historyPeriod').onchange=renderHistory;
+ $('historyMarket').onchange=renderHistory;
  $('historyDate').onchange=renderHistory;
  $('clearHistoryDate').onclick=()=>{
   $('historyDate').value='';
@@ -1713,17 +1828,33 @@ function init(){
   if(state.view==='predictions')loadFeed();
  });
  $('exportDaily').onclick=getDailyExport;
+ $('retryPredictions').onclick=()=>{
+  state.feedStatus='loading';renderPredictions();loadFeed();
+ };
  $('showOriginal').onclick=()=>{if(!state.report)return;$('originalDate').textContent=state.report.date;$('originalArticle').textContent=displayCleanText(state.report.article||'當天未提供可公開原始全文');openModal('originalModal')};
  $('historyRows').onclick=e=>{const b=e.target.closest('[data-load-day]');if(!b)return;pickDay(b.dataset.loadDay);state.view='predictions';render()};
  const entryView=window.location.hash.slice(1);
  if(['schedule','predictions','reviews','history','standings'].includes(entryView))state.view=entryView;
- const entryDay=new URLSearchParams(window.location.search).get('day');
+ const entryQuery=new URLSearchParams(window.location.search);
+ const entryDay=entryQuery.get('day');
  const validEntryDay=/^\d{4}-\d{2}-\d{2}$/.test(entryDay||'')&&Number.isFinite(Date.parse(entryDay+'T00:00:00Z'))&&addDay(entryDay,0)===entryDay;
  state.dayManuallyChosen=validEntryDay;
  state.day=validEntryDay?entryDay:todayTaiwan();
  $('selectedDay').value=state.day;
- loadFeed().then(()=>{
-  if(state.view==='schedule')loadFixtures(false);
+ loadFeed().then(async()=>{
+  const entryMatch=validEntryDay&&INSIGHTS?.readMatchLink(entryQuery);
+  const lookup=entryMatch&&state.day===entryDay;
+  const samePair=row=>row.date===entryDay&&sameTeam(row.home,entryMatch.home)&&sameTeam(row.away,entryMatch.away)&&row.time===entryMatch.time;
+  const prediction=lookup&&state.report?.matches.find(samePair);
+  if(prediction)openPredictionMatchDetail(prediction,entryMatch.tab);
+  if(state.view==='schedule'){
+   await loadFixtures(false);
+   if(lookup&&!prediction&&state.day===entryDay&&state.view==='schedule'&&!state.matchDetailPayload){
+    const matches=state.fixtures.filter(samePair);
+    if(matches.length===1)openMatchDetail(matches[0],entryMatch.tab);
+    else toast('目前無法定位這場賽事');
+   }
+  }
   if(state.view==='reviews')loadReviewScores(false);
  });
  if(state.view==='standings')loadStandings(false);
@@ -1756,19 +1887,38 @@ function init(){
  const bindPredictionDetails=(container,indexAttr,items)=>{
   const open=event=>{
    const row=event.target.closest('['+indexAttr+']');
-   if(!row||!container.contains(row))return;
+   if(!row||!container.contains(row)||event.target.closest('details'))return;
    if(event.type==='keydown'){
     if(event.key!=='Enter'&&event.key!==' ')return;
     event.preventDefault();
    }
    const p=items()[Number(row.getAttribute(indexAttr))];
-   if(p)openPredictionMatchDetail(p);
+   if(p)openPredictionMatchDetail(p,indexAttr==='data-review-index'?'review':'prediction');
   };
   container.addEventListener('click',open);
   container.addEventListener('keydown',open);
  };
  bindPredictionDetails($('predictionsGrid'),'data-prediction-index',predsForView);
  bindPredictionDetails($('reviewTable'),'data-review-index',predsForView);
+ $('matchDetailBody').addEventListener('click',event=>{
+  const button=event.target.closest('[data-match-tab]');
+  if(button)setMatchTab(button.dataset.matchTab);
+ });
+ $('copyMatchLink').onclick=async()=>{
+  const match=state.matchDetailPayload;
+  if(!match||!INSIGHTS)return;
+  const {p}=matchReportRows(match)[0]||{};
+  const link=INSIGHTS.matchLink(p||match,p?'predictions':'schedule',state.matchTab);
+  try{
+   await navigator.clipboard.writeText(link);
+   if(state.matchDetailPayload===match)$('matchShareStatus').textContent='已複製比賽連結';
+  }catch{
+   if(state.matchDetailPayload!==match)return;
+   const field=$('matchLinkFallback');
+   field.value=link;field.hidden=false;field.select();
+   $('matchShareStatus').textContent='可直接複製已選取的連結';
+  }
+ };
  $('matchCloseBtn').addEventListener('click',closeMatchDetail);
  $('matchModal').addEventListener('click',event=>{
    if(event.target===$('matchModal'))closeMatchDetail();

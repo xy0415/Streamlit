@@ -28,10 +28,19 @@ function parsePublishedCards(article,date){
   const market=p[1].trim();
   const id=crypto.createHash('sha256').update([date,time,home,away,market].join('|'),'utf8').digest('base64url').slice(0,18);
   if(out.some(x=>x.id===id))return [];
-  out.push({id,date,order:out.length+1,group:'串關單',time,league,round,
+  const choiceIndex=lines.indexOf(following[1],i+1);
+  const detail={};
+  for(const line of lines.slice(choiceIndex+1)){
+   if(/^[①②③④⑤⑥⑦⑧⑨⑩]/.test(line))break;
+   const note=line.match(/^(主要依據|主要變數)[：:]\s*(.+)$/);
+   if(note)detail[note[1]==='主要依據'?'analysis':'risk']=note[2].trim();
+   const odds=line.match(/^發布賠率[：:]\s*(\d+(?:\.\d+)?)\s*｜\s*來源[：:]\s*([^｜]+)｜\s*擷取時間[：:]\s*(.+)$/);
+   if(odds&&Number(odds[1])>1)Object.assign(detail,{publishedOdds:Number(odds[1]),publishedOddsSource:odds[2].trim(),publishedOddsAt:odds[3].trim()});
+  }
+  out.push({...detail,id,date,order:out.length+1,group:'串關單',time,league,round,
    home,homeZh,away,awayZh,market,probability:+p[3],probabilityType:p[2],
    status:'待核對',homeScore:null,awayScore:null,settlement:'待核實',verified:false,source:'已寄出正式原文'});
-  i=lines.indexOf(following[1],i+1);
+  i=choiceIndex;
  }
  return detected&&out.length===detected?out:[];
 }
@@ -42,8 +51,16 @@ function includePublishedCards(article,date,stored){
  if(!parsed.length)return existing;
  const key=x=>[date,String(x.time||'').replace(/^(\d):/,'0$1:'),x.home,x.away,x.market].join('|');
  const known=new Set(existing.map(key));
+ const original=new Map(parsed.map(x=>[key(x),x]));
+ const fields=['analysis','risk','publishedOdds','publishedOddsSource','publishedOddsAt'];
+ const enriched=existing.map(entry=>{
+  const originalEntry=original.get(key(entry));
+  if(!originalEntry)return entry;
+  const details=Object.fromEntries(fields.filter(k=>originalEntry[k]!==undefined&&!entry[k]).map(k=>[k,originalEntry[k]]));
+  return {...entry,...details};
+ });
  const missing=parsed.filter(x=>!known.has(key(x)));
- return [...existing,...missing].sort((a,b)=>(Number(a.order)||99)-(Number(b.order)||99));
+ return [...enriched,...missing].sort((a,b)=>(Number(a.order)||99)-(Number(b.order)||99));
 }
 
 module.exports={parsePublishedCards,includePublishedCards};

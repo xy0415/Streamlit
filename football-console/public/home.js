@@ -5,31 +5,111 @@ const dateLabel = document.querySelector('#taiwan-date');
 dateLabel.dateTime = taiwanDate;
 dateLabel.textContent = taiwanDate.replaceAll('-', '/');
 
+const insights = window.FXIPredictionInsights;
+const published = report => /^\d{4}-\d{2}-\d{2}$/.test(report.date) && (report.article || report.matches?.length);
+const kickoff = match => Date.parse(match.date+'T'+match.time+':00+08:00');
+const sideName = (match,side) => match[side+'Zh'] || match[side];
+const formatDay = date => date.slice(5).replace('-','/');
+// Featured recaps draw on already published picks and a bounded scoreboard lookup.
+const recapLeagues = {'巴甲':'bra.1','巴乙':'bra.2','澳職':'aus.1','澳甲':'aus.1','英超':'eng.1',
+ '西甲':'esp.1','德甲':'ger.1','義甲':'ita.1','法甲':'fra.1','歐冠':'uefa.champions','歐國聯':'uefa.nations',
+ '國際友誼賽':'fifa.friendly','葡超':'por.1','荷甲':'ned.1','阿甲':'arg.1','美職聯':'usa.1'};
+const teamKey = name => String(name||'').normalize('NFKD').replace(/[^\p{L}\p{N}]/gu,'').toLowerCase();
+function matchesTeam(team,name) {
+  return [team.displayName,team.shortDisplayName,team.name].some(value=>value&&teamKey(value)===teamKey(name));
+}
+
+async function recentRecap(reports) {
+  for (const report of reports.filter(report=>report.date<=taiwanDate&&report.matches?.length).slice(0,2)) {
+    const eligible = report.matches.filter(match=>kickoff(match)<=Date.now()-120*60000);
+    const trusted = eligible.find(match=>match.verified&&(Number.isInteger(match.homeScore)&&Number.isInteger(match.awayScore)));
+    if (trusted) return {match:trusted,h:trusted.homeScore,a:trusted.awayScore,source:'已核實'};
+    const leagues = [...new Set(eligible.map(match=>recapLeagues[match.league]).filter(Boolean))].slice(0,4);
+    if (!leagues.length) continue;
+    try {
+      const response = await fetch('/api/fixtures/batch',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({day:report.date,leagues}),signal:AbortSignal.timeout(9000),
+      });
+      if (!response.ok) continue;
+      const {results} = await response.json();
+      for (const match of eligible) {
+        if (/不一致/.test(String(match.status||''))) continue;
+        const unique = new Map();
+        for (const result of results||[]) {
+          if (result.league!==recapLeagues[match.league]) continue;
+          for (const event of result.events||[]) {
+            const teams = event.competitions?.[0]?.competitors||[];
+            const home = teams.find(team=>team.homeAway==='home');
+            const away = teams.find(team=>team.homeAway==='away');
+            const status = event.status?.type;
+            if (!event.id||!home?.team||!away?.team||!status?.completed||
+                !/^(STATUS_FULL_TIME|STATUS_FINAL)$/.test(status.name)||
+                new Date(event.date).getTime()!==kickoff(match)||
+                !matchesTeam(home.team,match.home)||!matchesTeam(away.team,match.away)||
+                !/^\d+$/.test(String(home.score))||!/^\d+$/.test(String(away.score))) continue;
+            unique.set(event.id,{match,h:Number(home.score),a:Number(away.score),source:'ESPN 完場'});
+          }
+        }
+        if (unique.size===1) return unique.values().next().value;
+      }
+    } catch {
+      // Try one earlier published report if this scoreboard is unavailable.
+    }
+  }
+  return null;
+}
+
+function meta(id,text) {
+  const element = document.querySelector('#'+id);
+  element.textContent = text;
+  element.hidden = !text;
+}
 async function loadLatestReport() {
   const title = document.querySelector('#report-date');
   const summary = document.querySelector('#report-summary');
-
+  const featured = document.querySelector('#featured-match');
+  const review = document.querySelector('#recap-match');
   try {
     const response = await fetch('/api/reports', { signal: AbortSignal.timeout(17000) });
     if (!response.ok) throw Error('Report request failed');
     const data = await response.json();
     if (!Array.isArray(data.reports)) throw Error('Missing reports');
-    const latest = data.reports
-      .filter(report => /^\d{4}-\d{2}-\d{2}$/.test(report.date) && (report.article || report.matches?.length))
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
-
-    if (!latest) {
-      title.textContent = '暫無紀錄';
-      summary.textContent = data.connected ? '目前沒有已發布的正式預測。' : '正式預測來源暫時無法讀取。';
-      return;
+    const reports = data.reports.filter(published).sort((a,b)=>b.date.localeCompare(a.date));
+    const latest = reports[0];
+    if (latest) {
+      title.textContent = latest.date.replaceAll('-', '/');
+      summary.textContent = latest.matches?.length ? `${latest.matches.length} 項已發布的預測選項` : '正式分析全文已發布。';
+      document.querySelector('#report-link').href = `/analysis.html?day=${latest.date}#predictions`;
+      const release = String(latest.publishedAt||'').slice(0,16).replace('T',' ');
+      meta('report-release',[release?'發布 '+release:'',data.connected?'':'同步暫時失敗'].filter(Boolean).join(' · '));
+    } else {
+      title.textContent = data.connected?'暫無紀錄':'暫無資料';
+      summary.textContent = data.connected?'目前沒有已發布的正式預測。':'正式預測來源暫時無法讀取。';
     }
-
-    title.textContent = latest.date.replaceAll('-', '/');
-    summary.textContent = latest.matches?.length ? `${latest.matches.length} 項已發布的預測選項` : '正式分析全文已發布。';
-    document.querySelector('#report-link').href = `/analysis.html?day=${latest.date}#predictions`;
+    const next = reports.flatMap(report=>report.matches||[])
+      .filter(match=>kickoff(match)>Date.now()).sort((a,b)=>kickoff(a)-kickoff(b))[0];
+    if (next) {
+      featured.textContent = sideName(next,'home')+' vs '+sideName(next,'away');
+      meta('featured-time',formatDay(next.date)+' '+next.time+' · '+next.league);
+      document.querySelector('#featured-link').href = insights.matchLink(next,'predictions','prediction');
+    } else {
+      featured.textContent = data.connected?'暫無即將開賽的已發布預測':'暫時無法確認重點賽事';
+    }
+    const result = await recentRecap(reports);
+    if (result) {
+      const {match,h,a,source} = result;
+      review.textContent = sideName(match,'home')+' '+h+' : '+a+' '+sideName(match,'away');
+      meta('recap-time',formatDay(match.date)+' · '+match.league+' · '+source);
+      document.querySelector('#recap-link').href = insights.matchLink(match,'reviews','review');
+    } else {
+      review.textContent = '暫無已核對的復盤比分';
+    }
   } catch {
     title.textContent = '暫無資料';
     summary.textContent = '正式預測來源暫時無法讀取。';
+    featured.textContent = '暫時無法確認重點賽事';
+    review.textContent = '暫時無法查核完場比分';
   }
 }
 

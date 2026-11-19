@@ -7,9 +7,10 @@
 <aside class="sidebar">
  <a class="brand" href="/" aria-label="FXI 首頁"><span class="brandmark" aria-hidden="true"></span><span><strong>FXI</strong><small>FOOTBALL ANALYTICS</small></span></a>
  
- <nav class="sidenav">
+ <nav class="sidenav" aria-label="網站功能導覽">
+  <a class="navitem home-nav" href="/">首頁</a>
   <button class="navitem active" data-view="schedule"><span aria-hidden="true">01</span>每日賽程</button>
-  <button class="navitem" data-view="predictions"><span aria-hidden="true">02</span>分析預測</button>
+  <button class="navitem" data-view="predictions"><span aria-hidden="true">02</span>預測分析</button>
   <button class="navitem" data-view="reviews"><span aria-hidden="true">03</span>賽後復盤</button>
   <button class="navitem" data-view="history"><span aria-hidden="true">04</span>歷史統計</button>
   <button class="navitem" data-view="standings"><span aria-hidden="true">05</span>聯賽積分榜</button>
@@ -21,9 +22,9 @@
 <main class="main">
  <header class="topbar"><div class="crumb"><strong id="breadcrumb">每日賽程</strong></div><div class="topmeta"><span id="nowDate"></span><span class="clock">UTC+8</span></div></header>
  <nav class="mobile-nav" aria-label="網站功能導覽">
-  <a class="mobile-item more-link" href="/">FXI 首頁</a>
+  <a class="mobile-item more-link" href="/">首頁</a>
   <button class="mobile-item active" data-view="schedule">每日賽程</button>
-  <button class="mobile-item" data-view="predictions">分析預測</button>
+  <button class="mobile-item" data-view="predictions">預測分析</button>
   <button class="mobile-item" data-view="reviews">賽後復盤</button>
   <button class="mobile-item" data-view="history">歷史統計</button>
   <button class="mobile-item" data-view="standings">聯賽積分榜</button>
@@ -40,8 +41,8 @@
    <section id="schedulePanel" class="panel mainsection"><div class="sectionhead"><div><h2>當日賽程</h2><span class="bubble" id="fixtureCount">0</span></div><div class="sectionactions"><button class="linkbtn" id="leagueChooserBtn">聯賽設定</button><button class="linkbtn" id="reloadFixtures">重新抓取</button></div></div>
    <div class="notice hidden" id="fixtureNotice" role="status"></div>
    <div class="tablewrap"><table class="schedule-table"><thead><tr><th>台灣時間</th><th>對戰球隊（主／客）</th><th>比分與狀態</th></tr></thead><tbody id="fixtureTable"></tbody></table></div><div id="fixtureEmpty" class="empty"><strong>尚未取得賽程</strong><small>選取日期並按「重新抓取」</small></div></section>
-   <section id="predictionsPanel" class="panel mainsection"><div class="sectionhead"><div><h2>正式分析預測</h2><span class="bubble" id="predictionCount">0</span></div><div class="sectionactions"><span class="sectionhint" id="publishedStamp">僅採已正式寄出的預測</span><button class="linkbtn" id="showOriginal">查看原始全文</button></div></div>
-     <div id="predictionsGrid" class="predictiongrid"></div><div class="empty" id="predictionEmpty"><strong>沒有這天的正式預測紀錄</strong><small>已寄出的預測會保留原始日期、方向與機率</small></div>
+   <section id="predictionsPanel" class="panel mainsection"><div class="sectionhead"><div><h2>預測分析</h2><span class="bubble" id="predictionCount">—</span></div><div class="sectionactions"><span class="sectionhint" id="publishedStamp">僅採已正式寄出的預測</span><button class="linkbtn" id="showOriginal">查看原始全文</button></div></div>
+     <div id="predictionsGrid" class="predictiongrid"></div><div class="empty" id="predictionEmpty"><strong id="predictionEmptyTitle" role="status" aria-live="polite">正在同步預測</strong><small id="predictionEmptyNote">正在讀取正式預測紀錄。</small><button type="button" id="retryPredictions" class="btn secondary hidden">重試同步</button></div>
    </section>
    <section id="reviewPanel" class="panel mainsection"><div class="sectionhead"><div><h2>賽後復盤</h2><span class="bubble" id="reviewCount">0</span></div><div class="sectionactions"><span class="sectionhint" id="reviewFreshness">比分待查詢</span><button class="linkbtn" id="refreshReview">更新比分</button></div></div>
       
@@ -49,8 +50,8 @@
       <div class="review-article" id="reviewArticleSection"><h3>復盤檢討</h3><div id="reviewArticleBody"></div></div>
    </section>
    <section id="historyPanel" class="panel mainsection"><div class="sectionhead"><div><h2>歷史績效</h2></div><div class="sectionactions"><span class="sectionhint" id="historyProgress">歷史比分等待查核</span><button class="linkbtn" id="historyRefresh">更新</button></div></div>
-    <div class="history-filters"><div class="inputset"><label for="historyLeague">聯賽</label><select id="historyLeague"><option value="">全部聯賽</option></select></div><div class="inputset"><label for="historyPeriod">期間</label><select id="historyPeriod"><option value="all">全部期間</option><option value="30">近 30 天</option><option value="90">近 90 天</option><option value="365">近一年</option></select></div></div>
-    <div class="statgrid history-statgrid"><div><label>預測選項</label><strong id="historyTotal">0</strong></div><div><label>已結算</label><strong id="historyVerified">0</strong></div><div><label>贏（含半贏）</label><strong id="historyWin">—</strong></div><div><label>輸（含半輸）</label><strong id="historyLoss">—</strong></div><div><label>走盤</label><strong id="historyPush">—</strong></div><div><label>命中率</label><strong id="historyRate">—</strong></div></div>
+    <div class="history-filters"><div class="inputset"><label for="historyLeague">聯賽</label><select id="historyLeague"><option value="">全部聯賽</option></select></div><div class="inputset"><label for="historyPeriod">期間</label><select id="historyPeriod"><option value="all">全部期間</option><option value="30">近 30 天</option><option value="90">近 90 天</option><option value="365">近一年</option></select></div><div class="inputset"><label for="historyMarket">玩法</label><select id="historyMarket"><option value="">全部玩法</option></select></div></div>
+    <div class="statgrid history-statgrid"><div><label>預測選項</label><strong id="historyTotal">—</strong></div><div><label>已結算</label><strong id="historyVerified">—</strong></div><div><label>贏（含半贏）</label><strong id="historyWin">—</strong></div><div><label>輸（含半輸）</label><strong id="historyLoss">—</strong></div><div><label>走盤</label><strong id="historyPush">—</strong></div><div><label>命中率</label><strong id="historyRate">—</strong></div></div>
     <p class="history-explain">命中率 =（全贏 + 半贏 × 0.5）÷（全贏 + 半贏 + 全輸 + 半輸），走盤不計。未取得可靠賽果的不納入命中率。</p>
     <div class="history-performance">
      <section class="history-table" aria-labelledby="history-leagues-heading">
@@ -66,9 +67,16 @@
        <h3 id="history-trend-heading">累計命中率</h3>
        <p>依預測日期累計，走盤與未結算不計。</p>
        <div id="historyTrendChart"></div>
+       <h3 class="rolling-title">近 30 項滾動命中率</h3>
+       <p>不足 30 項時使用現有樣本。</p>
+       <div id="historyRollingChart"></div>
       </section>
      </aside>
     </div>
+    <section class="history-table history-market-panel" aria-labelledby="history-market-heading">
+     <h3 class="history-heading" id="history-market-heading">各玩法表現</h3>
+     <div class="tablewrap"><table class="history-league-table history-market-table"><thead><tr><th scope="col">玩法</th><th scope="col">計入樣本</th><th scope="col">命中率</th></tr></thead><tbody id="historyMarketRows"></tbody></table></div>
+    </section>
     <section class="history-daily" aria-labelledby="history-daily-heading">
      <h3 class="history-heading" id="history-daily-heading">每日紀錄</h3>
      <div class="history-date-controls">
@@ -93,7 +101,8 @@
    <div><div class="match-dialog-overline" id="matchDetailLeague">賽事詳情</div><h2 id="matchDetailTitle">比賽詳情</h2></div>
    <button class="cross" id="matchCloseBtn" aria-label="關閉比賽詳情">×</button>
   </div>
-  <div id="matchDetailBody" aria-live="polite"></div>
+  <div id="matchDetailBody"></div>
+  <div class="match-share"><button type="button" class="btn secondary" id="copyMatchLink">複製比賽連結</button><input id="matchLinkFallback" type="url" readonly aria-label="比賽連結" hidden><span id="matchShareStatus" role="status"></span></div>
  </section>
 </div>
 <div class="snackbar hidden" id="snackbar"></div>
@@ -101,5 +110,6 @@
 <script src="/live-details.js" defer></script>
 <script src="/history-engine.js" defer></script>
 <script src="/history-charts.js" defer></script>
+<script src="/prediction-insights.js" defer></script>
 <script src="/analysis.js" defer></script>
 </body></html>

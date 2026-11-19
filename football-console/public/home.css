@@ -199,3 +199,10 @@ main { min-width: 0; }
   .hero-art, .motion { display: none !important; }
   .hero.has-art .headline span { color: CanvasText; }
 }
+
+.overview .tile-meta { color:var(--muted); font-size:.875rem; }
+@media (max-width:640px) {
+ .hero-copy { margin-top:12px; }
+ .headline { font-size:clamp(74px,23cqw,138px); }
+ .hero-copy p { margin-top:26px; }
+}

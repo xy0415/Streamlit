@@ -33,8 +33,24 @@
         `<span>${item.label}</span><strong>${item.count}</strong></li>`).join('') + '</ul>';
   }
 
-  function renderTrend(target, daily) {
-    const points = cumulativePoints(daily);
+  function rollingPoints(rows) {
+    const weights = {win:1,halfwin:.5,loss:0,halfloss:0};
+    const ordered = rows.filter(row=>Object.hasOwn(weights,row.result?.grade)).sort((a,b)=>
+      a.reportDate.localeCompare(b.reportDate)||a.p.time.localeCompare(b.p.time)||a.p.order-b.p.order);
+    const window = [];
+    const days = new Map();
+    let sum = 0;
+    for (const row of ordered) {
+      const weight = weights[row.result.grade];
+      window.push(weight);
+      sum += weight;
+      if (window.length > 30) sum -= window.shift();
+      days.set(row.reportDate,{day:row.reportDate,graded:window.length,rate:sum/window.length*100});
+    }
+    return [...days.values()];
+  }
+
+  function renderTrend(target, points, title) {
     if (!points.length) {
       target.innerHTML = '<p class="history-chart-empty">目前沒有可計入命中率的預測。</p>';
       return;
@@ -71,13 +87,14 @@
     ).join('');
 
     target.innerHTML = `<div class="history-trend-value"><strong>${last.rate.toFixed(1)}%</strong><span>${last.graded} 項計入</span></div>` +
-      `<svg class="history-trend-plot" viewBox="0 0 ${width} ${height}" role="img" aria-label="${first.day} 至 ${last.day}，累計命中率 ${last.rate.toFixed(1)}%，共 ${last.graded} 項計入">` +
+      `<svg class="history-trend-plot" viewBox="0 0 ${width} ${height}" role="img" aria-label="${first.day} 至 ${last.day}，${title} ${last.rate.toFixed(1)}%，共 ${last.graded} 項計入">` +
       ticks + dates + (elapsed ? `<path class="chart-line" d="${step}"/>` : '') + dots + '</svg>';
   }
 
-  function render(mix, trend, summary, daily) {
+  function render(mix, trend, summary, daily, rolling, rows = []) {
     renderMix(mix, summary);
-    renderTrend(trend, daily);
+    renderTrend(trend, cumulativePoints(daily),'累計命中率');
+    if(rolling)renderTrend(rolling,rollingPoints(rows),'滾動命中率');
   }
 
   root.FootballHistoryCharts = Object.freeze({ render });
