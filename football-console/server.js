@@ -1,5 +1,6 @@
 const http = require('node:http');
 const apiFootball = require('./api-football');
+const {parseStandings} = require('./standings');
 const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -10,6 +11,7 @@ const BASE = path.join(__dirname, 'public');
 const MAX_BODY = 4096;
 const ALLOWED = new Set(['eng.1','eng.2','eng.fa','esp.1','esp.copa_del_rey','ger.1','ita.1','fra.1','ned.1','por.1','usa.1','bra.1','arg.1','ksa.1','jpn.1','kor.1','mex.1','uefa.champions','uefa.europa','uefa.europa.conf','uefa.nations','fifa.world','fifa.friendly','conmebol.libertadores','concacaf.champions','afc.champions','aus.1','sco.1','bel.1','tur.1','chn.1','fifa.worldq.uefa','fifa.worldq.conmebol','caf.nations','caf.nations_qual']);
 const FD_ALLOWED = new Set(['PL','ELC','PD','BL1','SA','FL1','DED','PPL','BSA','CL','WC']);
+const STANDINGS_ALLOWED = new Set(['eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','ned.1','por.1','bra.1','arg.1','usa.1','ksa.1','jpn.1','kor.1','mex.1','tur.1','bel.1','sco.1','chn.1','aus.1']);
 const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const counters = new Map();
 // Shared upstream cache across visitors. A rejected request is never cached as valid data.
@@ -31,6 +33,7 @@ async function cachedRemoteGet(target,ttlMs,headers={}) {
    throw error;
   }
   if(response.status===200){
+   response.fetchedAt=new Date().toISOString();
    UPSTREAM_CACHE.set(target,{response,expires:Date.now()+ttlMs});
    if(UPSTREAM_CACHE.size>500){
     for(const [key,value] of UPSTREAM_CACHE)if(value.expires<Date.now())UPSTREAM_CACHE.delete(key);
@@ -172,6 +175,17 @@ function remoteGet(target, headers={}) {
 async function api(req,res,route){
  if(!rateOk(req))return send(res,429,{error:'請求過於頻繁，請稍後再試'});
  if(route.pathname==='/api/health')return send(res,200,{ok:true,serverTime:new Date().toISOString(),sources:['ESPN','TheSportsDB','football-data.org',...(process.env.API_FOOTBALL_KEY?['API-FOOTBALL']:[])],apiFootball:apiFootball.publicQuota(),reportSyncConfigured:Boolean(process.env.FOOTBALL_REPORT_FEED_URL),upstreamHealth:Object.fromEntries(SOURCE_HEALTH),sharedCacheEntries:UPSTREAM_CACHE.size});
+ if(route.pathname==='/api/standings'&&req.method==='GET'){
+  const league=route.searchParams.get('league');
+  if(!STANDINGS_ALLOWED.has(league))return send(res,400,{error:'不支援該聯賽積分榜'});
+  const target='https://site.api.espn.com/apis/v2/sports/soccer/'+encodeURIComponent(league)+'/standings';
+  try{
+   const upstream=await cachedRemoteGet(target,45*1000);
+   if(upstream.status!==200)return send(res,502,{error:'積分榜資料來源暫時無法取得',source:'ESPN',upstreamStatus:upstream.status});
+   const normalized=parseStandings(upstream.data);
+   return send(res,200,{source:'ESPN',league,checkedAt:upstream.fetchedAt||new Date().toISOString(),...normalized});
+  }catch(error){return send(res,503,{source:'ESPN',error:String(error.message||error)})}
+ }
  if(route.pathname==='/api/api-football/fixtures'&&req.method==='GET'){
   const date=route.searchParams.get('date');
   if(!dateOk(date))return send(res,400,{error:'日期無效'});
