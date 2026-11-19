@@ -10,7 +10,7 @@ const source=fs.readFileSync(path.join(root,'public','analysis.js'),'utf8')
 const liveSource=fs.readFileSync(path.join(root,'public','live-details.js'),'utf8');
 const historySource=fs.readFileSync(path.join(root,'public','history-engine.js'),'utf8');
 const corrections=JSON.parse(fs.readFileSync(path.join(root,'public','data','verified-results.json'),'utf8'));
-function setup(){
+function setup(batchReply=null){
  const nodes={};
  const document={
   getElementById(id){
@@ -22,11 +22,15 @@ function setup(){
  const requests=[];
  const context={document,window:{FOOTBALL_TEAM_NAMES_ZH:{}},URL,Date,Intl,console,
   setTimeout,clearTimeout,
-  fetch:async url=>{
+  fetch:async (url,options={})=>{
    requests.push(String(url));
    if(String(url).includes('verified-results.json'))
     return {ok:true,status:200,json:async()=>corrections};
    const u=new URL(String(url),'https://test.invalid');
+   if(u.pathname==='/api/fixtures/batch'&&batchReply){
+    const input=JSON.parse(options.body);
+    return {ok:true,status:200,json:async()=>batchReply(input)};
+   }
    if(u.pathname==='/api/fixtures')return {
     ok:true,status:200,json:async()=>({
      upstreamStatus:200,data:{events:[
@@ -60,6 +64,36 @@ test('Every available league is selected by default, while broken K League feed 
  assert.ok(codes.every(code=>state.leagues.has(code)));
  assert.ok(!codes.includes('kor.1'));
  assert.ok(!state.leagues.has('kor.1'));
+});
+test('Every visible scoreboard competition is supported by the server allowlist',()=>{
+ const {context}=setup();
+ const visible=vm.runInContext('LEAGUES.map(([code])=>code)',context);
+ const backend=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ const list=backend.match(/const ALLOWED = new Set\(\[([\s\S]*?)\]\);/);
+ assert.ok(list,'Backend competition allowlist must be present');
+ const allowed=new Set([...list[1].matchAll(/'([^']+)'/g)].map(match=>match[1]));
+ assert.ok(visible.every(code=>allowed.has(code)),'One or more frontend competitions have no working backend route');
+ for(const cup of ['por.taca.portugal','eng.league_cup','ger.dfb_pokal','ita.coppa_italia',
+  'fra.coupe_de_france','bra.copa_do_brazil','arg.copa','conmebol.sudamericana'])
+  assert.ok(visible.includes(cup),'Cup coverage missing: '+cup);
+});
+test('One batch loads the full Taiwan day across two provider dates, without duplicating fixtures',async()=>{
+ const h=setup(input=>({day:input.day,results:input.leagues.flatMap(league=>[
+  {league,date:'2026-11-20',upstreamStatus:200,events:[fixtureEvent('Porto','Boavista','2026-11-20T22:00:00Z')]},
+  {league,date:'2026-11-21',upstreamStatus:200,events:[
+   fixtureEvent('Braga','Nacional','2026-11-21T14:00:00Z'),
+   fixtureEvent('Late Team','Next Day','2026-11-21T23:00:00Z')
+  ]}
+ ])}));
+ h.state.day='2026-11-21';h.state.view='schedule';
+ h.state.leagues=new Set(['por.taca.portugal']);
+ await h.context.loadFixtures(false);
+ assert.equal(h.state.fixtures.length,2);
+ assert.ok(h.state.fixtures.every(f=>f.date==='2026-11-21'));
+ assert.equal(h.state.fixtures[0].leagueCode,'por.taca.portugal');
+ assert.equal(h.state.sources.length,2);
+ assert.equal(h.requests.filter(url=>url==='/api/fixtures/batch').length,1);
+ assert.equal(h.requests.filter(url=>url.startsWith('/api/fixtures?')).length,0);
 });
 test('Past kickoff with stale ESPN pre status never appears as not started',()=>{
  const {context}=setup();
