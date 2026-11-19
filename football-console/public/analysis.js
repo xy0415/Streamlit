@@ -1055,7 +1055,7 @@ function leagueGroupedRows(rows,rendered,leagueOf,view){
  const collapsed=collapsedMatchLeagues[view];
  return [...groups].map(([league,matches])=>{
   const key=encodeURIComponent(league),shut=collapsed.has(league);
-  return '<tr class="match-league-heading"><td colspan="'+(view==='schedule'?4:5)+'"><button type="button" class="match-league-toggle" data-league-toggle="'+escapeHtml(key)+'" data-match-view="'+view+'" aria-expanded="'+(!shut)+'"><span>'+escapeHtml(league)+'</span><span class="match-league-meta">'+matches.length+' 場</span><span class="match-league-arrow" aria-hidden="true">⌄</span></button></td></tr>'+
+  return '<tr class="match-league-heading"><td colspan="'+(view==='schedule'?3:5)+'"><button type="button" class="match-league-toggle" data-league-toggle="'+escapeHtml(key)+'" data-match-view="'+view+'" aria-expanded="'+(!shut)+'"><span>'+escapeHtml(league)+'</span><span class="match-league-meta">'+matches.length+' 場</span><span class="match-league-arrow" aria-hidden="true">⌄</span></button></td></tr>'+
    matches.map(html=>html.replace('<tr class="clickable-match"','<tr'+(shut?' hidden':'')+' class="clickable-match league-match-row"')).join('');
  }).join('');
 }
@@ -1069,7 +1069,6 @@ function renderSchedule(){
       ?'<span class="match-score">'+escapeHtml(x.scoreHome)+' : '+escapeHtml(x.scoreAway)+'</span>'
       :elapsedStatus(x)==='scheduled'?'<span class="schedule-vs">VS</span>':'<span class="schedule-vs">— : —</span>';
   return '<tr class="clickable-match" tabindex="0" role="button" aria-label="查看'+escapeHtml(localizedTeamName(x.home))+'對'+escapeHtml(localizedTeamName(x.away))+'的比賽詳情" data-match-index="'+i+'"><td class="fixture-time"><span class="fixture-day">'+escapeHtml(when)+'</span><strong>'+escapeHtml(x.time)+'</strong><span class="mobile-fixture-status">'+escapeHtml(effective.text)+'</span></td>'+
-   '<td class="fixture-league"><span class="league-token">'+escapeHtml(x.league)+'</span></td>'+
    '<td class="fixture-match"><div class="teams-stack">'+
    teamLine('home',x.home,x.homeShort,x.homeLogo,p?.homeZh,x.leagueCode,x.homeAbbr)+
    '<span class="inline-match-score">'+score+'</span>'+
