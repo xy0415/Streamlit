@@ -19,7 +19,7 @@ const state={day:'',view:'schedule',feed:null,report:null,fixtures:[],sources:[]
   historyScores:new Map(),historyLoading:false,historyChecks:0,historyErrors:0,
   historyRequired:0,historyCheckedAt:0,historyBatch:0,tsdbNextRequestAt:0,lastAutoRefresh:0};
 const standingsLeagues=LEAGUES.filter(([code])=>new Set(['eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','ned.1','por.1','bra.1','arg.1','usa.1','ksa.1','jpn.1','kor.1','mex.1','tur.1','bel.1','sco.1','chn.1','aus.1']).has(code));
-const standingsState={league:'eng.1',snapshots:new Map(),busy:false,sequence:0};
+const standingsState={league:'eng.1',snapshots:new Map(),errors:new Set(),busy:false,sequence:0};
 
 const SCOREBOARD_TTL=45000; // Recent scoreboard refresh; older dates stay cached longer.
 const LIVE=typeof window!=='undefined'?window.FootballLive:null;
@@ -1374,7 +1374,7 @@ function renderStandings(){
  if(!cached){content.innerHTML='<div class="standings-message">正在取得聯賽積分榜…</div>';status.textContent='';return}
  if(cached.error){content.innerHTML='<div class="standings-message">'+escapeHtml(cached.error)+'</div>';status.textContent='';return}
  const stamp=new Date(cached.checkedAt);
- status.textContent='ESPN · 查詢 '+(Number.isFinite(stamp.getTime())?stamp.toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—');
+ status.textContent='ESPN · 查詢 '+(Number.isFinite(stamp.getTime())?stamp.toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—')+(standingsState.errors.has(standingsState.league)?' · 更新暫時失敗':'');
  content.innerHTML='<div class="standings-season">'+escapeHtml(KN[standingsState.league]||standingsState.league)+(cached.season?' · '+escapeHtml(cached.season):'')+'</div>'+
  cached.groups.map(group=>'<section class="standings-group">'+(cached.groups.length>1?'<h3>'+escapeHtml(group.name||'分組')+'</h3>':'')+
  '<div class="standings-scroll"><table class="standings-table"><thead><tr><th>#</th><th>球隊</th><th>賽</th><th>勝</th><th>和</th><th>負</th><th>進–失</th><th>淨勝</th><th>積分</th></tr></thead><tbody>'+
@@ -1391,7 +1391,9 @@ async function loadStandings(force=false){
   const data=await response.json();
   if(!response.ok||!data.groups?.length||data.groups.some(g=>!g.rows?.length))throw Error(data.error||'目前無法取得完整積分榜');
   standingsState.snapshots.set(league,data);
+  standingsState.errors.delete(league);
  }catch(error){
+  standingsState.errors.add(league);
   // Keep a previously verified snapshot rather than replacing it with broken rows.
   if(!prior||prior.error)standingsState.snapshots.set(league,{error:String(error.message||error)});
  }finally{
@@ -1409,6 +1411,9 @@ function render(){
  $('reviewPanel').classList.toggle('hidden',state.view!=='reviews');
  $('historyPanel').classList.toggle('hidden',state.view!=='history');
  $('standingsPanel').classList.toggle('hidden',state.view!=='standings');
+ const mainControls=document.querySelector?.('.controls');
+ if(mainControls)mainControls.classList.toggle('hidden',state.view==='standings');
+ $('exportDaily').classList.toggle('hidden',state.view==='standings');
  if(state.view==='standings')renderStandings();
  updateFilter();renderSchedule();renderPredictions();renderReview();renderHistory()
 }
