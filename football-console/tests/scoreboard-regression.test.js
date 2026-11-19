@@ -77,6 +77,18 @@ test('Every visible scoreboard competition is supported by the server allowlist'
   'fra.coupe_de_france','bra.copa_do_brazil','arg.copa','conmebol.sudamericana'])
   assert.ok(visible.includes(cup),'Cup coverage missing: '+cup);
 });
+test('Grouped schedule uses three visible columns without a phantom league column',()=>{
+ const {context,state,document}=setup();
+ state.day='2026-11-17';
+ state.fixtures=[context.parseScore(fixtureEvent('France','Turkey','2026-11-17T05:30:00Z'))];
+ state.sources=[{status:'ok'}];
+ context.renderSchedule();
+ const html=document.getElementById('fixtureTable').innerHTML;
+ assert.match(html,/colspan="3"/);
+ assert.equal((html.match(/<td\b/g)||[]).length,4);
+ assert.doesNotMatch(html,/class="fixture-league"/);
+ assert.match(html,/class="inline-match-score"/);
+});
 test('One batch loads the full Taiwan day across two provider dates, without duplicating fixtures',async()=>{
  const h=setup(input=>({day:input.day,results:input.leagues.flatMap(league=>[
   {league,date:'2026-11-20',upstreamStatus:200,events:[fixtureEvent('Porto','Boavista','2026-11-20T22:00:00Z')]},
