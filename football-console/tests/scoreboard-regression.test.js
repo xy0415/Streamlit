@@ -53,6 +53,14 @@ function fixtureEvent(home,away,utc){
   ]}]
  };
 }
+test('Every available league is selected by default, while broken K League feed stays hidden',()=>{
+ const {context,state}=setup();
+ const codes=vm.runInContext('LEAGUES.map(([code])=>code)',context);
+ assert.equal(state.leagues.size,codes.length);
+ assert.ok(codes.every(code=>state.leagues.has(code)));
+ assert.ok(!codes.includes('kor.1'));
+ assert.ok(!state.leagues.has('kor.1'));
+});
 test('Past kickoff with stale ESPN pre status never appears as not started',()=>{
  const {context}=setup();
  const f=context.parseScore(fixtureEvent('Tahiti','Cook Islands','2026-11-17T05:30:00Z'));
