@@ -223,7 +223,13 @@ function nameKey(name){
   'northern ireland':'north ireland','north macedonia':'macedonia',
   'inter milan':'internazionale','psg':'paris saint germain',
   'manchester utd':'manchester united','atletico de madrid':'atletico madrid',
-  'atletico mineiro':'atletico mg','1 koln':'koln','cologne':'koln'
+  'atletico mineiro':'atletico mg','1 koln':'koln','cologne':'koln',
+  // ESPN often abbreviates Brazilian state names; Gmail uses the full club name.
+  'athletico pr':'athletico paranaense','atletico pr':'athletico paranaense',
+  'athletico paranaense':'athletico paranaense',
+  'botafogo rj':'botafogo','flamengo rj':'flamengo',
+  'corinthians sp':'corinthians','santos sp':'santos',
+  'gremio porto alegre':'gremio','red bull bragantino':'bragantino'
  };
  return aliases[s]||s;
 }
@@ -537,6 +543,7 @@ async function loadReviewScores(force=false){
  const byId=new Map();matched.forEach(f=>byId.set(f.id||f.leagueCode+'|'+f.home+'|'+f.away+'|'+f.time,f));
  const fixtures=[...byId.values()];
  await enrichScoreResults(fixtures,force,true);
+ if(state.day===day)syncReviewedHistory(state.report?.matches||[],fixtures);
  if(state.day===day){
   state.reviewFixtures=fixtures;
   state.reviewErrors=errors;state.reviewUpdatedAt=Date.now();state.reviewDate=day;
@@ -548,6 +555,7 @@ async function loadReviewScores(force=false){
   supplementFromApiFootball(fixtures,day,force,{requireSelected:false})
  ]).then(async()=>{
   await includeMissingClubPredictions(fixtures,force,day,false);
+  if(state.day===day)syncReviewedHistory(state.report?.matches||[],fixtures);
   if(state.day===day&&state.view==='reviews')renderReview();
  }).catch(err=>console.warn('Review score cross-check failed:',String(err.message||err)));
  if(state.day!==day&&state.view==='reviews')loadReviewScores(false);
@@ -1155,6 +1163,19 @@ function applyHistoricalResult(p,fixture){
  state.historyScores.set(key,output);
  return !!grade;
 }
+function syncReviewedHistory(predictions,fixtures){
+ let updated=false;
+ for(const p of predictions){
+  const fixture=eventForPrediction(p,fixtures);
+  if(!fixture||fixture.status!=='finished'||fixture.scoreConflict)continue;
+  const key=historyId(p),old=state.historyScores.get(key);
+  if(old?.verified)continue;
+  const score=resultScoreFromFixture(p,fixture);
+  if(!score||(!score.scoreVerified&&old?.grade&&old.h===score.h&&old.a===score.a))continue;
+  if(applyHistoricalResult(p,fixture))updated=true;
+ }
+ if(updated){saveHistoryCache();if(state.view==='history')renderHistory()}
+}
 async function loadHistoryResults(force=false){
  if(state.historyLoading||!state.feed?.reports?.length||!HISTORY)return;
  state.historyLoading=true;state.historyBatch++;
@@ -1404,6 +1425,10 @@ function init(){
   const delta=Math.abs(Date.parse(state.day+'T00:00:00Z')-Date.parse(todayTaiwan()+'T00:00:00Z'));
   if(delta<=2*86400000)loadReviewScores(false);
  },60000);
+ setInterval(()=>{
+  if(document.visibilityState!=='visible'||state.view!=='history'||state.historyLoading)return;
+  loadHistoryResults(false);
+ },120000);
  // Use a slower schedule outside live matches; background tabs do not poll.
  setInterval(()=>{
   if(document.visibilityState==='hidden'||state.reviewLoading||state.loading)return;
