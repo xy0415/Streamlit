@@ -1202,37 +1202,152 @@ function reviewResultLabel(settlement){
  if(/走盤|退款|退回本金|無效/.test(value))return '走盤';
  return '';
 }
-function renderParlays(report,fixtures){
- const groups=new Map(),affected=new Map();
- const key=p=>[p.date,p.time,nameKey(p.home),nameKey(p.away)].join('|');
+const parlayOddsByDate=new Map();
+let parlayHistoryLoading=false;
+let parlayRecheckTimer;
+const parlayKind={published:'發布原價',beforePublication:'發布前賽前價',reference:'賽前回補價'};
+const parlayMatchKey=p=>[p.date,nameKey(p.home),nameKey(p.away)].join('|');
+const signedUnits=n=>(n>0?'+':'')+n.toFixed(2);
+function groupParlays(report){
+ const groups=new Map();
  for(const p of report?.matches||[]){
   if(!p.groupPublished)continue;
   if(!groups.has(p.group))groups.set(p.group,[]);
   groups.get(p.group).push(p);
-  if(!affected.has(key(p)))affected.set(key(p),new Set());
-  affected.get(key(p)).add(p.group);
  }
+ return groups;
+}
+function recentParlayReports(){
+ const from=addDay(todayTaiwan(),-6);
+ return (state.feed?.reports||[]).filter(r=>r.date>=from&&r.date<=todayTaiwan()&&groupParlays(r).size);
+}
+async function loadParlayOdds(report,force=false){
+ if(!report||!groupParlays(report).size)return 'ready';
+ const existing=parlayOddsByDate.get(report.date);
+ if(existing?.loading)return existing.loading;
+ if(!force&&existing?.retryAt>Date.now())return existing.status;
+ const entry={...existing};
+ const request=(async()=>{
+  try{
+   const res=await fetch('/api/parlay-odds?'+new URLSearchParams({date:report.date}),{signal:AbortSignal.timeout(45000)});
+   if(!res.ok)throw Error('Odds HTTP '+res.status);
+   const data=await res.json();
+   entry.legs={...entry.legs,...data.legs};
+   entry.status=data.status;
+   entry.complete=['ready','outside_window'].includes(data.status);
+  }catch{
+   entry.status='unavailable';
+   entry.complete=false;
+  }finally{
+   entry.loading=null;
+   entry.retryAt=Date.now()+(entry.complete?10*60*1000:65*1000);
+   if(state.day===report.date&&['predictions','reviews'].includes(state.view))renderParlayPanel();
+   if(state.view==='history')renderParlayHistory();
+  }
+  return entry.status;
+ })();
+ entry.loading=request;
+ parlayOddsByDate.set(report.date,entry);
+ return request;
+}
+async function loadParlayHistory(force=false){
+ if(parlayHistoryLoading)return;
+ parlayHistoryLoading=true;
+ clearTimeout(parlayRecheckTimer);
+ try{
+  for(const report of recentParlayReports()){
+   if(state.view!=='history')break;
+   if(await loadParlayOdds(report,force)==='rate_limited'){
+    parlayRecheckTimer=setTimeout(()=>{if(state.view==='history')loadParlayHistory()},65000);
+    break;
+   }
+  }
+ }finally{
+  parlayHistoryLoading=false;
+  if(state.view==='history')renderParlayHistory();
+ }
+}
+function parlayValues(picks,report){
+ const entry=parlayOddsByDate.get(report.date);
+ const result=INSIGHTS.parlayPrices(picks,entry?.legs||{},report.publishedAt);
+ const duplicate=new Set(picks.map(parlayMatchKey)).size!==picks.length;
+ const product=duplicate?null:INSIGHTS.parlayProduct(result.prices);
+ return {...result,product,duplicate};
+}
+function renderParlayHistory(){
+ const host=$('parlayHistoryBody');
+ if(!host||!INSIGHTS)return;
+ const reports=recentParlayReports();
+ const rows=reports.flatMap(report=>[...groupParlays(report)].map(([group,picks])=>{
+  const odds=parlayValues(picks,report);
+  const grades=picks.map(p=>{
+   const score=state.historyScores.get(historyId(p));
+   return score?.verified?score.grade:null;
+  });
+  const net=odds.product&&odds.commonBook?INSIGHTS.parlayNet(grades,odds.prices):null;
+  const status=odds.duplicate?'同場多關':picks.length<2?'單場':!odds.product?(parlayOddsByDate.get(report.date)?.status==='rate_limited'?'賠率待查詢':'缺賠率'):
+   !odds.commonBook?'缺同一莊家報價':net===null?'比分待核實':parlayKind[odds.kind];
+  return {date:report.date,group,odds,net,status};
+ }));
+ const metrics=Object.entries(parlayKind).map(([kind,label])=>{
+  const sample=rows.filter(row=>row.net!==null&&row.odds.kind===kind);
+  const net=sample.reduce((sum,row)=>sum+row.net,0);
+  return '<div><label>'+label+'</label><strong>'+(sample.length?signedUnits(net/sample.length*100)+'%':'—')+
+   '</strong><small>'+sample.length+' 組'+(sample.length?' · '+signedUnits(net)+' 單位':'')+'</small></div>';
+ }).join('');
+ const coverage=rows.filter(row=>row.odds.product&&row.odds.commonBook).length;
+ host.innerHTML='<div class="statgrid parlay-metrics">'+metrics+'</div>'+
+  '<p class="history-explain">同莊家賠率齊全 '+coverage+'／'+rows.length+' 組'+(parlayHistoryLoading?' · 正在查詢':'')+'</p>'+
+  (rows.length?'<div class="tablewrap"><table class="history-league-table"><thead><tr><th>日期</th><th>串關</th><th>綜合賠率</th><th>損益</th><th>狀態</th></tr></thead><tbody>'+
+   rows.map(r=>'<tr><td>'+escapeHtml(r.date)+'</td><td>'+escapeHtml(r.group)+'</td><td>'+
+    (r.odds.product&&r.odds.commonBook?r.odds.product.toFixed(2):'—')+'</td><td>'+
+    (r.net===null?'—':signedUnits(r.net))+'</td><td>'+r.status+'</td></tr>').join('')+'</tbody></table></div>':'');
+}
+function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.concat(state.fixtures)){
+ const review=state.view==='reviews';
+ const host=$(review?'parlayReviewBody':'parlayPredictionBody');
+ if(!host||!INSIGHTS)return;
+ const groups=groupParlays(report),affected=new Map();
+ for(const [group,picks] of groups){
+  for(const p of picks){
+   const key=parlayMatchKey(p);
+   if(!affected.has(key))affected.set(key,new Set());
+   affected.get(key).add(group);
+  }
+ }
+ const entry=parlayOddsByDate.get(report?.date);
  const output=[...groups].map(([group,picks])=>{
+  const odds=parlayValues(picks,report);
   const legs=picks.map(p=>{
-   const event=eventForPrediction(p,fixtures);
+   const event=review?eventForPrediction(p,fixtures):null;
    const live=resultScoreFromFixture(p,event);
    const stored=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
    const conflict=event?.scoreConflict||(stored&&live&&(live.h!==p.homeScore||live.a!==p.awayScore));
    const score=conflict?null:stored?{h:p.homeScore,a:p.awayScore}:live;
-   return {p,score,grade:gradeHistory(p,score)||(stored&&!conflict?HISTORY?.settledFromString(p.settlement):null)};
+   return {p,score,verified:!conflict&&(stored||live?.scoreVerified),grade:gradeHistory(p,score)||
+    (stored&&!conflict?HISTORY?.settledFromString(p.settlement):null)};
   });
-  const status=INSIGHTS.parlayStatus(legs.map(leg=>leg.grade));
-  return '<article class="parlay-group"><header><h4>'+escapeHtml(group)+'</h4><span>'+legs.length+' 關 · '+status+'</span></header><ol>'+
+  const status=review?' · '+INSIGHTS.parlayStatus(legs.map(leg=>leg.grade)):'';
+  const net=review&&odds.product&&odds.commonBook?INSIGHTS.parlayNet(legs.map(leg=>leg.verified?leg.grade:null),odds.prices):null;
+  const foot=odds.duplicate?'同場多關，無法以獨立賠率相乘':picks.length<2?'單場推薦':
+   odds.product?odds.commonBook?parlayKind[odds.kind]:'跨莊家乘積，僅供參考':
+   entry?.loading?'查詢賠率中…':entry?.status==='unavailable'?'賠率來源暫無資料':'賠率齊全後可計算（'+odds.priced+'／'+legs.length+' 關）';
+  return '<article class="parlay-group"><header><h4>'+escapeHtml(group)+'</h4><span>'+legs.length+' 關'+status+'</span></header><ol>'+
    legs.map(({p,score,grade},index)=>{
-    const shared=[...affected.get(key(p))].filter(item=>item!==group);
-    return '<li><div><a href="'+escapeHtml(INSIGHTS.matchLink(p,'reviews','review'))+'"><strong>'+
+    const quote=odds.prices[index];
+    const shared=[...affected.get(parlayMatchKey(p))].filter(item=>item!==group);
+    const stamp=quote&&fTaiwan(quote.capturedAt.replace(' ','T').replace(/(\d\d:\d\d(?::\d\d)?)$/,'$1+08:00'));
+    return '<li><div><a href="'+escapeHtml(INSIGHTS.matchLink(p,review?'reviews':'predictions',review?'review':'prediction'))+'"><strong>'+
      escapeHtml((index+1)+'. '+localizedTeamName(p.home,p.homeZh)+' vs '+localizedTeamName(p.away,p.awayZh))+
      '</strong></a>'+(shared.length?'<div class="search-meta">同場亦見於 '+escapeHtml(shared.join('、'))+'</div>':'')+
-     '</div><span class="parlay-market">'+escapeHtml(displayCleanText(p.market))+'</span><span class="parlay-result">'+
-     (score?score.h+' : '+score.a+' · ':'')+(gradeLabels[grade]||'待結算')+'</span></li>';
-   }).join('')+'</ol></article>';
+     '</div><span class="parlay-market">'+escapeHtml(displayCleanText(p.market))+'</span><div class="parlay-result"><strong>'+
+     (quote?quote.price.toFixed(2):'—')+'</strong>'+(quote?'<small>'+escapeHtml(quote.source+' · '+(quote.kind==='published'?'發布原價':'賽前價')+
+     (stamp?' · '+stamp.stamp:''))+'</small>':'')+(review?'<small>'+(score?score.h+' : '+score.a+' · ':'')+
+     (gradeLabels[grade]||'待結算')+'</small>':'')+'</div></li>';
+   }).join('')+'</ol><footer><span>'+foot+'</span><strong>綜合賠率 '+(odds.product?odds.product.toFixed(2):'—')+
+   (net===null?'':' · 損益 '+signedUnits(net)+' 單位')+'</strong></footer></article>';
  }).join('');
- $('parlayReviewBody').innerHTML=output||'<p class="search-meta">此日沒有可核對的已發布串關組合。</p>';
+ host.innerHTML=output||'<p class="search-meta">此日沒有已發布的串關組合。</p>';
 }
 function renderReview(){
  const rows=predsForView(),available=state.reviewFixtures.concat(state.fixtures);
@@ -1277,7 +1392,7 @@ function renderReview(){
     '<td class="review-result-cell"><strong class="review-result '+resultClass+'">'+escapeHtml(label)+'</strong></td></tr>';
  });
  $('reviewTable').innerHTML=leagueGroupedRows(rows,reviewRows,p=>p.league,'reviews');
- if(INSIGHTS&&state.view==='reviews')renderParlays(state.report,available);
+ if(INSIGHTS&&state.view==='reviews')renderParlayPanel(state.report,available);
  renderReviewArticle(state.report?.matches||[],available);
 }
 function renderReviewArticle(rows,fixtures){
@@ -1571,6 +1686,7 @@ async function includeMissingClubPredictions(fixtures,force=false,selectedDay=st
 }
 
 function renderHistory(){
+ if(state.view==='history')renderParlayHistory();
  const all=historyReportRows();
  const leagueControl=$('historyLeague'),periodControl=$('historyPeriod'),marketControl=$('historyMarket');
  const markets=INSIGHTS?.marketLabels||{};
@@ -1709,7 +1825,13 @@ function render(){
  if(mainControls)mainControls.classList.toggle('hidden',state.view==='standings'||state.view==='history');
  $('exportDaily').classList.toggle('hidden',state.view==='standings');
  if(state.view==='standings')renderStandings();
- updateFilter();renderSchedule();renderPredictions();renderReview();renderHistory()
+ updateFilter();renderSchedule();renderPredictions();renderReview();renderHistory();
+ if(['predictions','reviews'].includes(state.view)){
+  if(state.view==='predictions')renderParlayPanel();
+  loadParlayOdds(state.report);
+ }
+ if(state.view==='history')loadParlayHistory();
+
 }
 function openModal(id){$(id).classList.remove('hidden')}
 function closeModal(id){$(id).classList.add('hidden')}
@@ -1800,7 +1922,7 @@ function init(){
    }
    toast('資料已重新查詢');
  };
- $('historyRefresh').onclick=()=>loadHistoryResults(true);
+ $('historyRefresh').onclick=()=>{loadHistoryResults(true);loadParlayHistory(true)};
  $('historyLeague').onchange=renderHistory;
  $('historyPeriod').onchange=renderHistory;
  $('historyMarket').onchange=renderHistory;

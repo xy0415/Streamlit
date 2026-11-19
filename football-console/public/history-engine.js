@@ -26,38 +26,41 @@
     const net=diff+line;
     return net>0?'win':net<0?'loss':'push';
   }
-  function evaluate(p,h,a){
-    if(!Number.isInteger(h)||!Number.isInteger(a)||h<0||a<0)return null;
+  function selection(p){
     const raw=String(p?.market||'').replace(/\s+/g,'');
     if(!raw)return null;
     const yesNo=raw.match(/雙方進球[：:]?(是|否|有|無)/);
-    if(yesNo){
-      const predicted=/(是|有)/.test(yesNo[1]);
-      return (h>0&&a>0)===predicted?'win':'loss';
-    }
+    if(yesNo)return {market:'btts',side:/(是|有)/.test(yesNo[1])?'yes':'no'};
     const total=raw.match(/^(?:全場)?(?:總進球|進球數)(大|小)(\d+(?:\.\d+)?)$/)||
       raw.match(/^全場(大|小)(\d+(?:\.\d+)?)$/);
-    if(total){
-      const line=Number(total[2]),direction=total[1];
-      return resolveDiff(direction==='大'?h+a:-(h+a),direction==='大'?-line:line);
-    }
+    if(total)return {market:'totals',side:total[1]==='大'?'over':'under',line:Number(total[2])};
     const handicap=raw.match(/(.+?)(?:亞洲)?讓球([+-]?\d+(?:\.\d+)?)/);
     if(handicap){
       const side=sideFor(handicap[1],p);
-      if(!side)return null;
-      return resolveDiff(side==='home'?h-a:a-h,Number(handicap[2]));
+      return side?{market:'handicap',side,line:Number(handicap[2])}:null;
     }
     if(/不敗|勝或和局|勝或平局/.test(raw)){
       const side=sideFor(raw,p);
-      if(!side)return null;
-      return side==='home'?(h>=a?'win':'loss'):(a>=h?'win':'loss');
+      return side?{market:'double',side}:null;
     }
+    if(/^(?:和局|平局)$/.test(raw))return {market:'winner',side:'draw'};
     if(/獲勝|勝出|主勝|客勝|勝利/.test(raw)){
       const side=sideFor(raw,p);
-      if(!side)return null;
-      return side==='home'?(h>a?'win':'loss'):(a>h?'win':'loss');
+      return side?{market:'winner',side}:null;
     }
     return null;
+  }
+  function evaluate(p,h,a){
+    if(!Number.isInteger(h)||!Number.isInteger(a)||h<0||a<0)return null;
+    const pick=selection(p);
+    if(!pick)return null;
+    const {market,side,line}=pick;
+    if(market==='btts')return (h>0&&a>0)===(side==='yes')?'win':'loss';
+    if(market==='totals')return resolveDiff(side==='over'?h+a:-(h+a),side==='over'?-line:line);
+    const diff=side==='home'?h-a:a-h;
+    if(market==='handicap')return resolveDiff(diff,line);
+    if(market==='double')return diff>=0?'win':'loss';
+    return (side==='draw'?h===a:diff>0)?'win':'loss';
   }
   function settledFromString(x){
     const text=String(x||'');
@@ -80,5 +83,6 @@
     out.rate=decisive?Math.round((out.win+.5*out.halfwin)/decisive*1000)/10:null;
     return out;
   }
-  root.FootballHistory=Object.freeze({evaluate,settledFromString,summarize,sideFor});
-})(window);
+  root.FootballHistory=Object.freeze({evaluate,settledFromString,summarize,sideFor,selection});
+  if(typeof module!=='undefined'&&module.exports)module.exports=root.FootballHistory;
+})(typeof window==='undefined'?globalThis:window);

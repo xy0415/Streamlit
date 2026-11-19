@@ -1,6 +1,7 @@
 const http = require('node:http');
 const apiFootball = require('./api-football');
 const {parseStandings} = require('./standings');
+const {reportOdds} = require('./parlay-odds');
 const {includePublishedCards} = require('./report-cards');
 const https = require('node:https');
 const fs = require('node:fs');
@@ -262,6 +263,14 @@ async function api(req,res,route){
    const data=await apiFootball.getEvents(Number(fixture));
    return send(res,data.ok?200:503,data);
   }catch(error){return send(res,502,{ok:false,error:String(error.message||error),events:[]})}
+ }
+ if(route.pathname==='/api/parlay-odds'&&req.method==='GET'){
+  const date=route.searchParams.get('date');
+  if(!dateOk(date))return send(res,400,{error:'日期無效'});
+  const feed=await currentReports();
+  const report=feed.reports.find(item=>item.date===date);
+  if(!report)return send(res,404,{status:'no_report',legs:{}});
+  return send(res,200,await reportOdds(report));
  }
  if(route.pathname==='/api/reports'&&req.method==='GET')return send(res,200,await currentReports());
  if(route.pathname==='/api/sync-status'&&req.method==='GET'){

@@ -70,5 +70,38 @@
     return '全中';
   }
 
-  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, matchLink, readMatchLink, originalOdds, unitReturn, parlayStatus});
+  function priceBook(value) {
+    const name=String(value||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    return ['1xbet','pinnacle','bet365','williamhill','betfair','unibet'].includes(name)?name:'';
+  }
+
+  function parlayPrices(legs,quotes,publishedAt) {
+    const published=Date.parse(String(publishedAt||'').replace(' ','T').replace(/(\d\d:\d\d(?::\d\d)?)$/,'$1+08:00'));
+    const options=legs.map(leg=>leg.publishedOdds?[{...leg.publishedOdds,kind:'published',book:priceBook(leg.publishedOdds.source)}]:
+      [...(quotes[leg.id]||[])].sort((a,b)=>
+        Number(Date.parse(b.capturedAt)<=published)-Number(Date.parse(a.capturedAt)<=published)));
+    const books=[...new Set(options.flatMap(quotes=>quotes.map(q=>q.book).filter(Boolean)))];
+    const common=books.map(book=>options.map(quotes=>quotes.find(q=>q.book===book)))
+      .filter(list=>list.every(Boolean))
+      .sort((a,b)=>b.filter(q=>Date.parse(q.capturedAt)<=published).length-a.filter(q=>Date.parse(q.capturedAt)<=published).length)[0];
+    const prices=common||options.map(list=>list[0]||null);
+    const priced=prices.filter(Boolean).length;
+    return {prices,priced,commonBook:Boolean(common),
+      kind:prices.every(q=>q?.kind==='published')?'published':
+       prices.every(q=>q&&Date.parse(q.capturedAt)<=published)?'beforePublication':'reference'};
+  }
+
+  function parlayProduct(prices) {
+    return prices.length>1&&prices.every(q=>Number.isFinite(q?.price)&&q.price>1)?
+      prices.reduce((total,q)=>total*q.price,1):null;
+  }
+
+  function parlayNet(grades,prices) {
+    if(!parlayProduct(prices)||grades.length!==prices.length)return null;
+    const returns=grades.map((grade,i)=>unitReturn(grade,prices[i].price));
+    if(returns.some(value=>value===null))return null;
+    return returns.reduce((product,net)=>product*(1+net),1)-1;
+  }
+
+  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, matchLink, readMatchLink, originalOdds, unitReturn, parlayStatus, parlayPrices, parlayProduct, parlayNet});
 })(window);

@@ -1597,3 +1597,19 @@ tbody tr:hover{background:#f6f6f4}
  .parlay-group li { grid-template-columns:1fr auto; }
  .parlay-group li .parlay-market { grid-column:1 / -1; grid-row:2; }
 }
+
+.parlay-group footer {
+ display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:.45rem 1rem;
+ border-top:1px solid var(--line,#ddd);padding:.65rem .8rem;color:#17191b;
+}
+.parlay-group footer span,.parlay-result small,.parlay-metrics small {font-size:.75rem;color:#555}
+.parlay-result small,.parlay-metrics small {display:block}
+.parlay-result strong,.parlay-group footer strong {font-variant-numeric:tabular-nums}
+.parlay-metrics {grid-template-columns:repeat(3,minmax(0,1fr));margin:.8rem 1rem 0}
+.parlay-history .tablewrap {margin:0 1rem .85rem}
+.parlay-history td {white-space:nowrap}
+@media(max-width:550px){
+ .parlay-metrics {margin:.6rem .5rem 0}
+ .parlay-metrics label {font-size:.68rem}
+ .parlay-history .tablewrap {margin:0 .5rem .6rem}
+}

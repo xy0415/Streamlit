@@ -220,4 +220,22 @@ async function getEvents(id){
   .finally(()=>inflight.delete(key));
  inflight.set(key,promise);return promise;
 }
-module.exports={getFixtures,getEvents,competitionCode,normalizedFixture,safeCodes,publicQuota};
+async function getFixtureOdds(id){
+ if(!process.env.API_FOOTBALL_KEY)return {ok:false,rows:[],reason:'not_configured'};
+ if(!seenFixtureIds.has(id))return {ok:false,rows:[],reason:'unmatched_fixture'};
+ const key='odds:'+id,cached=cache.get(key);
+ if(cached&&cached.until>Date.now())return cached.result;
+ if(inflight.has(key))return inflight.get(key);
+ if(!budgetPermit())return {ok:false,rows:[],reason:'quota'};
+ const promise=providerFetch('/odds?fixture='+id,process.env.API_FOOTBALL_KEY)
+  .then(rows=>({ok:true,rows:rows.filter(row=>Number(row.fixture?.id)===id)}))
+  .catch(error=>({ok:false,rows:[],reason:String(error.message||error)}))
+  .then(result=>{
+   cache.set(key,{result,until:Date.now()+(result.ok?3*60*60*1000:NEGATIVE_CACHE)});
+   if(cache.size>350)cache.delete(cache.keys().next().value);
+   return result;
+  }).finally(()=>inflight.delete(key));
+ inflight.set(key,promise);
+ return promise;
+}
+module.exports={getFixtures,getEvents,getFixtureOdds,competitionCode,normalizedFixture,safeCodes,publicQuota};
