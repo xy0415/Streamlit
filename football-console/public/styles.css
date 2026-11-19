@@ -177,3 +177,144 @@ td:last-child,th:last-child{padding-right:20px}
  .league-list{grid-template-columns:1fr}
  .fd-settings{display:block}
 }
+
+/* Shared monochrome visual language for the secondary data-validation tool. */
+:root{
+ --ink:#111213;--text:#202324;--muted:#727676;
+ --line:#dadbd8;--line2:#e6e7e3;--canvas:#f5f5f3;
+ --blue:#191a1b;--pale:#f0f0ee;--shadow:none;
+}
+body{background:var(--canvas);color:var(--text);font-size:14px}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #111;outline-offset:2px}
+.sidebar{width:210px;background:var(--ink);border-right:1px solid #303233;padding:25px 13px 17px;color:#eee}
+.brand{padding:4px 11px 31px;border-bottom:1px solid #38393a;margin-bottom:19px;gap:11px}
+.brand-icon{width:29px;height:27px;border-radius:0;background:none;box-shadow:none;flex:0 0 29px}
+.brand-icon span{width:29px;height:27px;border:0;border-radius:0;background:repeating-linear-gradient(90deg,#f4f5f3 0 2px,transparent 2px 5px)}
+.brand-icon span:after{display:none}
+.brand strong{color:#f7f7f4;font-size:14px;letter-spacing:1.5px}
+.brand small{color:#a5a6a6;font-family:Consolas,monospace;font-size:9px;letter-spacing:2px}
+.nav-caption{display:block;color:#858788;font:500 10px Consolas,monospace;letter-spacing:1.5px;margin:0 11px 10px}
+.nav-item{border-radius:1px;color:#c5c7c7;font-size:13px;padding:12px 11px;gap:10px;margin-bottom:3px;font-weight:650}
+.nav-item:hover{background:#292b2d;color:#fff}
+.nav-item.active,.nav-item.active:hover{background:#f3f3f0;color:#17191a}
+.nav-glyph{color:#848788;min-width:24px;font-size:16px}
+.nav-item.active .nav-glyph{color:#454849}
+.nav-count{border-radius:1px;background:#3a3c3d;color:#e0e2df}
+.nav-item.active .nav-count{background:#dededb;color:#202324}
+.sidebar-bottom{border-color:#3a3c3d;padding:15px 11px 0}
+.sidebar-bottom small{font:10px/1.5 Consolas,monospace;color:#929596}
+.side-chip{color:#ddddda;font-size:11px}
+.pulse,.note-dot{box-shadow:none;background:#53cba0;width:6px;height:6px}
+.topbar{height:43px;background:#f5f5f3;border-bottom:1px solid #dcddda;padding:0 29px}
+.breadcrumb,.breadcrumb strong{color:#565a5b;font-size:11px}
+.breadcrumb .backhome{color:#252829}
+.breadcrumb .backhome:hover{text-decoration:underline}
+.topright{color:#777b7b;font:11px Consolas,monospace}
+.clocktag{border:1px solid #ccceca;border-radius:1px;background:transparent}
+.content{max-width:1330px;padding:23px 29px 30px}
+.pageheading{padding-top:14px;border-top:3px solid var(--ink);margin-bottom:14px;gap:18px}
+.pageheading h1{font-size:26px;color:var(--ink);letter-spacing:-.85px;line-height:1.25}
+.heading-actions{gap:7px}
+.btn{border-radius:1px;min-height:36px;padding:7px 12px;font-size:12px}
+.btn.ghost{border-color:#bcbeb9;background:transparent;color:#202324}
+.btn.ghost:hover{border-color:#343637;background:#efefec}
+.btn.primary{background:var(--ink);border-color:var(--ink);box-shadow:none}
+.btn.primary:hover{background:#333637;border-color:#333637}
+.panel{border:1px solid var(--line);border-radius:1px;box-shadow:none}
+.config-panel{padding:15px 17px}
+.section-title{font-size:16px;color:#1b1d1e;margin-bottom:12px}
+.section-index{display:none}
+.field label{color:#5b6060;font-size:11px}
+.field input,.field select,.selectlike,.filters select,.filters input,.modal-search,.response-toolbar select{
+ min-height:36px;height:auto;padding:7px 10px;border:1px solid #cccecb;border-radius:1px;
+ background:#fff;color:#242728;font-size:12px;
+}
+.field input:focus,.field select:focus,.filters select:focus,.filters input:focus,.modal-search:focus,.response-toolbar select:focus{
+ border-color:#252728;box-shadow:none
+}
+.control-grid{gap:10px}
+.sources-config{border-color:#e1e2df;margin-top:13px;padding-top:12px;gap:13px}
+.source-heading{color:#5d6161}
+.source-label strong{color:#303334}
+.toggle-surface{border-radius:99px;background:#cacdc9}
+.source-toggle input:checked+.toggle-surface{background:#1f2223}
+.textbtn{color:#36393a;font-size:12px;border-bottom:1px solid transparent}
+.textbtn:hover{text-decoration:none;border-bottom-color:#333}
+.kpi-grid{gap:0;margin-top:12px}
+.kpi{border-right:0;border-radius:0;padding:12px 15px;min-height:77px}
+.kpi:last-child{border-right:1px solid var(--line)}
+.kpi-label{font-size:11px;color:#696d6d}
+.kpi-number{font:750 27px/1.15 'DM Sans',Consolas,sans-serif;color:#181a1b;margin-top:7px}
+.source-summary{padding:14px 17px;margin-top:12px}
+.source-card{border:1px solid var(--line);border-radius:1px;padding:10px 12px}
+.source-mark{background:#e8e9e5;color:#454849;border-radius:1px}
+.source-card strong{color:#272a2b}
+.source-card small{color:#7b7e7e}
+.status{border-radius:1px;font-size:11px}
+.status.ok{background:#e3f2e9;color:#087849}
+.status.warn,.status.missing{background:#fbf0e1;color:#9d651e}
+.status.error{background:#fae7e9;color:#af3443}
+.status.pending{background:#ebebe8;color:#666a6a}
+.status.duplicate{background:#eeebf4;color:#6a538c}
+.results-panel{margin-top:12px;padding-top:13px}
+.results-panel .section-title{margin-bottom:12px;padding:0 17px}
+.results-title .count-pill{background:#202223;color:#fff;border-radius:1px;font-family:Consolas,monospace}
+.filters{padding:0 17px 13px;gap:7px}
+.filters select{min-width:105px}
+.filter-reset{color:#4d5151}
+table{min-width:1030px}
+th{font-size:11px;background:#27292a;color:#eeefec;border-color:#27292a;padding:10px 11px}
+td{font-size:12px;color:#4d5252;border-color:#ededeb;padding:10px 11px}
+td:first-child,th:first-child{padding-left:15px}
+td:last-child,th:last-child{padding-right:15px}
+tbody tr:hover{background:#f4f4f1}
+.team-pair{color:#212425;font-size:13px}
+.league-cell,.time-primary{color:#393d3e}
+.time-primary small,.muted{color:#7d8282}
+.id-cell{color:#727777;font-family:Consolas,monospace}
+.source-pill{border-color:#d6d9d5;color:#535858;border-radius:1px}
+.table-action{background:#f0f0ed;color:#313536;border-radius:1px}
+.table-footer{border-color:var(--line);color:#828686}
+.empty{padding:27px 15px}
+.empty strong{color:#565a5b}
+.codeview,.detail-body pre{background:#1e2021;color:#f2f2ef;border-radius:1px}
+.bottom-note{color:#777b7b}
+.bottom-note button{color:#414545}
+.modal-overlay{background:rgba(12,13,14,.7)}
+.modal{border-radius:2px;border:1px solid #c2c5c0;box-shadow:0 25px 70px #0004}
+.modal-head h2{color:#1c1f20}
+.close-btn{border:1px solid #d2d5d0;border-radius:1px;background:#f3f3f0;color:#3f4243}
+.league-item,.upload-zone,.detail-field,.issue-note,.history-row button,.export-list>button{border-radius:1px}
+.league-item{border-color:#dbdeda;color:#333637}
+.league-item input{accent-color:#141616}
+.league-group{color:#727676}
+.upload-zone{background:#f5f5f2;border-color:#bcc0bb;color:#3c4141}
+.toast{background:#202223;border-radius:1px}
+@media(max-width:1050px){
+ .sidebar{display:none}
+ .topbar{padding:0 19px}
+ .content{padding:20px 18px 27px}
+ .kpi-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:700px){
+ .content{padding:13px 9px 23px}
+ .topbar{padding:0 11px}
+ .pageheading{gap:9px;margin-bottom:11px}
+ .pageheading h1{font-size:19px}
+ .heading-actions{width:100%;gap:5px}
+ .heading-actions .btn{padding:7px 8px;font-size:11px}
+ .config-panel,.source-summary{padding:12px}
+ .section-title{font-size:14px}
+ .control-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .field input,.field select,.selectlike{font-size:12px}
+ .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .kpi{min-height:64px;padding:9px 11px}
+ .kpi:nth-child(2n){border-right:1px solid var(--line)}
+ .kpi:nth-child(n+3){border-top:0}
+ .kpi-number{font-size:23px}
+ .sources-config{gap:9px 14px}
+ .results-panel .section-title{padding:0 12px}
+ .filters{padding:0 12px 12px}
+ table{min-width:950px}
+ .table-footer{padding:0 12px}
+}
