@@ -947,9 +947,11 @@ async function openPredictionMatchDetail(p){
  if(state.day!==selectedDay)return;
  if(!fixture){
   // Preserve the exact published fixture without inventing an upstream event ID.
+  const recorded=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
   fixture={id:'',date:p.date,time:p.time,league:p.league,
    home:p.home,away:p.away,homeLogo:'',awayLogo:'',homeId:'',awayId:'',
-   status:'scheduled',scoreHome:null,scoreAway:null,source:'公開預測'};
+   status:recorded?'finished':'scheduled',scoreHome:recorded?p.homeScore:null,
+   scoreAway:recorded?p.awayScore:null,source:recorded?'已核實終場資料':'公開預測'};
  }
  openMatchDetail(fixture);
 }
