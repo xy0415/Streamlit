@@ -1108,16 +1108,28 @@ function renderReviewArticle(rows,fixtures){
   if(!grade)continue;
   settled.push({p,h,a,grade});
  }
- if(!settled.length){body.textContent='目前尚無可結算的終場賽果，復盤內容會隨實際比分更新。';return}
+ if(!settled.length){body.textContent='目前尚無可核實的終場結果，待實際賽果確認後更新檢討。';return}
  const won=settled.filter(x=>x.grade==='win'||x.grade==='halfwin').length;
- const lost=settled.filter(x=>x.grade==='loss'||x.grade==='halfloss').length;
+ const losses=settled.filter(x=>x.grade==='loss'||x.grade==='halfloss');
  const push=settled.filter(x=>x.grade==='push').length;
- const intro='本日已取得 '+settled.length+' 場可判定的賽果，贏 '+won+' 場、輸 '+lost+' 場、走盤 '+push+' 場。以下依正式發布的原始盤口與實際終場比分整理，不補造賽事判斷。';
- const details=settled.map(({p,h,a,grade})=>{
-  const outcome=grade==='win'?'贏':grade==='halfwin'?'半贏':grade==='loss'?'輸':grade==='halfloss'?'半輸':'走盤';
-  return p.time+'　'+localizedTeamName(p.home,p.homeZh)+' '+h+'：'+a+' '+localizedTeamName(p.away,p.awayZh)+'；'+displayCleanText(p.market)+'（'+outcome+'）';
- });
- body.textContent=intro+'\n\n'+details.join('\n');
+ const pending=Math.max(0,rows.length-settled.length);
+ const intro='本日已結算 '+settled.length+' 場推薦，贏 '+won+' 場、輸 '+losses.length+' 場、走盤 '+push+' 場。'+
+  (pending?'另有 '+pending+' 場尚未取得可核實的結算結果，暫不納入檢討。':'');
+ const lessons=[];
+ for(const {p,h,a} of losses){
+  const market=displayCleanText(p.market),goals=h+a;
+  const description=localizedTeamName(p.home,p.homeZh)+'對'+localizedTeamName(p.away,p.awayZh);
+  if(/(?:小|Under|under)\s*3[.,]5/.test(market)&&goals>=4){
+   lessons.push(description+'的小 3.5 失利，提醒小球不能只看平均總進球，還須檢查單隊高比分及比賽尾端風險。');
+  }else if(/(?:大|Over|over)\s*1[.,]5/.test(market)&&goals<=1){
+   lessons.push(description+'的大 1.5 失利，提醒進球預期偏高不代表能排除零至一球的結果。');
+  }else{
+   lessons.push(description+'的推薦失利，應重新檢查原始數據、盤口防守性及事前風險權重。');
+  }
+ }
+ const finding=losses.length?'需要改進的是：'+lessons.join(' '):'本日已結算的推薦沒有失利，但不能單靠命中判定原始分析完全正確。';
+ const enduring='長期應保留的經驗是，盤口應依球隊特性、數據與風險分布選擇，不因單次輸贏就否定或固定採用某種盤口。每場無論對錯，都須回顧賽前邏輯、估計機率、可能的爆冷路徑及串關共同風險，並將累積結果用於往後的機率校準。';
+ body.textContent=intro+'\n\n'+finding+'\n\n'+enduring;
 }
 
 const HISTORY=window.FootballHistory||null;
