@@ -914,3 +914,65 @@ tbody tr:hover{background:#fcfdff}
  .standing-team strong{font-size:11px}
  .standings-table .standing-points{font-size:12px}
 }
+
+/* Site-wide information density: constrain numeric tracks instead of stretching
+   them across every available pixel on large screens. */
+@media(min-width:701px){
+ .content{max-width:1200px;padding:22px 24px}
+ .heading{margin-bottom:14px}
+ .mainsection{margin-top:12px}
+ .sectionhead{padding:14px 18px}
+ .controls{padding:12px 17px;gap:11px}
+ .predictiongrid{max-width:1000px;margin-inline:auto;gap:10px;padding:0 16px 16px}
+ .prediction{padding:12px 14px}
+ .pred-top{margin-bottom:8px}
+ .pred-team-stack{margin:4px 0 10px;gap:5px}
+ .pred-choice{padding-top:9px}
+ .schedule-table{max-width:970px;min-width:680px;margin-inline:auto}
+ .schedule-table td{padding-top:8px;padding-bottom:8px}
+ .schedule-table .teams-stack{gap:3px}
+ .review-table{max-width:1030px;margin-inline:auto}
+ .review-table td{padding-top:8px;padding-bottom:8px}
+ .review-teams{gap:4px}
+ .history-statgrid{max-width:1000px;margin-inline:auto}
+ .history-league-table{max-width:930px;margin-inline:auto}
+ .history-league-table td,.history-league-table th{padding-top:8px;padding-bottom:8px}
+}
+.standings-table{width:620px;max-width:none;min-width:620px;margin:0 auto}
+.standings-table th:first-child,.standings-table td:first-child{width:36px}
+.standings-table th:nth-child(2),.standings-table td:nth-child(2){width:211px}
+.standings-table th:nth-child(3),.standings-table td:nth-child(3){width:45px}
+.standings-table th:nth-child(4),.standings-table td:nth-child(4),
+.standings-table th:nth-child(5),.standings-table td:nth-child(5),
+.standings-table th:nth-child(6),.standings-table td:nth-child(6){width:42px}
+.standings-table th:nth-child(7),.standings-table td:nth-child(7){width:76px}
+.standings-table th:nth-child(8),.standings-table td:nth-child(8){width:58px}
+.standings-table th:nth-child(9),.standings-table td:nth-child(9){width:56px}
+.standings-table th,.standings-table td{padding-left:5px;padding-right:5px}
+.standings-table tbody tr{height:43px}
+.standings-table td{padding-top:7px;padding-bottom:7px}
+@media(max-width:700px){
+ .content{padding:13px 8px}
+ .heading{margin-bottom:10px}
+ .mainsection{margin-top:9px}
+ .sectionhead{min-height:48px;padding:11px 12px}
+ .controls{padding:10px;gap:8px}
+ .standings-table{width:358px;min-width:358px;margin:0}
+ .standings-table th:first-child,.standings-table td:first-child{width:23px}
+ .standings-table th:nth-child(2),.standings-table td:nth-child(2){width:105px}
+ .standings-table th:nth-child(3),.standings-table td:nth-child(3),
+ .standings-table th:nth-child(4),.standings-table td:nth-child(4),
+ .standings-table th:nth-child(5),.standings-table td:nth-child(5),
+ .standings-table th:nth-child(6),.standings-table td:nth-child(6){width:30px}
+ .standings-table th:nth-child(7),.standings-table td:nth-child(7){width:47px}
+ .standings-table th:nth-child(8),.standings-table td:nth-child(8){width:32px}
+ .standings-table th:nth-child(9),.standings-table td:nth-child(9){width:31px}
+ .standings-table th,.standings-table td{padding-left:2px;padding-right:2px}
+ .standings-table tbody tr{height:38px}
+ .standings-table .standing-team{gap:4px}
+ .standing-team .team-crest{width:21px;height:21px;flex-basis:21px}
+ .standings-table td{padding-top:7px;padding-bottom:7px}
+ .history-item{padding:10px 12px}
+ .history-statgrid>div{padding:11px}
+ .history-statgrid strong{margin-top:6px;font-size:22px}
+}
