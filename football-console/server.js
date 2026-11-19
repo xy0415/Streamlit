@@ -24,7 +24,7 @@ const ALLOWED = new Set([
 ]);
 const FD_ALLOWED = new Set(['PL','ELC','PD','BL1','SA','FL1','DED','PPL','BSA','CL','WC']);
 const STANDINGS_ALLOWED = new Set(['eng.1','eng.2','esp.1','ger.1','ita.1','fra.1','ned.1','por.1','bra.1','arg.1','usa.1','ksa.1','jpn.1','mex.1','tur.1','bel.1','sco.1','chn.1','aus.1']);
-const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.ico':'image/x-icon','.woff':'font/woff','.txt':'text/plain; charset=utf-8'};
+const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.png':'image/png','.svg':'image/svg+xml','.ico':'image/x-icon','.woff':'font/woff','.txt':'text/plain; charset=utf-8'};
 const counters = new Map();
 // Shared upstream cache across visitors. A rejected request is never cached as valid data.
 const UPSTREAM_CACHE = new Map();

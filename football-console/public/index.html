@@ -6,13 +6,16 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="足球賽程資料驗證與分析控制台">
   <title>FXI｜賽程資料驗證</title>
-  <link rel="icon" href="/fxi.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico?v=d" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="/fxi.svg?v=d" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/fxi-touch.png">
+  <link rel="stylesheet" href="/fxi-brand.css">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <div class="shell">
   <aside class="sidebar">
-    <div class="brand"><div class="brand-icon"><span></span></div><div><strong>FXI</strong><small>DATA CONTROL</small></div></div>
+    <a class="brand" href="/" aria-label="FXI 首頁"><img class="fxi-mark fxi-mark-light" src="/fxi-mark.svg" width="70" height="39" alt=""><div><small>DATA CONTROL</small></div></a>
     <div class="nav-caption">WORKSPACE</div>
     <a class="nav-item" href="/analysis.html#schedule" style="text-decoration:none"><span class="nav-glyph">◎</span>每日賽程與預測</a><button class="nav-item active" data-page="fixtures"><span class="nav-glyph">▦</span>賽程總覽</button>
     <button class="nav-item" data-page="requests"><span class="nav-glyph">⇄</span>請求紀錄 <span id="navRequestCount" class="nav-count">0</span></button>
@@ -22,7 +25,7 @@
   </aside>
   <main class="main">
     <header class="topbar">
-      <div class="breadcrumb"><a class="backhome" href="/">← FXI 首頁</a><span>／</span><strong id="crumbName">賽程總覽</strong></div>
+      <div class="breadcrumb"><a class="backhome fxi-home-link" href="/" aria-label="FXI 首頁"><img class="fxi-mark" src="/fxi-mark.svg" width="34" height="19" alt="">首頁</a><span>／</span><strong id="crumbName">賽程總覽</strong></div>
       <div class="topright"><span id="todayLabel"></span><span class="separator"></span><span class="clocktag">台灣時間 UTC+8</span></div>
     </header>
     <div class="content">

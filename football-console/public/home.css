@@ -55,11 +55,6 @@ button { font: inherit; }
   padding: 0 2px 6px 0;
   text-decoration: none;
 }
-.brand-word {
-  font: 700 54px/.85 "FXI Display", Impact, sans-serif;
-  letter-spacing: -.05em;
-}
-.brand-word span { margin-left: .035em; }
 .navigation { display: grid; gap: 2px; width: 100%; margin-top: 49px; }
 .navigation a {
   display: flex;
@@ -181,7 +176,7 @@ main { min-width: 0; }
 @media (max-width: 640px) {
   .shell { display: block; }
   .rail { padding: 12px 16px 0; border-right: 0; border-bottom: 1px solid var(--rule); }
-  .brand-word { font-size: 38px; }
+  .brand .fxi-mark-home { width: 62px; }
   .navigation { display: flex; overflow-x: auto; gap: 17px; margin-top: 7px; scrollbar-width: thin; }
   .navigation a { min-height: 43px; }
   .navigation a:focus-visible { outline-offset: -2px; }
