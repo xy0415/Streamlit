@@ -238,10 +238,26 @@ function compareEventTime(p,f){
 }
 function eventForPrediction(p,list){
  const code=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
- const matches=(list||[]).filter(f=>
-  (!code||f.leagueCode===code)&&sameTeam(f.home,p.home)&&sameTeam(f.away,p.away)&&compareEventTime(p,f));
- // Selected-league and review checks may return the same ESPN event: count it only once.
- const distinct=[...new Map(matches.map(f=>[(f.id||f.leagueCode+'|'+f.home+'|'+f.away+'|'+f.time),f])).values()];
+ const samePair=f=>sameTeam(f.home,p.home)&&sameTeam(f.away,p.away);
+ const eligible=(list||[]).filter(f=>f.date===p.date&&(!code||f.leagueCode===code)&&samePair(f));
+ const near=eligible.filter(f=>compareEventTime(p,f));
+ // Unique renamed/rescheduled fixtures remain matchable without guessing across teams.
+ const matches=near.length?near:eligible.length===1&&
+  Math.abs(Date.parse(eligible[0].date+'T'+eligible[0].time+':00+08:00')-
+    Date.parse(p.date+'T'+p.time+':00+08:00'))<=6*3600000?eligible:[];
+ const quality=f=>{
+  if(f.scoreConflict)return 100; // A known disagreement must remain visible as unresolved.
+  const scored=f.scoreHome!==null&&f.scoreHome!==undefined&&f.scoreAway!==null&&f.scoreAway!==undefined;
+  return (f.scoreVerified?8:0)+(scored?4:0)+(f.status==='finished'?2:0);
+ };
+ // The review and schedule can hold different snapshots of the same event.
+ // Keep the most complete one; an older review cache must never hide a final score.
+ const dedup=new Map();
+ for(const f of matches){
+  const key=f.id||f.leagueCode+'|'+f.home+'|'+f.away+'|'+f.time;
+  if(!dedup.has(key)||quality(f)>quality(dedup.get(key)))dedup.set(key,f);
+ }
+ const distinct=[...dedup.values()];
  return distinct.length===1?distinct[0]:null;
 }
 function predictionForEvent(f){
@@ -691,7 +707,15 @@ function fixturesForView(){
 function predsForView(){
  const lc=$('leagueFilter').value,st=$('statusFilter').value;
  const reports=state.report?.matches||[];
- return reports.filter(x=>(!lc||x.league===lc||KN[lc]===x.league)&&(!st||st==='unverified'?!x.verified:st==='finished'?Boolean(x.homeScore!==null&&x.awayScore!==null):st==='scheduled'?x.status==='未完賽':true));
+ return reports.filter(x=>{
+  if(lc&&x.league!==lc&&KN[lc]!==x.league)return false;
+  if(!st)return true;
+  const fixture=eventForPrediction(x,state.reviewFixtures.concat(state.fixtures));
+  if(st==='finished')return x.verified||fixture?.status==='finished';
+  if(st==='scheduled')return !x.verified&&fixture?.status!=='finished';
+  if(st==='inprogress')return fixture?.status==='inprogress'||fixture?.status==='halftime';
+  return true;
+ });
 }
 function updateFilter(){
  const l=$('leagueFilter'),old=l.value;
@@ -1027,7 +1051,7 @@ function renderReview(){
     '<td class="review-score"><strong>'+(h!==null&&a!==null?escapeHtml(h)+' : '+escapeHtml(a):'—')+'</strong></td>'+
     '<td class="review-result-cell"><strong class="review-result '+resultClass+'">'+escapeHtml(label)+'</strong></td></tr>';
  }).join('');
- renderReviewArticle(rows,available);
+ renderReviewArticle(state.report?.matches||[],available);
 }
 function renderReviewArticle(rows,fixtures){
  const body=$('reviewArticleBody');
