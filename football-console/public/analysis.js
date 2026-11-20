@@ -994,7 +994,7 @@ async function pollLiveMatches(){
  if(state.view==='schedule'&&state.day===day)renderSchedule();
 }
 
-const matchTabs={facts:'賽況',preview:'Preview',lineup:'Lineup',h2h:'H2H',prediction:'賽前觀點',review:'賽後復盤',snapshot:'預測快照'};
+const matchTabs={facts:'賽況',preview:'Preview',lineup:'Lineup',h2h:'H2H',prediction:'賽前觀點',review:'賽後復盤',snapshot:'賽前快照'};
 const gradeLabels={win:'全贏',halfwin:'半贏',loss:'全輸',halfloss:'半輸',push:'走盤'};
 let predictionOpenRequest=0;
 
@@ -1067,10 +1067,14 @@ function matchPredictionContent(f,tab,evidence=null,pending=false){
  }
  return matches.map(({p,report})=>{
   const live=resultScoreFromFixture(p,f);
-  const stored=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
-  const conflict=f.scoreConflict||(stored&&live&&(p.homeScore!==live.h||p.awayScore!==live.a));
-  const score=conflict?null:live||(stored?{h:p.homeScore,a:p.awayScore,source:'已核實終場資料'}:null);
-  const grade=score?(gradeHistory(p,score)||(stored?HISTORY?.settledFromString(p.settlement):null)):null;
+  const final=state.historyScores.get(historyId(p));
+  const verified=final?.verified&&Number.isInteger(final.h)&&Number.isInteger(final.a)?final:
+   p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore)?
+    {h:p.homeScore,a:p.awayScore,source:'已核實終場資料',grade:HISTORY?.settledFromString(p.settlement)}:null;
+  const conflict=f.scoreConflict||final?.status==='conflict'||
+   (verified&&live&&(verified.h!==live.h||verified.a!==live.a));
+  const score=conflict?null:verified||live;
+  const grade=score?(gradeHistory(p,score)||verified?.grade):null;
   const snapshot=tab==='snapshot'?evidence?.[p.id]:null;
   const pick=snapshot||p;
   const probability=Number.isFinite(pick.probability)?pick.probability+'%':'未記錄';
@@ -1599,7 +1603,7 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
     return '<li><div><a href="'+escapeHtml(INSIGHTS.matchLink(p,review?'reviews':'predictions',review?'review':'prediction'))+'"><strong>'+
      escapeHtml((index+1)+'. '+localizedTeamName(p.home,p.homeZh)+' vs '+localizedTeamName(p.away,p.awayZh))+
      '</strong></a>'+(!review?prematchAlert(p,eventForPrediction(p,fixtures)):'')+(shared.length?'<div class="search-meta">同場亦見於 '+escapeHtml(shared.join('、'))+'</div>':'')+
-     '<a class="snapshot-link" href="'+escapeHtml(INSIGHTS.matchLink(p,review?'reviews':'predictions','snapshot'))+'">預測快照</a>'+
+     '<a class="snapshot-link" href="'+escapeHtml(INSIGHTS.matchLink(p,review?'reviews':'predictions','snapshot'))+'">賽前快照</a>'+
      '</div><span class="parlay-market">'+escapeHtml(displayCleanText(p.market))+'</span><div class="parlay-result"><strong>'+
      (quote?quote.price.toFixed(2):'—')+'</strong>'+(quote?'<small>'+escapeHtml(review?quote.source+' · '+(quote.kind==='published'?'發布原價':'賽前價')+
      (stamp?' · '+stamp.stamp:''):quote.source==='1xBet'?'1xbet':quote.source)+(review&&quote.url&&/^https:\/\/tipsterarea\.com\/match\/[a-z0-9-]+$/.test(quote.url)?
@@ -1931,7 +1935,7 @@ function renderHistoryBets(rows){
   '</tr></thead><tbody>'+items.map(({p,result,quote,settled,upcoming,net,kind,loading})=>
    '<tr><td>'+escapeHtml(p.date+' '+p.time)+'</td><td><a href="'+escapeHtml(INSIGHTS.matchLink(p,'reviews','review'))+'">'+
    escapeHtml(localizedTeamName(p.home,p.homeZh)+' – '+localizedTeamName(p.away,p.awayZh))+'</a><a class="snapshot-link" href="'+
-   escapeHtml(INSIGHTS.matchLink(p,'history','snapshot'))+'">預測快照</a></td><td>'+escapeHtml(p.market)+'</td><td>'+
+   escapeHtml(INSIGHTS.matchLink(p,'history','snapshot'))+'">賽前快照</a></td><td>'+escapeHtml(p.market)+'</td><td>'+
    (quote?escapeHtml(quote.price.toFixed(2)+' '+quote.source)+'<small>'+escapeHtml(parlayKind[kind])+'</small>':
     loading?'等待查詢':'缺賠率')+'</td><td>'+
    (Number.isInteger(result?.h)&&Number.isInteger(result?.a)?result.h+' : '+result.a:'—')+'</td><td>'+
