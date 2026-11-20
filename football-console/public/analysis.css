@@ -1683,3 +1683,24 @@ tbody tr:hover{background:#f6f6f4}
  .pitch-row li{min-width:0;overflow-wrap:anywhere}
  .snapshot-prices{min-width:460px}
 }
+
+.history-probability-table { width:100%; max-width:none; min-width:0; margin:0; table-layout:fixed; }
+.history-probability-table th:first-child,.history-probability-table td:first-child { width:22%; }
+.history-probability-table th:last-child,.history-probability-table td:last-child { width:34%; }
+.history-probability-table .history-market-meter { justify-content:flex-end; }
+.history-market-meter meter { appearance:none; -webkit-appearance:none; width:90px; max-width:35%; height:8px; flex:0 1 90px; background:#e3e3e3; border:0; border-radius:0; }
+.history-market-meter meter::-webkit-meter-bar { background:#e3e3e3; border:0; border-radius:0; height:8px; }
+.history-market-meter meter::-webkit-meter-optimum-value { background:#202324; border-radius:0; }
+.history-market-meter meter::-moz-meter-bar { background:#202324; border-radius:0; }
+.history-market-meter strong { white-space:nowrap; }
+.parlay-group li { grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) 110px; }
+.parlay-result { text-align:right; }
+@media(max-width:700px) {
+ .parlay-group li { grid-template-columns:minmax(0,1fr) auto; }
+ .history-probability-table { min-width:0; width:100%; }
+ .history-probability-table th,.history-probability-table td { padding:9px 5px; font-size:11px; }
+ .history-probability-table th:first-child,.history-probability-table td:first-child { width:17%; }
+ .history-probability-table th:last-child,.history-probability-table td:last-child { width:38%; }
+ .history-probability-table .history-market-meter { gap:4px; flex-wrap:wrap; }
+ .history-market-meter meter { width:70px; }
+}

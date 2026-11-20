@@ -628,7 +628,7 @@ function normalizeReport(r){
    status:m.status||m.scoreStatus||'待核對',homeScore:m.homeScore===null||m.homeScore===undefined||m.homeScore===''?null:Number(m.homeScore),
    awayScore:m.awayScore===null||m.awayScore===undefined||m.awayScore===''?null:Number(m.awayScore),
    settlement:m.settlement||'待核實',verified:m.verified===true||m.verified==='true',
-   analysis:String(m.analysis||m.rationale||''),risk:String(m.risk||''),judgement:String(m.judgement||m.judgment||''),
+   analysis:String(m.analysis||m.rationale||''),risk:String(m.risk||''),
    publishedOdds:INSIGHTS?.originalOdds(m,r.publishedAt||r.sentAt),
    source:m.source||'正式 Gmail',sourceUrl:m.sourceUrl||'',group:m.group||'串關單',groupPublished:Boolean(m.group),order:Number(m.order)||i+1
   }))};
@@ -1089,8 +1089,7 @@ function matchPredictionContent(f,tab,evidence=null,pending=false){
    const form=window.FXIPrematchAnalysis?.make(p,report,evidence,
     {home:p.homeZh||localizedTeamName(f.home),away:p.awayZh||localizedTeamName(f.away)});
    const unavailable=pending?'正在查核賽前資料…':'賽前資料不足';
-   inputs.push(['主要依據',originalAnalysis||form?.analysis||unavailable],['主要變數',originalRisk||form?.risk||unavailable],
-    ['分析與判斷',p.judgement||form?.judgement||(originalAnalysis?originalAnalysis+' '+(originalRisk||''):'目前缺少可核對的賽前數據')]);
+   inputs.push(['主要依據',originalAnalysis||form?.analysis||unavailable],['主要變數',originalRisk||form?.risk||unavailable]);
    if(form)inputs.push(['FXI 補充分析','ESPN 歷史賽果 · 截止 '+(fTaiwan(form.cutoff)?.stamp||'—')+'（台灣時間）']);
   }else{
    inputs.push(['完場比分',score?score.h+' : '+score.a:'—'],['結算',outcome]);
@@ -1594,26 +1593,20 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
   const status=review?' · '+INSIGHTS.parlayStatus(legs.map(leg=>leg.grade)):'';
   const net=review&&odds.product&&odds.commonBook?INSIGHTS.parlayNet(legs.map(leg=>leg.verified?leg.grade:null),odds.prices):null;
   const foot=odds.duplicate?'同場多關，無法以獨立賠率相乘':picks.length<2?'單場推薦':
-   odds.product?odds.commonBook?(review?parlayKind[odds.kind]:''):'跨莊家乘積，僅供參考':
+   odds.product?odds.commonBook?'':'跨莊家乘積，僅供參考':
    entry?.loading?'查詢賠率中…':entry?.status==='unavailable'?'賠率來源暫無資料':'賠率齊全後可計算（'+odds.priced+'／'+legs.length+' 關）';
   return '<article class="parlay-group"><header><h4>'+escapeHtml(group)+'</h4><span>'+legs.length+' 關'+status+'</span></header><ol>'+
    legs.map(({p,score,grade},index)=>{
     const quote=odds.prices[index];
     const shared=[...affected.get(parlayMatchKey(p))].filter(item=>item!==group);
-    const stamp=quote&&fTaiwan(INSIGHTS.oddsTimestamp(quote.capturedAt));
-    const age=quote?Date.now()-INSIGHTS.oddsTimestamp(quote.capturedAt):null;
-    const freshness=quote&&stamp?'<small class="odds-freshness">'+(age>86400000?'報價較久 · ':'')+'更新 '+escapeHtml(stamp.stamp)+'</small>':'';
     return '<li><div><a href="'+escapeHtml(INSIGHTS.matchLink(p,review?'reviews':'predictions',review?'review':'prediction'))+'"><strong>'+
      escapeHtml((index+1)+'. '+localizedTeamName(p.home,p.homeZh)+' vs '+localizedTeamName(p.away,p.awayZh))+
      '</strong></a>'+(!review?prematchAlert(p,eventForPrediction(p,fixtures)):'')+(shared.length?'<div class="search-meta">同場亦見於 '+escapeHtml(shared.join('、'))+'</div>':'')+
      '<a class="snapshot-link" href="'+escapeHtml(INSIGHTS.matchLink(p,review?'reviews':'predictions','snapshot'))+'">賽前快照</a>'+
      '</div><span class="parlay-market">'+escapeHtml(displayCleanText(p.market))+'</span><div class="parlay-result"><strong>'+
-     (quote?quote.price.toFixed(2):'—')+'</strong>'+(quote?'<small>'+escapeHtml(review?quote.source+' · '+(quote.kind==='published'?'發布原價':'賽前價')+
-     (stamp?' · '+stamp.stamp:''):quote.source==='1xBet'?'1xbet':quote.source)+(review&&quote.url&&/^https:\/\/tipsterarea\.com\/match\/[a-z0-9-]+$/.test(quote.url)?
-     ' · <a href="'+escapeHtml(quote.url)+'" target="_blank" rel="noopener noreferrer">來源</a>':'')+'</small>':'')+(review?'<small>'+(score?score.h+' : '+score.a+' · ':'')+
-     (gradeLabels[grade]||'待結算')+'</small>':'')+freshness+'</div></li>';
+     (quote?quote.price.toFixed(2):'—')+'</strong>'+(review?'<small>'+(score?score.h+' : '+score.a+' · ':'')+
+     (gradeLabels[grade]||'待結算')+'</small>':'')+'</div></li>';
    }).join('')+'</ol><footer><span>'+foot+'</span><strong>綜合賠率 '+(odds.product?odds.product.toFixed(2):'—')+
-   (!review&&odds.product&&odds.commonBook?' '+escapeHtml(odds.prices[0].source==='1xBet'?'1xbet':odds.prices[0].source):'')+
    (net===null?'':' · 損益 '+signedUnits(net)+' 單位')+'</strong></footer></article>';
  }).join('');
  host.innerHTML=output||'<p class="search-meta">此日沒有已發布的串關組合。</p>';
@@ -1992,10 +1985,12 @@ function renderHistory(){
    if(!groups.has(key))groups.set(key,{type,start,grades:[]});
    groups.get(key).grades.push(result);
   }
-  calibration.innerHTML=[...groups.values()].sort((a,b)=>a.type.localeCompare(b.type,'zh-Hant')||a.start-b.start).map(g=>{
+  calibration.innerHTML=[...groups.values()].sort((a,b)=>b.start-a.start||a.type.localeCompare(b.type,'zh-Hant')).map(g=>{
    const st=HISTORY.summarize(g.grades);
-   const actual=g.type==='全贏'?100*st.win/(st.finished-st.push):st.rate;
-   return '<tr><td>'+escapeHtml(g.type)+'</td><td>'+g.start+'%～'+(g.start===90?100:g.start+9)+'%</td><td>'+st.finished+'</td><td><div class="history-market-meter"><meter min="0" max="100" value="'+actual+'" aria-label="實際比率"></meter><strong>'+actual.toFixed(1)+'%</strong></div></td></tr>';
+   const n=st.finished-st.push;
+   const wins=g.type==='全贏'?st.win:st.win+.5*st.halfwin;
+   const actual=100*wins/n;
+   return '<tr><td>'+escapeHtml(g.type)+'</td><td>'+g.start+'%～'+(g.start===90?100:g.start+9)+'%</td><td>'+st.finished+'</td><td><div class="history-market-meter"><meter min="0" max="100" value="'+actual+'" aria-label="實際比率"></meter><strong>'+actual.toFixed(1)+'%（'+wins+'/'+n+'）</strong></div></td></tr>';
   }).join('')||'<tr><td colspan="4">目前沒有可計算的已核實樣本</td></tr>';
  }
 

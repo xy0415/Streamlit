@@ -53,10 +53,7 @@
   if(!note.length)note.push('可比較的近期戰績不足，目前只有一筆可核對的交手比分。');
   if(!risks.length)risks.push('當天先發與對手強度可能改變比賽節奏，現有交手及近期比分樣本有限。');
   if(knownMarket)risks.push('樣本來自各自的對手及賽場，僅用於檢視本場盤口，不能推算命中率。');
-  const market=String(pick?.market||'推薦選項');
-  const judgement='針對「'+market+'」，依兩隊賽前可取得的近期進失球與交手紀錄評估。'+
-   note.join(' ')+' '+risks.join(' ');
-  return {analysis:note.join(' '),risk:risks.join(' '),judgement,cutoff:new Date(cutoff).toISOString()};
+  return {analysis:note.join(' '),risk:risks.join(' '),cutoff:new Date(cutoff).toISOString()};
  }
  root.FXIPrematchAnalysis={make};
 })(window);
