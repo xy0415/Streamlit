@@ -2,6 +2,7 @@ const http = require('node:http');
 const apiFootball = require('./api-football');
 const {parseStandings} = require('./standings');
 const {reportOdds} = require('./parlay-odds');
+const {resolveReport} = require('./history-results');
 const {includePublishedCards} = require('./report-cards');
 const https = require('node:https');
 const fs = require('node:fs');
@@ -271,6 +272,18 @@ async function api(req,res,route){
   const report=feed.reports.find(item=>item.date===date);
   if(!report)return send(res,404,{status:'no_report',legs:{}});
   return send(res,200,await reportOdds(report));
+ }
+ if(route.pathname==='/api/history-results'&&req.method==='GET'){
+  const date=route.searchParams.get('date');
+  if(!dateOk(date))return send(res,400,{error:'日期格式不正確'});
+  const feed=await currentReports();
+  const report=feed.reports.find(r=>r.date===date);
+  if(!report)return send(res,404,{error:'沒有這一天的正式預測'});
+  const get=async(url)=>{
+   try{const upstream=await cachedRemoteGet(url,60000);return upstream.status===200?upstream.data:null}
+   catch{return null}
+  };
+  return send(res,200,{date,results:await resolveReport(report,get)});
  }
  if(route.pathname==='/api/reports'&&req.method==='GET')return send(res,200,await currentReports());
  if(route.pathname==='/api/sync-status'&&req.method==='GET'){

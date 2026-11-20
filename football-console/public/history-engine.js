@@ -4,7 +4,7 @@
     const compact=x=>String(x||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\u3400-\u9fff]+/g,'');
     const h=[p.homeZh,p.home],a=[p.awayZh,p.away];
     const sel=compact(m);
-    const check=xs=>xs.some(x=>{const y=compact(x);return y.length>1&&sel.includes(y)});
+    const check=xs=>xs.some(x=>{const y=compact(x).replace(/(?:足球|體育)俱樂部$/,'');return y.length>1&&sel.includes(y)});
     if(check(h)&&!check(a))return 'home';
     if(check(a)&&!check(h))return 'away';
     if(/主勝|主隊|主場/.test(m)&&!/客勝/.test(m))return 'home';
@@ -29,7 +29,7 @@
   function selection(p){
     const raw=String(p?.market||'').replace(/\s+/g,'');
     if(!raw)return null;
-    const yesNo=raw.match(/雙方進球[：:]?(是|否|有|無)/);
+    const yesNo=raw.match(/雙方(?:都有|均有)?進球[：:]?(是|否|有|無)/);
     if(yesNo)return {market:'btts',side:/(是|有)/.test(yesNo[1])?'yes':'no'};
     const total=raw.match(/^(?:全場)?(?:總進球|進球數)(大|小)(\d+(?:\.\d+)?)$/)||
       raw.match(/^全場(大|小)(\d+(?:\.\d+)?)$/);
@@ -52,6 +52,14 @@
   }
   function evaluate(p,h,a){
     if(!Number.isInteger(h)||!Number.isInteger(a)||h<0||a<0)return null;
+    const teamTotal=String(p?.market||'').replace(/\s+/g,'').match(/^(.+?)(?:球隊|單隊)(?:總)?進球(大|小)(\d+(?:\.\d+)?)$/);
+    if(teamTotal){
+      const side=sideFor(teamTotal[1],p);
+      if(side){
+        const goals=side==='home'?h:a,line=Number(teamTotal[3]);
+        return resolveDiff(teamTotal[2]==='大'?goals:-goals,teamTotal[2]==='大'?-line:line);
+      }
+    }
     const pick=selection(p);
     if(!pick)return null;
     const {market,side,line}=pick;

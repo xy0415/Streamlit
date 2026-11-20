@@ -1343,16 +1343,12 @@ function renderParlayHistory(){
   const odds=parlayValues(picks,report);
   const grades=picks.map(p=>{
    const score=state.historyScores.get(historyId(p));
-   if(score?.status==='conflict')return null;
-   const verified=parlayOddsByDate.get(report.date)?.scores?.[p.id];
-   if(!verified)return score?.verified?score.grade:null;
-   if(score&&Number.isInteger(score.h)&&(score.h!==verified.h||score.a!==verified.a))return null;
-   return gradeHistory(p,verified);
-
+   return score?.verified&&score.status==='settled'?score.grade:null;
   });
   const net=odds.product&&odds.commonBook?INSIGHTS.parlayNet(grades,odds.prices):null;
+  const pendingKickoff=picks.some(p=>scheduledKickoff(p)>Date.now());
   const status=odds.duplicate?'同場多關':picks.length<2?'單場':!odds.product?(parlayOddsByDate.get(report.date)?.status==='rate_limited'?'賠率待查詢':'缺賠率'):
-   !odds.commonBook?'缺同一莊家報價':net===null?'比分待核實':parlayKind[odds.kind];
+   !odds.commonBook?'缺同一莊家報價':net===null?(pendingKickoff?'尚未開賽':'比分待核實'):parlayKind[odds.kind];
   return {date:report.date,group,odds,net,status};
  }));
  const metrics=Object.entries(parlayKind).map(([kind,label])=>{
@@ -1564,7 +1560,7 @@ function reviewHistoricalComparison(losses){
 }
 
 const HISTORY=window.FootballHistory||null;
-const HIST_CACHE_KEY='football-history-finals-v2';
+const HIST_CACHE_KEY='football-history-finals-v3';
 function historyId(p){
  return [p.date,p.league,p.time,p.home,p.away,p.market,p.order].join('|');
 }
@@ -1615,7 +1611,7 @@ function utcDayForPrediction(p){
 }
 function applyHistoricalResult(p,fixture){
  const key=historyId(p),s=resultScoreFromFixture(p,fixture);
- if(!s)return false;
+ if(!s?.scoreVerified)return false;
  const grade=gradeHistory(p,s);
  const output={
   grade, h:s.h,a:s.a, source:s.source,eventId:s.eventId,
@@ -1647,79 +1643,44 @@ function syncReviewedHistory(predictions,fixtures){
  }
  if(updated){saveHistoryCache();if(state.view==='history')renderHistory()}
 }
+const historyChecksByDate=new Map();
 async function loadHistoryResults(force=false){
  if(state.historyLoading||!state.feed?.reports?.length||!HISTORY)return;
- state.historyLoading=true;state.historyBatch++;
- const batch=state.historyBatch;
- if(force){
-  // Manual refresh must recheck live source matches without overwriting previously
-  // verified settlements, but it should not erase historical evidence.
-  for(const r of state.historyScores.values())if(r?.status==='pending')r.updatedAt=0;
- }
- const rows=historyReportRows(),currentDate=todayTaiwan();
- const todo=new Map();
- for(const {p,key} of rows){
-  if(p.date>currentDate)continue;
-  const kickoff=Date.parse(p.date+'T'+p.time+':00+08:00');
-  if(!Number.isFinite(kickoff)||kickoff>Date.now()-120*60000)continue;
-  const previous=state.historyScores.get(key);
-  if(!force&&previous?.grade&&previous.updatedAt&&Date.now()-previous.updatedAt<24*3600000)continue;
-  const league=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
-  const day=utcDayForPrediction(p);
-  if(!league||!day){
-   if(!previous?.grade)state.historyScores.set(key,{status:'pending',reason:'聯賽或時間缺漏'});
-   continue;
-  }
-  const id=league+'|'+day;
-  if(!todo.has(id))todo.set(id,{league,day,predictions:[]});
-  todo.get(id).predictions.push(p);
- }
- state.historyRequired=todo.size;state.historyChecks=0;state.historyErrors=0;
+ state.historyLoading=true;
+ const recent=todayTaiwan();
+ const jobs=state.feed.reports.filter(r=>r.matches?.length&&r.date<=recent&&
+  (force||Date.now()-(historyChecksByDate.get(r.date)||0)>120000&&r.matches.some(p=>
+   !['settled','unsupported','cancelled'].includes(state.historyScores.get(historyId(p))?.status))));
+ state.historyRequired=jobs.length;state.historyChecks=0;state.historyErrors=0;
  renderHistory();
- let index=0,backupCount=0;
- const maxBackupLookups=22;
- const jobs=[...todo.values()];
+ let index=0;
  async function worker(){
   while(index<jobs.length){
-   const task=jobs[index++];
+   const report=jobs[index++];
    try{
-    const upstream=await readScoreboard(task.league,task.day,force);
-    const fixtures=upstream.map(parseScore).filter(Boolean);
-    await enrichScoreResults(fixtures,false,true);
-    if(task.predictions.some(p=>!resultScoreFromFixture(p,eventForPrediction(p,fixtures)))){
-      await supplementFromApiFootball(fixtures,task.predictions[0].date,false,{requireSelected:false});
+    const response=await fetch('/api/history-results?'+new URLSearchParams({date:report.date}),{signal:AbortSignal.timeout(42000)});
+    if(!response.ok)throw Error('HTTP '+response.status);
+    const data=await response.json();
+    for(const p of report.matches){
+     const result=data.results?.[p.id];
+     if(!result)continue;
+     const id=historyId(p),old=state.historyScores.get(id);
+     if(old?.verified&&!result.verified&&result.status!=='conflict')continue;
+     state.historyScores.set(id,{...result,grade:result.verified?result.grade:null,updatedAt:Date.now()});
     }
-    for(const p of task.predictions){
-     const f=eventForPrediction(p,fixtures);
-     if(f){
-       applyHistoricalResult(p,f);
-       continue;
-     }
-     // ESPN may omit lower-tier club cups or some international friendlies.
-     // Only attempt free, exact team-and-kickoff lookups; never invent a score.
-     if(backupCount++>=maxBackupLookups)continue;
-     const provisional={date:p.date,time:p.time,leagueCode:task.league,
-       home:p.home,away:p.away,status:'scheduled',scoreHome:null,scoreAway:null};
-     try{
-       const alternative=await getIndependentMatchInfo(provisional,false);
-       if(alternative?.final){
-         applyHistoricalResult(p,{...provisional,status:'finished',scoreHome:alternative.h,
-           scoreAway:alternative.a,scoreSource:'TheSportsDB',
-           scoreVerified:false,id:alternative.id,sourceStatus:{type:{name:'STATUS_FINAL'}}});
-       }
-     }catch(e){console.warn('歷史備援查核未成功:',p.date,p.home,String(e.message||e))}
-    }
-   }catch(err){state.historyErrors++;console.warn('歷史賽程查核失敗:',task.league,task.day,String(err.message||err))}
+    historyChecksByDate.set(report.date,Date.now());
+   }catch{state.historyErrors++}
    state.historyChecks++;
-   if(batch===state.historyBatch)renderHistory();
+   if(state.view==='history')renderHistory();
   }
  }
  try{
-  await Promise.all(Array.from({length:Math.min(3,jobs.length)},worker));
-  state.historyCheckedAt=Date.now();
+  await Promise.all(Array.from({length:Math.min(4,jobs.length)},worker));
+  if(jobs.length)state.historyCheckedAt=Date.now();
   saveHistoryCache();
  }finally{
-  if(batch===state.historyBatch){state.historyLoading=false;renderHistory()}
+  state.historyLoading=false;
+  if(state.view==='history')renderHistory();
  }
 }
 
@@ -1838,9 +1799,13 @@ function renderHistory(){
  $('historyRows').innerHTML=daily.filter(item=>!date||item.day===date).reverse().map(({day,stats})=>{
   const win=stats.win+stats.halfwin;
   const loss=stats.loss+stats.halfloss;
+  const items=byDay.get(day)||[];
+  const upcoming=items.filter(({p})=>scheduledKickoff(p)>Date.now()).length;
+  const unresolved=stats.total-stats.finished-upcoming;
   return '<div class="history-item"><strong>'+escapeHtml(day)+'</strong>'+
    '<span>推薦 '+stats.total+'</span>'+
    '<span class="history-done">結算 '+stats.finished+'</span>'+
+   (upcoming?'<span>未開賽 '+upcoming+'</span>':'')+(unresolved>0?'<span>未結算 '+unresolved+'</span>':'')+
    '<span class="history-win">贏 '+win+'</span>'+
    '<span class="history-loss">輸 '+loss+'</span>'+
    '<span class="history-percentage">'+(stats.rate===null?'—':stats.rate.toFixed(1)+'%')+'</span>'+
@@ -2024,7 +1989,7 @@ function init(){
  },60000);
  setInterval(()=>{
   if(document.visibilityState!=='visible'||state.view!=='history'||state.historyLoading)return;
-  loadHistoryResults(false);
+  loadFeed();
  },120000);
  // Use a slower schedule outside live matches; background tabs do not poll.
  setInterval(()=>{

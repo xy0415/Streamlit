@@ -326,7 +326,7 @@ test('Brazilian shortened ESPN club names match formal predictions for Nov 19',(
  // Different sides or fixture date must not be treated as a match.
  assert.equal(context.eventForPrediction(p,[{...fixture,away:'Palmeiras'}]),null);
 });
-test('Final scores recovered in review also update historical hit-rate immediately',()=>{
+test('Only verified final scores recovered in review update historical hit-rate',()=>{
  const {context,state,document}=setup();
  const p={date:'2026-11-19',time:'07:30',order:1,league:'巴甲',
   home:'Flamengo',away:'Athletico Paranaense',market:'全場總進球大 1.5'};
@@ -336,6 +336,9 @@ test('Final scores recovered in review also update historical hit-rate immediate
  state.feed={reports:[{date:p.date,matches:[p]}]};
  document.getElementById('historyPeriod').value='all';
  context.syncReviewedHistory([p],[f]);
+ context.renderHistory();
+ assert.equal(document.getElementById('historyVerified').textContent,'0');
+ context.syncReviewedHistory([p],[{...f,scoreVerified:true}]);
  context.renderHistory();
  assert.equal(document.getElementById('historyVerified').textContent,'1');
  assert.equal(document.getElementById('historyWin').textContent,'1');

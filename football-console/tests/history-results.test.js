@@ -1,0 +1,35 @@
+'use strict';
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {resolveReport}=require('../history-results');
+const {evaluate}=require('../public/history-engine');
+
+test('historical reconciliation looks up both dates and only settles corroborated finals',async()=>{
+ const m={id:'test',date:'2026-12-02',time:'08:30',home:'Example Home',away:'Example Away',
+  league:'巴甲',market:'全場總進球大 1.5'};
+ const date='2026-12-02T00:30:00Z',calls=[];
+ const get=async url=>{
+  calls.push(url);
+  if(url.includes('fotmob'))return {leagues:[{matches:[{id:10001,
+   status:{utcTime:date,finished:true},home:{name:m.home,score:2},away:{name:m.away,score:0}}]}]};
+  if(!url.endsWith('20261201'))return {events:[]};
+  return {events:[{id:10002,date,competitions:[{
+   status:{type:{name:'STATUS_FULL_TIME'}},
+   competitors:[{homeAway:'home',team:{displayName:m.home},score:'2'},
+    {homeAway:'away',team:{displayName:m.away},score:'0'}]}]}]};
+ };
+ const now=Date.parse('2026-12-02T10:00:00Z');
+ const result=await resolveReport({matches:[m]},get,now);
+ assert.ok(calls.some(url=>url.endsWith('20261201')));
+ assert.ok(calls.some(url=>url.endsWith('20261202')));
+ assert.equal(result.test.grade,'win');
+ assert.equal(result.test.status,'settled');
+ assert.equal((await resolveReport({matches:[m]},get,Date.parse(date)-1)).test.status,'upcoming');
+});
+
+test('settles team totals and common published team name variants',()=>{
+ assert.equal(evaluate({home:'Mainz 05',away:'Bayern Munich',awayZh:'拜仁慕尼黑',
+  market:'拜仁慕尼黑球隊進球大1.5'},1,2),'win');
+ assert.equal(evaluate({home:'Trival',away:'Leganés',awayZh:'萊加內斯足球俱樂部',
+  market:'萊加內斯獲勝'},0,1),'win');
+});

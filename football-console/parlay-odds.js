@@ -94,7 +94,7 @@ async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes
   }));
   if(record.score)scores[pick.id]={h:record.score[0],a:record.score[1]};
  }
- if(days< -2||days>7)return {status:'outside_window',legs,scores};
+ if(days< -2)return {status:'outside_window',legs,scores};
  const missing=picks.filter(p=>!legs[p.id]?.length);
  for(let i=0;i<missing.length;i+=4){
   await Promise.all(missing.slice(i,i+4).map(async pick=>{
@@ -104,6 +104,7 @@ async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes
  }
  const unmatched=picks.filter(p=>!legs[p.id]?.length);
  if(!unmatched.length)return {status:'ready',legs,scores};
+ if(days>7)return {status:'ready',legs,scores};
  const fixtures=await provider.getFixtures(report.date);
  if(!fixtures.ok)return {
   status:fixtures.reason==='free_quota_reserved_or_rate_limited'?'rate_limited':
