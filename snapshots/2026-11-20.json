@@ -1,0 +1,56 @@
+{
+  "snapshots": {
+    "[\"2026-11-20\",\"16:40\",\"Western Sydney Wanderers\",\"Adelaide United\",\"西悉尼流浪者不敗（主勝或和局）\",\"串關單\"]": {
+      "market": "西悉尼流浪者不敗（主勝或和局）",
+      "group": "串關單",
+      "probability": 75,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-19T08:15:02.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.21,
+            "capturedAt": "2026-11-19T16:00:00.000Z"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.21,
+            "capturedAt": "2026-11-20T04:05:00.000Z"
+          }
+        },
+        "betfair": {
+          "first": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.17,
+            "capturedAt": "2026-11-19T16:00:00.000Z"
+          },
+          "latest": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.17,
+            "capturedAt": "2026-11-20T04:05:00.000Z"
+          }
+        },
+        "unibet": {
+          "first": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.2,
+            "capturedAt": "2026-11-19T16:00:00.000Z"
+          },
+          "latest": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.2,
+            "capturedAt": "2026-11-20T04:05:00.000Z"
+          }
+        }
+      }
+    }
+  }
+}
