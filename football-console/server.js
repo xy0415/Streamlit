@@ -305,7 +305,7 @@ async function api(req,res,route){
  if(route.pathname==='/api/match-section'&&req.method==='GET'){
   const league=route.searchParams.get('league'),event=route.searchParams.get('event')||'';
   const section=route.searchParams.get('section');
-  if(!ALLOWED.has(league)||!/^\d{4,14}$/.test(event)||!['preview','lineup','h2h'].includes(section))
+  if(!ALLOWED.has(league)||!/^\d{4,14}$/.test(event)||!['preview','lineup','h2h','prediction'].includes(section))
    return send(res,400,{error:'比賽詳情參數不正確'});
   const get=async(target,ttl)=>{
    try{const upstream=await cachedRemoteGet(target,ttl);return upstream.status===200?upstream.data:null}

@@ -40,7 +40,7 @@ function headToHead(summary){
   if(list(event.competitors).map(c=>String(c.team?.id||'')).sort().join('|')!==teams)continue;
   const sides=['home','away'].map(side=>{
    const c=list(event.competitors).find(x=>x.homeAway===side);
-   return {name:c?.team?.displayName||'',logo:image(c?.team?.logo||c?.team?.logos?.[0]?.href),score:score(c?.score)};
+   return {id:String(c?.team?.id||''),name:c?.team?.displayName||'',logo:image(c?.team?.logo||c?.team?.logos?.[0]?.href),score:score(c?.score)};
   });
   if(sides.every(s=>s.name&&s.score!==null))rows.set(event.id,{date:event.date,timeValid:event.timeValid!==false,
    competition:event.competitionName||'',status:event.statusType.shortDetail||'',home:sides[0],away:sides[1]});
@@ -52,6 +52,27 @@ function priorEvents(summary,teamId){
  return list(list(summary.lastFiveGames).find(x=>String(x.team?.id)===String(teamId))?.events)
   .filter(e=>idOk(e.id)&&e.id!==summary.header?.id&&e.gameResult&&Date.parse(e.gameDate)<Date.parse(comp(summary)?.date))
   .sort((a,b)=>Date.parse(b.gameDate)-Date.parse(a.gameDate));
+}
+
+function predictionEvidence(summary){
+ const current=comp(summary);
+ const form={};
+ for(const side of ['home','away']){
+  const id=String(list(current?.competitors).find(x=>x.homeAway===side)?.team?.id||'');
+  const unique=new Map();
+  if(id)for(const e of priorEvents(summary,id)){
+   if(String(e.id)===String(current.id)||!['W','D','L'].includes(e.gameResult)||
+      Number(e.homeShootoutScore)>0||Number(e.awayShootoutScore)>0)continue;
+   const home=String(e.homeTeamId)===id,away=String(e.awayTeamId)===id;
+   const h=score(e.homeTeamScore),a=score(e.awayTeamScore);
+   if(home===away||h===null||a===null)continue;
+   const gf=home?h:a,ga=home?a:h;
+   if(e.gameResult!==(gf>ga?'W':gf<ga?'L':'D'))continue;
+   unique.set(String(e.id),{date:e.gameDate,venue:home?'home':'away',gf,ga});
+  }
+  form[side]=[...unique.values()].slice(0,5);
+ }
+ return {kickoff:current?.date||'',homeId:String(list(current?.competitors).find(x=>x.homeAway==='home')?.team?.id||''),form,h2h:headToHead(summary).filter(e=>e.status==='FT')};
 }
 
 async function weatherFor(venue,kickoff,get){
@@ -95,6 +116,7 @@ async function matchSection(league,event,section,get){
  if(!s||String(s.header?.id)!==event||!comp(s))return null;
  const current=comp(s);
  if(section==='h2h')return {matches:headToHead(s)};
+ if(section==='prediction')return predictionEvidence(s);
  const sides=list(current.competitors).filter(p=>['home','away'].includes(p.homeAway)&&p.team?.id);
  const prior=(id)=>priorEvents(s,id);
  const history=(entry)=>get(summaryUrl(league,String(entry.id)),2*86400000);

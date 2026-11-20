@@ -628,7 +628,7 @@ function normalizeReport(r){
    status:m.status||m.scoreStatus||'待核對',homeScore:m.homeScore===null||m.homeScore===undefined||m.homeScore===''?null:Number(m.homeScore),
    awayScore:m.awayScore===null||m.awayScore===undefined||m.awayScore===''?null:Number(m.awayScore),
    settlement:m.settlement||'待核實',verified:m.verified===true||m.verified==='true',
-   analysis:m.analysis||m.rationale||'',risk:m.risk||'',
+   analysis:String(m.analysis||m.rationale||''),risk:String(m.risk||''),
    publishedOdds:INSIGHTS?.originalOdds(m,r.publishedAt||r.sentAt),
    source:m.source||'正式 Gmail',sourceUrl:m.sourceUrl||'',group:m.group||'串關單',groupPublished:Boolean(m.group),order:Number(m.order)||i+1
   }))};
@@ -661,6 +661,7 @@ async function loadFeed(){
  primeHistoryFromFeed();
  setReport();render();
  document.dispatchEvent(new Event('fxi-feed-updated'));
+ if(state.matchDetailPayload&&state.matchTab==='prediction')setMatchTab('prediction');
  if(state.view==='history')loadHistoryResults(false);
 }
 function setReport(){
@@ -1006,9 +1007,16 @@ function matchReportRows(f){
 function matchFacts(rows){
  return '<dl>'+rows.map(([label,value])=>'<dt>'+escapeHtml(label)+'</dt><dd>'+escapeHtml(value)+'</dd>').join('')+'</dl>';
 }
-function matchPredictionContent(f,tab){
+function matchPredictionContent(f,tab,evidence=null,pending=false){
  const matches=matchReportRows(f);
- if(!matches.length)return '<p>這場賽事沒有已發布的預測紀錄。</p>';
+ if(!matches.length){
+  if(tab!=='prediction')return '<p>這場賽事沒有已發布的預測紀錄。</p>';
+  const form=window.FXIPrematchAnalysis?.make(null,null,evidence,
+   {home:localizedTeamName(f.home),away:localizedTeamName(f.away)});
+  if(form)return '<article class="match-snapshot"><h4>賽前形勢</h4>'+
+   matchFacts([['主要依據',form.analysis],['主要變數',form.risk],['資料來源','ESPN 歷史賽果']])+'</article>';
+  return '<p>'+ (pending?'正在查核賽前資料…':'這場賽事沒有已發布的預測，亦缺少足夠的賽前比分資料。')+'</p>';
+ }
  return matches.map(({p,report})=>{
   const live=resultScoreFromFixture(p,f);
   const stored=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
@@ -1021,7 +1029,12 @@ function matchPredictionContent(f,tab){
   const outcome=gradeLabels[grade]||(conflict?'來源比分不一致，待核對':score?'玩法尚待核對':'等待核對完場比分');
   const inputs=[['發布時間',report.publishedAt||'未記錄'],['估計'+p.probabilityType+'機率',probability]];
   if(tab==='prediction'){
-   inputs.push(['主要依據',p.analysis||'原始紀錄未提供單場分析理由'],['主要變數',p.risk||'原始紀錄未記錄']);
+   const originalAnalysis=p.analysis.trim(),originalRisk=p.risk.trim();
+   const form=(!originalAnalysis||!originalRisk)&&window.FXIPrematchAnalysis?.make(p,report,evidence,
+    {home:p.homeZh||localizedTeamName(f.home),away:p.awayZh||localizedTeamName(f.away)});
+   const unavailable=pending?'正在查核賽前資料…':'賽前資料不足';
+   inputs.push(['主要依據',originalAnalysis||form?.analysis||unavailable],['主要變數',originalRisk||form?.risk||unavailable]);
+   if(form)inputs.push(['FXI 補充分析','ESPN 歷史賽果 · 截止 '+(fTaiwan(form.cutoff)?.stamp||'—')+'（台灣時間）']);
   }else{
    inputs.push(['完場比分',score?score.h+' : '+score.a:'—'],['結算',outcome]);
    if(tab==='review')inputs.push(['比分來源',score?.source||'待核對']);
@@ -1039,15 +1052,17 @@ let sectionRequest=0;
 const matchSectionCache=new Map();
 async function showMatchSection(f,tab,background=false){
  const host=$('matchInsightPanel');
- const renderer=window.FXIMatchSections[tab];
+ const prediction=tab==='prediction';
+ const renderer=prediction?(data=>matchPredictionContent(f,tab,data)):window.FXIMatchSections[tab];
  const key=[f.leagueCode,f.id,tab].join('|');
  const prior=matchSectionCache.get(key);
  const active=()=>state.matchDetailPayload===f&&state.matchTab===tab;
  const show=html=>{if(active())host.innerHTML='<h3>'+matchTabs[tab]+'</h3>'+html};
  if(prior)show(renderer(prior.data));
- else if(!background)show('<p class="match-detail-empty" role="status">正在查詢資料…</p>');
+ else if(!background)show(prediction?matchPredictionContent(f,tab,null,true):
+  '<p class="match-detail-empty" role="status">正在查詢資料…</p>');
  if(!/^\d{4,14}$/.test(String(f.id))||!f.leagueCode){
-  show('<p class="match-detail-empty">這場比賽目前沒有可查詢的 ESPN 賽事資料。</p>');
+  show(prediction?renderer(null):'<p class="match-detail-empty">這場比賽目前沒有可查詢的 ESPN 賽事資料。</p>');
   return;
  }
  if(prior&&Date.now()-prior.at<(tab==='lineup'?50000:180000))return;
@@ -1062,7 +1077,8 @@ async function showMatchSection(f,tab,background=false){
   if(matchSectionCache.size>80)matchSectionCache.delete(matchSectionCache.keys().next().value);
   show(renderer(data));
  }catch{
-  if(request===sectionRequest&&!prior)show('<p class="match-detail-empty">資料暫時無法取得，請稍後重試。</p>');
+  if(request===sectionRequest&&!prior)show(prediction?renderer(null):
+   '<p class="match-detail-empty">資料暫時無法取得，請稍後重試。</p>');
  }
 }
 function setMatchTab(tab){
@@ -1074,7 +1090,9 @@ function setMatchTab(tab){
  $('matchInsightPanel').hidden=tab==='facts';
  clearInterval(sectionPoll);
  ++sectionRequest;
- if(window.FXIMatchSections?.[tab]){
+ const picks=tab==='prediction'?matchReportRows(f):[];
+ const needsEvidence=tab==='prediction'&&(!picks.length||picks.some(({p})=>!p.analysis.trim()||!p.risk.trim()));
+ if(needsEvidence||window.FXIMatchSections?.[tab]){
   showMatchSection(f,tab);
   if(tab==='lineup'&&!['finished','cancelled'].includes(f.status)){
    sectionPoll=setInterval(()=>{
