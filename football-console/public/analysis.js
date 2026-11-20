@@ -1490,8 +1490,8 @@ function renderParlayHistory(){
  const coverage=rows.filter(row=>row.odds.product&&row.odds.commonBook).length;
  const metric=(name,value,caption='')=>'<div><label>'+name+'</label><strong>'+value+'</strong>'+
   (caption?'<small>'+caption+'</small>':'')+'</div>';
- host.innerHTML='<div class="statgrid parlay-metrics">'+metric('期末本金',amount(model.capital))+
-  metric('損益',model.count?profit(model.profit):'—')+
+ host.innerHTML='<div class="statgrid parlay-metrics">'+metric('回測後餘額',amount(model.capital))+
+  metric('淨損益',model.count?profit(model.profit):'—')+
   metric('累計報酬率',model.count?signedUnits(model.roi)+'%':'—',model.count?model.count+' 組已計入':'無可用樣本')+
   '</div>'+charts.parlayPlot(model.points)+
   '<p class="history-explain">同莊家賠率齊全 '+coverage+'／'+rows.length+' 組'+(parlayHistoryLoading?' · 正在查詢':'')+'</p>'+
