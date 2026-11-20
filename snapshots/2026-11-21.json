@@ -1,0 +1,99 @@
+{
+  "snapshots": {
+    "[\"2026-11-21\",\"03:30\",\"Bayern München\",\"1. FC Köln\",\"拜仁慕尼黑獲勝\",\"串關單\"]": {
+      "market": "拜仁慕尼黑獲勝",
+      "group": "串關單",
+      "probability": 83,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-20T08:18:30.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-21\",\"04:00\",\"Athletic Club\",\"Espanyol\",\"畢爾包競技不敗（主勝或和局）\",\"串關單\"]": {
+      "market": "畢爾包競技不敗（主勝或和局）",
+      "group": "串關單",
+      "probability": 82,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-20T08:18:30.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-21\",\"20:30\",\"Manchester City\",\"Fulham\",\"曼城不敗（主勝或和局）\",\"串關單\"]": {
+      "market": "曼城不敗（主勝或和局）",
+      "group": "串關單",
+      "probability": 81,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-20T08:18:30.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.12,
+            "capturedAt": "2026-11-20T04:05:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.06,
+            "capturedAt": "2026-11-20T04:05:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.09,
+            "capturedAt": "2026-11-20T04:05:00.000Z"
+          }
+        }
+      }
+    },
+    "[\"2026-11-21\",\"23:00\",\"Aston Villa\",\"Sunderland\",\"阿士東維拉不敗（主勝或和局）\",\"串關單\"]": {
+      "market": "阿士東維拉不敗（主勝或和局）",
+      "group": "串關單",
+      "probability": 77,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-20T08:18:30.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.25,
+            "capturedAt": "2026-11-20T04:05:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.14,
+            "capturedAt": "2026-11-20T04:05:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.2,
+            "capturedAt": "2026-11-20T04:05:00.000Z"
+          }
+        }
+      }
+    },
+    "[\"2026-11-21\",\"23:00\",\"Tottenham Hotspur\",\"Ipswich Town\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 78,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-20T08:18:30.000Z",
+      "original": null,
+      "books": {}
+    }
+  }
+}
