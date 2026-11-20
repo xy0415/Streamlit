@@ -135,7 +135,7 @@
       `<g class="roi-series roi-${kind}">`+(data.length>1?`<polyline points="${data.map(p=>x(p.date)+','+y(p.rate)).join(' ')}"/>`:'')+
       data.map(p=>`<circle cx="${x(p.date)}" cy="${y(p.rate)}" r="4" tabindex="0" aria-label="${labels[kind]} ${p.date} ${percent(p.rate)}">
         <title>${labels[kind]} · ${p.date} · ${percent(p.rate)} · ${p.count} 組</title></circle>`).join('')+'</g>').join('');
-    return '<div class="parlay-roi-chart"><h4>累計串關報酬率</h4><p>依預測日期累計，三種賠率分開繪製。</p>'+
+    return '<div class="parlay-roi-chart"><h4>累計串關報酬率</h4><p>依預測日期累計。</p>'+
       '<svg class="history-trend-plot" viewBox="0 0 630 176" role="img" aria-label="累計串關報酬率折線圖">'+grid+dateTicks+graphs+'</svg>'+
       '<ul class="roi-legend">'+[...series.keys()].map(kind=>`<li class="roi-${kind}">${labels[kind]}</li>`).join('')+'</ul></div>';
   }

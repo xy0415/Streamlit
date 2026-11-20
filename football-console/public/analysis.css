@@ -1605,7 +1605,7 @@ tbody tr:hover{background:#f6f6f4}
 .parlay-group footer span,.parlay-result small,.parlay-metrics small {font-size:.75rem;color:#555}
 .parlay-result small,.parlay-metrics small {display:block}
 .parlay-result strong,.parlay-group footer strong {font-variant-numeric:tabular-nums}
-.parlay-metrics {grid-template-columns:repeat(3,minmax(0,1fr));margin:.8rem 1rem 0}
+.parlay-metrics {grid-template-columns:minmax(0,1fr);max-width:250px;margin:.8rem 1rem 0}
 .parlay-history .tablewrap {margin:0 1rem .85rem}
 .parlay-history td {white-space:nowrap}
 @media(max-width:550px){
@@ -1643,10 +1643,8 @@ tbody tr:hover{background:#f6f6f4}
 .pitch-player-image .pitch-avatar{position:absolute;inset:0}
 .pitch-player-image .pitch-avatar[hidden]{display:none}
 
-.odds-guide,.parlay-roi-chart{margin:12px 16px;color:var(--muted)}
-.odds-guide summary,.history-market-panel>summary{cursor:pointer}
-.odds-guide dl{margin:10px 0;display:grid;grid-template-columns:max-content 1fr;gap:5px 12px}
-.odds-guide dd{margin:0}
+.parlay-roi-chart{margin:12px 16px;color:var(--muted)}
+.history-market-panel>summary{cursor:pointer}
 .parlay-roi-chart{padding:14px;border:1px solid var(--border);max-width:780px}
 .parlay-roi-chart h4,.parlay-roi-chart p{margin:0 0 6px}
 .parlay-roi-chart h4{color:var(--ink)}

@@ -1454,15 +1454,13 @@ function renderParlayHistory(){
    !odds.commonBook?'缺同一莊家報價':net===null?(pendingKickoff?'尚未開賽':'比分待核實'):parlayKind[odds.kind];
   return {date:report.date,group,odds,net,status};
  }));
- const metrics=Object.entries(parlayKind).map(([kind,label])=>{
-  const sample=rows.filter(row=>row.net!==null&&row.odds.kind===kind);
-  const net=sample.reduce((sum,row)=>sum+row.net,0);
-  return '<div><label>'+label+'</label><strong>'+(sample.length?signedUnits(net/sample.length*100)+'%':'—')+
-   '</strong><small>'+sample.length+' 組'+(sample.length?' · '+signedUnits(net)+' 單位':' · 無可用樣本')+'</small></div>';
- }).join('');
+ const sample=rows.filter(row=>Number.isFinite(row.net)&&row.odds.kind==='reference');
+ const net=sample.reduce((sum,row)=>sum+row.net,0);
  const coverage=rows.filter(row=>row.odds.product&&row.odds.commonBook).length;
- host.innerHTML='<div class="statgrid parlay-metrics">'+metrics+'</div>'+
-  (window.FootballHistoryCharts?.parlayPlot?.(rows,parlayKind)||'')+
+ host.innerHTML='<div class="statgrid parlay-metrics"><div><label>賽前回補價</label><strong>'+
+  (sample.length?signedUnits(net/sample.length*100)+'%':'—')+'</strong><small>'+
+  (sample.length?sample.length+' 組 · '+signedUnits(net)+' 單位':'無可用樣本')+'</small></div></div>'+
+  (window.FootballHistoryCharts?.parlayPlot?.(sample,{reference:parlayKind.reference})||'')+
   '<p class="history-explain">同莊家賠率齊全 '+coverage+'／'+rows.length+' 組'+(parlayHistoryLoading?' · 正在查詢':'')+'</p>'+
   (rows.length?'<div class="tablewrap"><table class="history-league-table"><thead><tr><th>日期</th><th>串關</th><th>綜合賠率</th><th>損益</th><th>狀態</th></tr></thead><tbody>'+
    rows.map(r=>'<tr><td>'+escapeHtml(r.date)+'</td><td>'+escapeHtml(r.group)+'</td><td>'+
