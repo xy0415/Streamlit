@@ -2,6 +2,7 @@ const http = require('node:http');
 const apiFootball = require('./api-football');
 const {parseStandings} = require('./standings');
 const {reportOdds} = require('./parlay-odds');
+const {snapshotKey,kickoffTime,collectSnapshot} = require('./prematch-snapshots');
 const {resolveReport} = require('./history-results');
 const {includePublishedCards} = require('./report-cards');
 const https = require('node:https');
@@ -272,6 +273,29 @@ async function api(req,res,route){
   const report=feed.reports.find(item=>item.date===date);
   if(!report)return send(res,404,{status:'no_report',legs:{}});
   return send(res,200,await reportOdds(report,undefined,undefined,route.searchParams.get('mode')==='current'));
+ }
+ if(route.pathname==='/api/prematch-snapshots'&&req.method==='GET'){
+  const date=route.searchParams.get('date');
+  const ids=new Set(route.searchParams.getAll('id'));
+  if(!dateOk(date)||ids.size>20)return send(res,400,{error:'查詢日期或預測識別碼錯誤'});
+  const feed=await currentReports();
+  const report=feed.reports.find(item=>item.date===date);
+  if(!report)return send(res,feed.connected?404:503,{error:'暫無正式預測'});
+  const picks=report.matches.filter(p=>!ids.size||ids.has(p.id));
+  const archiveUrl='https://raw.githubusercontent.com/xy0415/Streamlit/fxi-prematch-archive/snapshots/'+date+'.json';
+  const tasks=[cachedRemoteGet(archiveUrl,120000),reportOdds({...report,matches:picks})];
+  if(picks.some(p=>kickoffTime(p)>Date.now()))tasks.push(reportOdds({...report,matches:picks},undefined,undefined,true));
+  const [saved,...odds]=await Promise.allSettled(tasks);
+  const source=saved.value;
+  const snapshots={};
+  for(const pick of picks){
+   const previous=source?.status===200?source.data?.snapshots?.[snapshotKey(pick)]:null;
+   const quotes=odds.flatMap(response=>response.value?.legs?.[pick.id]||[]);
+   const row=collectSnapshot(report,pick,previous,quotes);
+   if(row)snapshots[pick.id]=row;
+  }
+  return send(res,200,{snapshots,partial:!source||![200,404].includes(source.status)||
+   odds.some(response=>!response.value||['rate_limited','partial','unavailable'].includes(response.value.status))});
  }
  if(route.pathname==='/api/history-results'&&req.method==='GET'){
   const date=route.searchParams.get('date');
