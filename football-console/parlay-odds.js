@@ -4,6 +4,7 @@ const apiFootball=require('./api-football');
 const {selection}=require('./public/history-engine');
 const {tipsterQuotes}=require('./tipster-odds');
 const archive=require('./parlay-odds-archive.json');
+const oddspapi=require('./oddspapi');
 
 const books=new Map([
  ['1xbet','1xBet'],['pinnacle','Pinnacle'],['bet365','Bet365'],
@@ -95,6 +96,8 @@ async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes
   if(record.score)scores[pick.id]={h:record.score[0],a:record.score[1]};
  }
  if(days< -2)return {status:'outside_window',legs,scores};
+ const liveQuotes=await oddspapi.reportQuotes(report,picks.filter(p=>!legs[p.id]?.length),selection);
+ for(const [id,quotes] of Object.entries(liveQuotes))legs[id]=quotes;
  const missing=picks.filter(p=>!legs[p.id]?.length);
  for(let i=0;i<missing.length;i+=4){
   await Promise.all(missing.slice(i,i+4).map(async pick=>{
