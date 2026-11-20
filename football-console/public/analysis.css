@@ -1605,7 +1605,10 @@ tbody tr:hover{background:#f6f6f4}
 .parlay-group footer span,.parlay-result small,.parlay-metrics small {font-size:.75rem;color:#555}
 .parlay-result small,.parlay-metrics small {display:block}
 .parlay-result strong,.parlay-group footer strong {font-variant-numeric:tabular-nums}
-.parlay-metrics {grid-template-columns:minmax(0,1fr);max-width:250px;margin:.8rem 1rem 0}
+.parlay-metrics {grid-template-columns:repeat(3,minmax(0,1fr));margin:.8rem 1rem 0}
+.parlay-backtest-form {align-items:end;flex-wrap:wrap}
+.parlay-backtest-form input {width:12rem;max-width:100%}
+.parlay-metrics strong{overflow-wrap:anywhere}
 .parlay-history .tablewrap {margin:0 1rem .85rem}
 .parlay-history td {white-space:nowrap}
 @media(max-width:550px){
@@ -1650,9 +1653,7 @@ tbody tr:hover{background:#f6f6f4}
 .parlay-roi-chart h4{color:var(--ink)}
 .roi-series polyline{fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
 .roi-series circle{fill:white;stroke:currentColor;stroke-width:2}
-.roi-published{color:#202b38}.roi-beforePublication{color:#346690}.roi-reference{color:#796039}
-.roi-legend{list-style:none;display:flex;flex-wrap:wrap;gap:12px;padding:0;margin:0}
-.roi-legend li::before{content:'';display:inline-block;width:14px;margin-right:6px;vertical-align:middle;border-top:2px solid currentColor}
+.roi-reference{color:#796039}
 .bet-detail-table{min-width:660px}
 .bet-detail-table small{display:block;color:var(--muted)}
 .bet-detail-table a,.history-market-link{text-decoration:underline;text-underline-offset:3px}

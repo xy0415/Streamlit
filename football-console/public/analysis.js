@@ -1438,6 +1438,33 @@ function parlayValues(picks,report){
  const product=duplicate?null:INSIGHTS.parlayProduct(result.prices);
  return {...result,product,duplicate};
 }
+const parlayCapitalSettings={initial:10000,percentage:5};
+const parlayCapitalStorage='fxi.parlayCapitalSettings';
+const capitalFormat=new Intl.NumberFormat('zh-TW',{minimumFractionDigits:2,maximumFractionDigits:2});
+function validParlayCapital({initial,percentage}){
+ return Number.isFinite(initial)&&initial>=0.01&&initial<=1e12&&Number.isFinite(percentage)&&percentage>=0&&percentage<=100;
+}
+function bindParlayBacktest(){
+ const form=$('parlayBacktestForm');
+ const initial=$('parlayInitialCapital'),percentage=$('parlayStakePercent');
+ if(!form||!initial||!percentage)return;
+ try{
+  const saved=JSON.parse(localStorage.getItem(parlayCapitalStorage));
+  if(saved&&validParlayCapital(saved))Object.assign(parlayCapitalSettings,saved);
+ }catch{}
+ initial.value=String(parlayCapitalSettings.initial);
+ percentage.value=String(parlayCapitalSettings.percentage);
+ const calculate=()=>{
+  const values={initial:initial.valueAsNumber,percentage:percentage.valueAsNumber};
+  if(!validParlayCapital(values)||!form.checkValidity())return;
+  Object.assign(parlayCapitalSettings,values);
+  try{localStorage.setItem(parlayCapitalStorage,JSON.stringify(values))}catch{}
+  renderParlayHistory();
+ };
+ form.addEventListener('input',calculate);
+ form.addEventListener('submit',event=>{event.preventDefault();calculate()});
+}
+
 function renderParlayHistory(){
  const host=$('parlayHistoryBody');
  if(!host||!INSIGHTS)return;
@@ -1455,17 +1482,28 @@ function renderParlayHistory(){
   return {date:report.date,group,odds,net,status};
  }));
  const sample=rows.filter(row=>Number.isFinite(row.net)&&row.odds.kind==='reference');
- const net=sample.reduce((sum,row)=>sum+row.net,0);
+ const charts=window.FootballHistoryCharts;
+ const model=charts?.bankrollBacktest?.(sample,parlayCapitalSettings.initial,parlayCapitalSettings.percentage);
+ if(!model)return;
+ const amount=value=>capitalFormat.format(value);
+ const profit=value=>(value>0?'+':'')+amount(value);
  const coverage=rows.filter(row=>row.odds.product&&row.odds.commonBook).length;
- host.innerHTML='<div class="statgrid parlay-metrics"><div><label>賽前回補價</label><strong>'+
-  (sample.length?signedUnits(net/sample.length*100)+'%':'—')+'</strong><small>'+
-  (sample.length?sample.length+' 組 · '+signedUnits(net)+' 單位':'無可用樣本')+'</small></div></div>'+
-  (window.FootballHistoryCharts?.parlayPlot?.(sample,{reference:parlayKind.reference})||'')+
+ const metric=(name,value,caption='')=>'<div><label>'+name+'</label><strong>'+value+'</strong>'+
+  (caption?'<small>'+caption+'</small>':'')+'</div>';
+ host.innerHTML='<div class="statgrid parlay-metrics">'+metric('期末本金',amount(model.capital))+
+  metric('損益',model.count?profit(model.profit):'—')+
+  metric('累計報酬率',model.count?signedUnits(model.roi)+'%':'—',model.count?model.count+' 組已計入':'無可用樣本')+
+  '</div>'+charts.parlayPlot(model.points)+
   '<p class="history-explain">同莊家賠率齊全 '+coverage+'／'+rows.length+' 組'+(parlayHistoryLoading?' · 正在查詢':'')+'</p>'+
-  (rows.length?'<div class="tablewrap"><table class="history-league-table"><thead><tr><th>日期</th><th>串關</th><th>綜合賠率</th><th>損益</th><th>狀態</th></tr></thead><tbody>'+
-   rows.map(r=>'<tr><td>'+escapeHtml(r.date)+'</td><td>'+escapeHtml(r.group)+'</td><td>'+
-    (r.odds.product&&r.odds.commonBook?r.odds.product.toFixed(2):'—')+'</td><td>'+
-    (r.net===null?'—':signedUnits(r.net))+'</td><td>'+r.status+'</td></tr>').join('')+'</tbody></table></div>':'');
+  (rows.length?'<div class="tablewrap"><table class="history-league-table"><thead><tr><th>日期</th><th>串關</th><th>綜合賠率</th><th>下注金額</th><th>損益</th><th>狀態</th></tr></thead><tbody>'+
+   rows.map(r=>{
+    const bet=model.bets.get(r);
+    const status=r.status===parlayKind.reference?'已計入回測':r.status;
+    return '<tr><td>'+escapeHtml(r.date)+'</td><td>'+escapeHtml(r.group)+'</td><td>'+
+     (r.odds.product&&r.odds.commonBook?r.odds.product.toFixed(2):'—')+'</td><td>'+
+     (bet?amount(bet.stake):'—')+'</td><td>'+(bet?profit(bet.profit):'—')+'</td><td>'+status+'</td></tr>';
+   }).join('')+'</tbody></table></div>':'');
+
 }
 function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.concat(state.fixtures)){
  const review=state.view==='reviews';
@@ -2089,6 +2127,7 @@ function init(){
    }
    toast('資料已重新查詢');
  };
+ bindParlayBacktest();
  $('historyRefresh').onclick=()=>{loadHistoryResults(true);loadParlayHistory(true)};
  $('historyLeague').onchange=renderHistory;
  $('historyPeriod').onchange=renderHistory;

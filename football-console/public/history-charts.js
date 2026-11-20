@@ -97,29 +97,33 @@
     if(rolling)renderTrend(rolling,rollingPoints(rows),'滾動命中率');
   }
 
-  function parlayRoi(rows){
-    const days=new Map();
+  function bankrollBacktest(rows,initial,percentage){
+    const days=new Map(),bets=new Map();
     for(const row of rows){
-      if(!Number.isFinite(row.net))continue;
-      const series=days.get(row.odds.kind)||new Map();
-      const d=series.get(row.date)||{net:0,count:0};
-      series.set(row.date,{net:d.net+row.net,count:d.count+1});
-      days.set(row.odds.kind,series);
+      if(!Number.isFinite(row.net)||row.net< -1)continue;
+      if(!days.has(row.date))days.set(row.date,[]);
+      days.get(row.date).push(row);
     }
-    return new Map([...days].map(([kind,series])=>{
-      let net=0,count=0;
-      return [kind,[...series].sort(([a],[b])=>a.localeCompare(b)).map(([date,d])=>{
-        net+=d.net;count+=d.count;
-        return {date,rate:100*net/count,count};
-      })];
-    }));
+    let capital=initial,count=0;
+    const points=[...days].sort(([a],[b])=>a.localeCompare(b)).map(([date,group])=>{
+      const opening=capital;
+      const stake=opening*Math.min(percentage/100,1/group.length);
+      let cash=opening-stake*group.length;
+      for(const row of group){
+        const profit=stake*row.net;
+        cash+=stake+profit;
+        bets.set(row,{stake,profit});
+      }
+      capital=Math.max(0,cash);
+      count+=group.length;
+      return {date,rate:100*(capital/initial-1),count,capital};
+    });
+    return {initial,capital,profit:capital-initial,roi:100*(capital/initial-1),count,points,bets};
   }
 
-  function parlayPlot(rows,labels){
-    const series=parlayRoi(rows);
-    if(!series.size)return '<p class="history-chart-empty">目前沒有賠率與結算齊全的串關。</p>';
-    const points=[...series.values()].flat();
-    const dates=[...new Set(points.map(p=>p.date))].sort();
+  function parlayPlot(points){
+    if(!points.length)return '<p class="history-chart-empty">目前沒有賠率與結算齊全的串關。</p>';
+    const dates=points.map(p=>p.date);
     const low=Math.min(0,...points.map(p=>p.rate)),high=Math.max(0,...points.map(p=>p.rate));
     const yMin=low===high?-10:low,yMax=low===high?10:high;
     const t=d=>Date.parse(d+'T00:00Z');
@@ -131,14 +135,13 @@
       `<line class="chart-gridline" x1="68" x2="608" y1="${y(v)}" y2="${y(v)}"/><text x="62" y="${y(v)+4}" text-anchor="end">${percent(v)}</text>`).join('');
     const dateTicks=dates.filter((_,i)=>!i||i===dates.length-1||dates.length<=5).map(d=>
       `<text x="${x(d)}" y="166" text-anchor="middle">${d.slice(5).replace('-','/')}</text>`).join('');
-    const graphs=[...series].map(([kind,data])=>
-      `<g class="roi-series roi-${kind}">`+(data.length>1?`<polyline points="${data.map(p=>x(p.date)+','+y(p.rate)).join(' ')}"/>`:'')+
-      data.map(p=>`<circle cx="${x(p.date)}" cy="${y(p.rate)}" r="4" tabindex="0" aria-label="${labels[kind]} ${p.date} ${percent(p.rate)}">
-        <title>${labels[kind]} · ${p.date} · ${percent(p.rate)} · ${p.count} 組</title></circle>`).join('')+'</g>').join('');
-    return '<div class="parlay-roi-chart"><h4>累計串關報酬率</h4><p>依預測日期累計。</p>'+
-      '<svg class="history-trend-plot" viewBox="0 0 630 176" role="img" aria-label="累計串關報酬率折線圖">'+grid+dateTicks+graphs+'</svg>'+
-      '<ul class="roi-legend">'+[...series.keys()].map(kind=>`<li class="roi-${kind}">${labels[kind]}</li>`).join('')+'</ul></div>';
+    const graph='<g class="roi-series roi-reference">'+
+      (points.length>1?`<polyline points="${points.map(p=>x(p.date)+','+y(p.rate)).join(' ')}"/>`:'')+
+      points.map(p=>`<circle cx="${x(p.date)}" cy="${y(p.rate)}" r="4" tabindex="0" aria-label="${p.date} ${percent(p.rate)}">
+        <title>${p.date} · ${percent(p.rate)} · 本金 ${p.capital.toFixed(2)} · ${p.count} 組</title></circle>`).join('')+'</g>';
+    return '<div class="parlay-roi-chart"><h4>累計串關報酬率</h4><p>按日結算，依本金變化累計。</p>'+
+      '<svg class="history-trend-plot" viewBox="0 0 630 176" role="img" aria-label="累計串關報酬率折線圖">'+grid+dateTicks+graph+'</svg></div>';
   }
 
-  root.FootballHistoryCharts = Object.freeze({ render,parlayPlot });
+  root.FootballHistoryCharts = Object.freeze({ render,parlayPlot,bankrollBacktest });
 })(window);
