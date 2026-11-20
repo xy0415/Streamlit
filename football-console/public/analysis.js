@@ -1381,22 +1381,23 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
   const status=review?' · '+INSIGHTS.parlayStatus(legs.map(leg=>leg.grade)):'';
   const net=review&&odds.product&&odds.commonBook?INSIGHTS.parlayNet(legs.map(leg=>leg.verified?leg.grade:null),odds.prices):null;
   const foot=odds.duplicate?'同場多關，無法以獨立賠率相乘':picks.length<2?'單場推薦':
-   odds.product?odds.commonBook?parlayKind[odds.kind]:'跨莊家乘積，僅供參考':
+   odds.product?odds.commonBook?(review?parlayKind[odds.kind]:''):'跨莊家乘積，僅供參考':
    entry?.loading?'查詢賠率中…':entry?.status==='unavailable'?'賠率來源暫無資料':'賠率齊全後可計算（'+odds.priced+'／'+legs.length+' 關）';
   return '<article class="parlay-group"><header><h4>'+escapeHtml(group)+'</h4><span>'+legs.length+' 關'+status+'</span></header><ol>'+
    legs.map(({p,score,grade},index)=>{
     const quote=odds.prices[index];
     const shared=[...affected.get(parlayMatchKey(p))].filter(item=>item!==group);
-    const stamp=quote&&fTaiwan(INSIGHTS.oddsTimestamp(quote.capturedAt));
+    const stamp=review&&quote&&fTaiwan(INSIGHTS.oddsTimestamp(quote.capturedAt));
     return '<li><div><a href="'+escapeHtml(INSIGHTS.matchLink(p,review?'reviews':'predictions',review?'review':'prediction'))+'"><strong>'+
      escapeHtml((index+1)+'. '+localizedTeamName(p.home,p.homeZh)+' vs '+localizedTeamName(p.away,p.awayZh))+
      '</strong></a>'+(shared.length?'<div class="search-meta">同場亦見於 '+escapeHtml(shared.join('、'))+'</div>':'')+
      '</div><span class="parlay-market">'+escapeHtml(displayCleanText(p.market))+'</span><div class="parlay-result"><strong>'+
-     (quote?quote.price.toFixed(2):'—')+'</strong>'+(quote?'<small>'+escapeHtml(quote.source+' · '+(quote.kind==='published'?'發布原價':'賽前價')+
-     (stamp?' · '+stamp.stamp:''))+(quote.url&&/^https:\/\/tipsterarea\.com\/match\/[a-z0-9-]+$/.test(quote.url)?
+     (quote?quote.price.toFixed(2):'—')+'</strong>'+(quote?'<small>'+escapeHtml(review?quote.source+' · '+(quote.kind==='published'?'發布原價':'賽前價')+
+     (stamp?' · '+stamp.stamp:''):quote.source==='1xBet'?'1xbet':quote.source)+(review&&quote.url&&/^https:\/\/tipsterarea\.com\/match\/[a-z0-9-]+$/.test(quote.url)?
      ' · <a href="'+escapeHtml(quote.url)+'" target="_blank" rel="noopener noreferrer">來源</a>':'')+'</small>':'')+(review?'<small>'+(score?score.h+' : '+score.a+' · ':'')+
      (gradeLabels[grade]||'待結算')+'</small>':'')+'</div></li>';
    }).join('')+'</ol><footer><span>'+foot+'</span><strong>綜合賠率 '+(odds.product?odds.product.toFixed(2):'—')+
+   (!review&&odds.product&&odds.commonBook?' '+escapeHtml(odds.prices[0].source==='1xBet'?'1xbet':odds.prices[0].source):'')+
    (net===null?'':' · 損益 '+signedUnits(net)+' 單位')+'</strong></footer></article>';
  }).join('');
  host.innerHTML=output||'<p class="search-meta">此日沒有已發布的串關組合。</p>';

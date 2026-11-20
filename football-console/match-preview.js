@@ -1,5 +1,7 @@
 'use strict';
 
+const {findFotmobMatch,nameKey}=require('./fotmob-match');
+
 const summaryUrl=(league,id)=>'https://site.api.espn.com/apis/site/v2/sports/soccer/'+league+'/summary?event='+id;
 const idOk=id=>/^\d{4,14}$/.test(String(id));
 const score=v=>v!==''&&v!=null&&Number.isInteger(Number(v))&&Number(v)>=0?Number(v):null;
@@ -97,27 +99,41 @@ async function matchSection(league,event,section,get){
  const prior=(id)=>priorEvents(s,id);
  const history=(entry)=>get(summaryUrl(league,String(entry.id)),2*86400000);
  if(section==='lineup'){
+  const fotmob=await findFotmobMatch(current,get).catch(()=>null);
+  const quality={confirmed:4,reported:3,predicted:2,previous:1};
   const lineups=await Promise.all(sides.map(async side=>{
    const id=side.team.id;
    const roster=list(s.rosters).find(row=>String(row.team?.id)===String(id));
    const predicted=roster?.predicted===true||/predict|project/i.test(roster?.lineupType||'');
    const kind=predicted?'predicted':roster?.confirmed===true||['in','post'].includes(current.status?.type?.state)?'confirmed':'reported';
    let lineup=rosterFor(s,id,kind);
+   const alternative=fotmob?.[side.homeAway];
+   if(alternative&&(!lineup||quality[alternative.kind]>quality[lineup.kind]))lineup=alternative;
    if(!lineup){
     const previous=await Promise.all(prior(id).slice(0,3).map(history));
     lineup=previous.filter(old=>fullTime(comp(old))).map(old=>rosterFor(old,id,'previous')).find(Boolean)||null;
+   }
+   if(lineup&&alternative&&lineup!==alternative){
+    const photos=new Map();
+    for(const player of alternative.players){
+     const key=nameKey(player.fullName);
+     photos.set(key,photos.has(key)?'':player.photo);
+    }
+    lineup.players=lineup.players.map(player=>({...player,photo:player.photo||photos.get(nameKey(player.fullName))||''}));
    }
    return {side:side.homeAway,team:side.team.displayName||side.team.name,logo:image(side.team.logo||side.team.logos?.[0]?.href),lineup};
   }));
   return {lineups,checkedAt:new Date().toISOString()};
  }
  const v=s.gameInfo?.venue;
- const referee=officialName(s);
- const candidates=referee?[...new Map(sides.flatMap(side=>prior(side.team.id).slice(0,3)).map(e=>[e.id,e])).values()]:[];
- const [weather,previous]=await Promise.all([weatherFor(v,current.date,get),Promise.all(candidates.map(history))]);
+ const [weather,fotmob]=await Promise.all([weatherFor(v,current.date,get),findFotmobMatch(current,get).catch(()=>null)]);
+ const espnRef=officialName(s),referee=espnRef||fotmob?.referee||'';
+ const fotmobStats=referee&&normalize(referee)===normalize(fotmob?.referee)?fotmob.refereeStats:null;
+ const candidates=referee&&!fotmobStats?[...new Map(sides.flatMap(side=>prior(side.team.id).slice(0,3)).map(e=>[e.id,e])).values()]:[];
+ const previous=await Promise.all(candidates.map(history));
  return {venue:v?.fullName||v?.shortName||'',city:v?.address?.city||'',country:v?.address?.country||'',weather,referee,
-  refereeStats:refereeStats(previous,referee),refereeSample:candidates.length,
-  broadcast:list(s.broadcasts).map(b=>b.media?.name).filter(Boolean),
-  schedule88:'https://88kanqiu.sc.cn/'};
+  refereeStats:fotmobStats||refereeStats(previous,referee),refereeSource:espnRef?'ESPN':referee?'FotMob':'',
+  refereeSourceUrl:referee&&!espnRef?fotmob.url:'',
+  broadcast:list(s.broadcasts).map(b=>b.media?.name).filter(Boolean)};
 }
 module.exports={matchSection,headToHead,rosterFor,refereeStats};

@@ -1639,3 +1639,6 @@ tbody tr:hover{background:#f6f6f4}
 .h2h-match div{display:flex;align-items:center;gap:.35rem;min-width:0;overflow-wrap:anywhere}
 .h2h-match div:first-child{flex-direction:row-reverse;text-align:right}
 .h2h-match strong{font-size:1.1rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pitch-player-image{position:relative;display:block;width:fit-content;margin:auto}
+.pitch-player-image .pitch-avatar{position:absolute;inset:0}
+.pitch-player-image .pitch-avatar[hidden]{display:none}
