@@ -34,7 +34,7 @@
           !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value[2])) return null;
       const tab = query.get('tab');
       return {home:value[0], away:value[1], time:value[2],
-        tab:['prediction','review','snapshot'].includes(tab) ? tab : 'facts'};
+        tab:['prediction','review','snapshot','preview','lineup','h2h'].includes(tab) ? tab : 'facts'};
     } catch {
       return null;
     }

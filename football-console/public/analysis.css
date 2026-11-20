@@ -1613,3 +1613,29 @@ tbody tr:hover{background:#f6f6f4}
  .parlay-metrics label {font-size:.68rem}
  .parlay-history .tablewrap {margin:0 .5rem .6rem}
 }
+
+.preview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:1px;background:#d9d9d9;border:1px solid #d9d9d9}
+.preview-grid>div{background:#fff;padding:.85rem;min-width:0}
+.preview-grid dt,.pitch-meta,.preview-grid small{font-size:.82rem;color:#505050}
+.preview-grid dd{margin:.25rem 0 0;font-weight:600}
+.preview-grid small{display:block;margin-top:.3rem;font-weight:400}
+.fxi-lineup{margin:0 0 1rem;border:1px solid #dadada}
+.pitch-heading{display:flex;align-items:center;gap:.55rem;padding:.65rem .75rem;background:#161616;color:#fff}
+.pitch-heading b{margin-left:auto;white-space:nowrap}
+.pitch-crest,.h2h-crest{width:1.55rem;height:1.55rem;object-fit:contain;flex-shrink:0}
+.pitch-meta{padding:0 .75rem}
+.fxi-pitch{position:relative;isolation:isolate;display:grid;gap:.5rem;background:#252525;color:#fff;padding:.8rem .4rem}
+.fxi-pitch::before{content:'';position:absolute;inset:.45rem;border:1px solid #686868;z-index:-1;background:linear-gradient(#686868,#686868) center / 34% 1px no-repeat,radial-gradient(circle at center,transparent 1.4rem,#686868 1.45rem,#686868 1.5rem,transparent 1.55rem)}
+.pitch-row,.pitch-list{display:flex;align-items:flex-start;justify-content:space-around;gap:.25rem;list-style:none;padding:.45rem 0;margin:0}
+.pitch-row li,.pitch-list li{flex:1 1 0;text-align:center;font-size:clamp(.7rem,2.4vw,.9rem);line-height:1.2;min-width:0;overflow-wrap:anywhere}
+.pitch-number,.pitch-avatar{display:grid;place-items:center;margin:0 auto .32rem;width:clamp(1.45rem,5vw,2.4rem);height:clamp(1.45rem,5vw,2.4rem);border-radius:50%;background:#e8e8e8;color:#151515;font-weight:700;object-fit:cover}
+.pitch-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(5rem,1fr));color:#222}
+.h2h-list{margin:0;padding:0;list-style:none}
+.h2h-list li{border:1px solid #dadada;border-bottom:0;padding:.65rem}
+.h2h-list li:last-child{border-bottom:1px solid #dadada}
+.h2h-list header,.h2h-match{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.h2h-list header{font-size:.8rem;color:#555;margin-bottom:.55rem}
+.h2h-match{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
+.h2h-match div{display:flex;align-items:center;gap:.35rem;min-width:0;overflow-wrap:anywhere}
+.h2h-match div:first-child{flex-direction:row-reverse;text-align:right}
+.h2h-match strong{font-size:1.1rem;white-space:nowrap;font-variant-numeric:tabular-nums}

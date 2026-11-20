@@ -993,7 +993,7 @@ async function pollLiveMatches(){
  if(state.view==='schedule'&&state.day===day)renderSchedule();
 }
 
-const matchTabs={facts:'賽況',prediction:'賽前觀點',review:'賽後復盤',snapshot:'預測快照'};
+const matchTabs={facts:'賽況',preview:'Preview',lineup:'Lineup',h2h:'H2H',prediction:'賽前觀點',review:'賽後復盤',snapshot:'預測快照'};
 const gradeLabels={win:'全贏',halfwin:'半贏',loss:'全輸',halfloss:'半輸',push:'走盤'};
 let predictionOpenRequest=0;
 
@@ -1034,6 +1034,37 @@ function matchPredictionContent(f,tab){
   return '<article class="match-snapshot"><h4>'+escapeHtml(displayCleanText(p.market))+'</h4>'+matchFacts(inputs)+'</article>';
  }).join('');
 }
+let sectionPoll;
+let sectionRequest=0;
+const matchSectionCache=new Map();
+async function showMatchSection(f,tab,background=false){
+ const host=$('matchInsightPanel');
+ const renderer=window.FXIMatchSections[tab];
+ const key=[f.leagueCode,f.id,tab].join('|');
+ const prior=matchSectionCache.get(key);
+ const active=()=>state.matchDetailPayload===f&&state.matchTab===tab;
+ const show=html=>{if(active())host.innerHTML='<h3>'+matchTabs[tab]+'</h3>'+html};
+ if(prior)show(renderer(prior.data));
+ else if(!background)show('<p class="match-detail-empty" role="status">正在查詢資料…</p>');
+ if(!/^\d{4,14}$/.test(String(f.id))||!f.leagueCode){
+  show('<p class="match-detail-empty">這場比賽目前沒有可查詢的 ESPN 賽事資料。</p>');
+  return;
+ }
+ if(prior&&Date.now()-prior.at<(tab==='lineup'?50000:180000))return;
+ const request=++sectionRequest;
+ try{
+  const res=await fetch('/api/match-section?'+new URLSearchParams({league:f.leagueCode,event:f.id,section:tab}),
+   {signal:AbortSignal.timeout(32000)});
+  if(!res.ok)throw Error('HTTP '+res.status);
+  const data=await res.json();
+  if(request!==sectionRequest||!active())return;
+  matchSectionCache.set(key,{data,at:Date.now()});
+  if(matchSectionCache.size>80)matchSectionCache.delete(matchSectionCache.keys().next().value);
+  show(renderer(data));
+ }catch{
+  if(request===sectionRequest&&!prior)show('<p class="match-detail-empty">資料暫時無法取得，請稍後重試。</p>');
+ }
+}
 function setMatchTab(tab){
  const body=$('matchDetailBody'),f=state.matchDetailPayload;
  if(!f||!Object.hasOwn(matchTabs,tab))return;
@@ -1041,7 +1072,16 @@ function setMatchTab(tab){
  body.querySelectorAll('[data-match-tab]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.matchTab===tab)));
  $('matchFactsPanel').hidden=tab!=='facts';
  $('matchInsightPanel').hidden=tab==='facts';
- if(tab!=='facts')$('matchInsightPanel').innerHTML='<h3>'+matchTabs[tab]+'</h3>'+matchPredictionContent(f,tab);
+ clearInterval(sectionPoll);
+ ++sectionRequest;
+ if(window.FXIMatchSections?.[tab]){
+  showMatchSection(f,tab);
+  if(tab==='lineup'&&!['finished','cancelled'].includes(f.status)){
+   sectionPoll=setInterval(()=>{
+    if(!document.hidden&&!$('matchModal').classList.contains('hidden'))showMatchSection(f,tab,true);
+   },60000);
+  }
+ }else if(tab!=='facts')$('matchInsightPanel').innerHTML='<h3>'+matchTabs[tab]+'</h3>'+matchPredictionContent(f,tab);
 }
 async function openMatchDetail(f,tab='facts',linkedPrediction=null,refresh=false){
  if(!f)return;
@@ -1109,6 +1149,8 @@ async function openPredictionMatchDetail(p,tab='prediction'){
  }
 }
 function closeMatchDetail(){
+ clearInterval(sectionPoll);
+ ++sectionRequest;
  ++predictionOpenRequest;
  state.matchDetailPayload=null;
  state.matchLinkedPrediction=null;
@@ -1218,7 +1260,7 @@ function groupParlays(report){
  return groups;
 }
 function recentParlayReports(){
- const from=addDay(todayTaiwan(),-6);
+ const from='2026-11-18';
  return (state.feed?.reports||[]).filter(r=>r.date>=from&&r.date<=todayTaiwan()&&groupParlays(r).size);
 }
 async function loadParlayOdds(report,force=false){

@@ -302,6 +302,18 @@ async function api(req,res,route){
   catch(error){return send(res,503,{error:String(error.message||error),
     source:'FotMob — FIFA Men World Ranking',ranksUnavailable:true})}
  }
+ if(route.pathname==='/api/match-section'&&req.method==='GET'){
+  const league=route.searchParams.get('league'),event=route.searchParams.get('event')||'';
+  const section=route.searchParams.get('section');
+  if(!ALLOWED.has(league)||!/^\d{4,14}$/.test(event)||!['preview','lineup','h2h'].includes(section))
+   return send(res,400,{error:'比賽詳情參數不正確'});
+  const get=async(target,ttl)=>{
+   try{const upstream=await cachedRemoteGet(target,ttl);return upstream.status===200?upstream.data:null}
+   catch{return null}
+  };
+  const data=await require('./match-preview').matchSection(league,event,section,get);
+  return send(res,data?200:502,data||{error:'賽事資料暫時無法取得'});
+ }
  if(route.pathname==='/api/match-summary'&&req.method==='GET'){
    const league=route.searchParams.get('league');
    const event=String(route.searchParams.get('event')||'');
