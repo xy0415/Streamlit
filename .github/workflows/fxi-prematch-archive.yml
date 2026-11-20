@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '13,43 * * * *'
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fxi-prematch-archive.yml']
 
 permissions:
   contents: write
