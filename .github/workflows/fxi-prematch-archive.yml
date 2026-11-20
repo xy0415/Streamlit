@@ -1,0 +1,48 @@
+name: Archive FXI pre-match snapshots
+
+on:
+  schedule:
+    - cron: '13,43 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fxi-prematch-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: football-fixture-console
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Record official picks and timestamped pre-match prices
+        shell: bash
+        run: |
+          archive_branch=fxi-prematch-archive
+          archive_directory="$RUNNER_TEMP/fxi-prematch"
+          branch=$(git ls-remote --heads origin "refs/heads/$archive_branch")
+          if [[ -n "$branch" ]]; then
+            git fetch --depth=1 origin "$archive_branch"
+            git worktree add --detach "$archive_directory" FETCH_HEAD
+          else
+            git worktree add --detach "$archive_directory" HEAD
+            git -C "$archive_directory" switch --orphan "$archive_branch"
+          fi
+          node football-console/scripts/archive-prematch.js "$archive_directory/snapshots"
+          if [[ ! -d "$archive_directory/snapshots" ]]; then
+            exit 0
+          fi
+          git -C "$archive_directory" add snapshots
+          if git -C "$archive_directory" diff --cached --quiet; then
+            exit 0
+          fi
+          git -C "$archive_directory" -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit -m "Archive FXI pre-match snapshots"
+          git -C "$archive_directory" push origin "HEAD:refs/heads/$archive_branch"
