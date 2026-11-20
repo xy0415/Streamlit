@@ -6,9 +6,10 @@ const requests=new Map();
 const decode=text=>String(text||'').replace(/<[^>]+>/g,'').replace(/&(?:amp|#38);/g,'&')
  .replace(/&(?:apos|#39);/g,"'").replace(/&nbsp;/g,' ').trim();
 
-function page(path,ttl){
+function page(path,ttl,refresh=false){
+ const key=(refresh?'recent:':'')+path;
  const now=Date.now();
- const cached=requests.get(path);
+ const cached=requests.get(key);
  if(cached?.until>now)return cached.promise;
  const promise=new Promise((resolve,reject)=>{
   const request=https.get(origin+path,{timeout:6500,headers:{'user-agent':'FXI football data lookup'}},response=>{
@@ -29,10 +30,10 @@ function page(path,ttl){
   request.on('timeout',()=>request.destroy(Error('Odds source timeout')));
   request.on('error',reject);
  }).catch(()=>{
-  requests.delete(path);
+  requests.delete(key);
   return '';
  });
- requests.set(path,{until:now+ttl,promise});
+ requests.set(key,{until:now+ttl,promise});
  if(requests.size>140)requests.delete(requests.keys().next().value);
  return promise;
 }
@@ -76,16 +77,16 @@ function parsePage(html,path,pick,kickoff,books){
  return [...books.keys()].filter(key=>chosen.has(key)&&!conflicts.has(key)).map(key=>chosen.get(key));
 }
 
-async function tipsterQuotes(pick,selection,teamKey,books){
+async function tipsterQuotes(pick,selection,teamKey,books,refresh=false){
  if(selection.market==='handicap')return [];
  const local=Date.parse(pick.date+'T'+pick.time+':00+08:00');
  if(!Number.isFinite(local))return [];
  const kickoff=new Date(local).toISOString();
  const day=kickoff.slice(0,10).split('-').reverse().join('-');
- const ttl=local<Date.now()-4*60*60*1000?8*60*60*1000:30*60*1000;
- const listing=await page('/matches-hour/date-'+day,ttl);
+ const ttl=refresh?120000:local<Date.now()-4*60*60*1000?8*60*60*1000:30*60*1000;
+ const listing=await page('/matches-hour/date-'+day,ttl,refresh);
  const path=matchingPath(listing,pick,kickoff,teamKey);
- return path?parsePage(await page(path,ttl),path,selection,kickoff,books):[];
+ return path?parsePage(await page(path,ttl,refresh),path,selection,kickoff,books):[];
 }
 
 module.exports={tipsterQuotes,matchingPath,parsePage};

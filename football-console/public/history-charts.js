@@ -97,5 +97,48 @@
     if(rolling)renderTrend(rolling,rollingPoints(rows),'滾動命中率');
   }
 
-  root.FootballHistoryCharts = Object.freeze({ render });
+  function parlayRoi(rows){
+    const days=new Map();
+    for(const row of rows){
+      if(!Number.isFinite(row.net))continue;
+      const series=days.get(row.odds.kind)||new Map();
+      const d=series.get(row.date)||{net:0,count:0};
+      series.set(row.date,{net:d.net+row.net,count:d.count+1});
+      days.set(row.odds.kind,series);
+    }
+    return new Map([...days].map(([kind,series])=>{
+      let net=0,count=0;
+      return [kind,[...series].sort(([a],[b])=>a.localeCompare(b)).map(([date,d])=>{
+        net+=d.net;count+=d.count;
+        return {date,rate:100*net/count,count};
+      })];
+    }));
+  }
+
+  function parlayPlot(rows,labels){
+    const series=parlayRoi(rows);
+    if(!series.size)return '<p class="history-chart-empty">目前沒有賠率與結算齊全的串關。</p>';
+    const points=[...series.values()].flat();
+    const dates=[...new Set(points.map(p=>p.date))].sort();
+    const low=Math.min(0,...points.map(p=>p.rate)),high=Math.max(0,...points.map(p=>p.rate));
+    const yMin=low===high?-10:low,yMax=low===high?10:high;
+    const t=d=>Date.parse(d+'T00:00Z');
+    const first=t(dates[0]),span=t(dates.at(-1))-first;
+    const x=d=>span?68+540*(t(d)-first)/span:338;
+    const y=r=>138-(r-yMin)*116/(yMax-yMin);
+    const percent=r=>(r>0?'+':'')+r.toFixed(1)+'%';
+    const grid=[...new Set([yMin,0,yMax])].map(v=>
+      `<line class="chart-gridline" x1="68" x2="608" y1="${y(v)}" y2="${y(v)}"/><text x="62" y="${y(v)+4}" text-anchor="end">${percent(v)}</text>`).join('');
+    const dateTicks=dates.filter((_,i)=>!i||i===dates.length-1||dates.length<=5).map(d=>
+      `<text x="${x(d)}" y="166" text-anchor="middle">${d.slice(5).replace('-','/')}</text>`).join('');
+    const graphs=[...series].map(([kind,data])=>
+      `<g class="roi-series roi-${kind}">`+(data.length>1?`<polyline points="${data.map(p=>x(p.date)+','+y(p.rate)).join(' ')}"/>`:'')+
+      data.map(p=>`<circle cx="${x(p.date)}" cy="${y(p.rate)}" r="4" tabindex="0" aria-label="${labels[kind]} ${p.date} ${percent(p.rate)}">
+        <title>${labels[kind]} · ${p.date} · ${percent(p.rate)} · ${p.count} 組</title></circle>`).join('')+'</g>').join('');
+    return '<div class="parlay-roi-chart"><h4>累計串關報酬率</h4><p>依預測日期累計，三種賠率分開繪製。</p>'+
+      '<svg class="history-trend-plot" viewBox="0 0 630 176" role="img" aria-label="累計串關報酬率折線圖">'+grid+dateTicks+graphs+'</svg>'+
+      '<ul class="roi-legend">'+[...series.keys()].map(kind=>`<li class="roi-${kind}">${labels[kind]}</li>`).join('')+'</ul></div>';
+  }
+
+  root.FootballHistoryCharts = Object.freeze({ render,parlayPlot });
 })(window);

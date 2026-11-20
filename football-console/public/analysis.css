@@ -1642,3 +1642,23 @@ tbody tr:hover{background:#f6f6f4}
 .pitch-player-image{position:relative;display:block;width:fit-content;margin:auto}
 .pitch-player-image .pitch-avatar{position:absolute;inset:0}
 .pitch-player-image .pitch-avatar[hidden]{display:none}
+
+.odds-guide,.parlay-roi-chart{margin:12px 16px;color:var(--muted)}
+.odds-guide summary,.history-market-panel>summary{cursor:pointer}
+.odds-guide dl{margin:10px 0;display:grid;grid-template-columns:max-content 1fr;gap:5px 12px}
+.odds-guide dd{margin:0}
+.parlay-roi-chart{padding:14px;border:1px solid var(--border);max-width:780px}
+.parlay-roi-chart h4,.parlay-roi-chart p{margin:0 0 6px}
+.parlay-roi-chart h4{color:var(--ink)}
+.roi-series polyline{fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}
+.roi-series circle{fill:white;stroke:currentColor;stroke-width:2}
+.roi-published{color:#202b38}.roi-beforePublication{color:#346690}.roi-reference{color:#796039}
+.roi-legend{list-style:none;display:flex;flex-wrap:wrap;gap:12px;padding:0;margin:0}
+.roi-legend li::before{content:'';display:inline-block;width:14px;margin-right:6px;vertical-align:middle;border-top:2px solid currentColor}
+.bet-detail-table{min-width:660px}
+.bet-detail-table small{display:block;color:var(--muted)}
+.bet-detail-table a,.history-market-link{text-decoration:underline;text-underline-offset:3px}
+.history-market-link{padding:0;font:inherit;font-weight:700;text-align:left}
+.prematch-alert{display:flex;flex-wrap:wrap;gap:5px 8px;margin:6px 0;font-size:12px}
+.prematch-alert span{padding:2px 6px;border:1px solid var(--border);background:#f5f6f7;color:#283951}
+.prematch-alert small{flex-basis:100%;color:var(--muted)}

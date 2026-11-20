@@ -271,7 +271,7 @@ async function api(req,res,route){
   const feed=await currentReports();
   const report=feed.reports.find(item=>item.date===date);
   if(!report)return send(res,404,{status:'no_report',legs:{}});
-  return send(res,200,await reportOdds(report));
+  return send(res,200,await reportOdds(report,undefined,undefined,route.searchParams.get('mode')==='current'));
  }
  if(route.pathname==='/api/history-results'&&req.method==='GET'){
   const date=route.searchParams.get('date');
@@ -318,7 +318,7 @@ async function api(req,res,route){
  if(route.pathname==='/api/match-section'&&req.method==='GET'){
   const league=route.searchParams.get('league'),event=route.searchParams.get('event')||'';
   const section=route.searchParams.get('section');
-  if(!ALLOWED.has(league)||!/^\d{4,14}$/.test(event)||!['preview','lineup','h2h','prediction'].includes(section))
+  if(!ALLOWED.has(league)||!/^\d{4,14}$/.test(event)||!['preview','lineup','h2h','prediction','changes'].includes(section))
    return send(res,400,{error:'比賽詳情參數不正確'});
   const get=async(target,ttl)=>{
    try{const upstream=await cachedRemoteGet(target,ttl);return upstream.status===200?upstream.data:null}

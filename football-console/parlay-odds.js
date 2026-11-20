@@ -55,7 +55,7 @@ function matchPrice(bet,pick){
  return prices.size===1?[...prices][0]:null;
 }
 
-function quotesFor(rows,pick,kickoff){
+function quotesFor(rows,pick,kickoff,latest=false){
  const chosen=new Map();
  for(const row of rows){
   const observed=Date.parse(row.update);
@@ -66,7 +66,7 @@ function quotesFor(rows,pick,kickoff){
    const matches=(book.bets||[]).map(bet=>matchPrice(bet,pick)).filter(x=>x!==null);
    if(new Set(matches).size!==1)continue;
    const old=chosen.get(key);
-   if(!old||observed<Date.parse(old.capturedAt))chosen.set(key,{
+   if(!old||(latest?observed>Date.parse(old.capturedAt):observed<Date.parse(old.capturedAt)))chosen.set(key,{
     book:key,source:books.get(key),price:matches[0],capturedAt:new Date(observed).toISOString(),kind:'prematch'
    });
   }
@@ -82,12 +82,12 @@ function archiveKey(p){
  return [p.date,p.time,p.home,p.away,p.market,p.group].join('|');
 }
 
-async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes){
+async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes,latest=false){
  const days=(Date.parse(taiwanDay())-Date.parse(report.date))/86400000;
- const picks=(report.matches||[]).filter(p=>p.id&&p.group&&selection(p));
+ const picks=(report.matches||[]).filter(p=>p.id&&selection(p)&&(!latest||Date.parse(p.date+'T'+p.time+':00+08:00')>Date.now()));
  const legs={},scores={};
  for(const pick of picks){
-  const record=archive[archiveKey(pick)];
+  const record=latest?null:archive[archiveKey(pick)];
   if(!record)continue;
   legs[pick.id]=[...books.keys()].filter(book=>record.prices[book]).map(book=>({
    book,source:books.get(book),price:record.prices[book],capturedAt:record.capturedAt,kind:'prematch',url:record.url
@@ -98,7 +98,7 @@ async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes
  const missing=picks.filter(p=>!legs[p.id]?.length);
  for(let i=0;i<missing.length;i+=4){
   await Promise.all(missing.slice(i,i+4).map(async pick=>{
-   const quotes=await publicQuotes(pick,selection(pick),teamKey,books);
+   const quotes=await publicQuotes(pick,selection(pick),teamKey,books,latest);
    if(quotes.length)legs[pick.id]=quotes;
   }));
  }
@@ -118,7 +118,7 @@ async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes
    const odds=await provider.getFixtureOdds(fixture.apiFixtureId);
    if(!odds.ok)incomplete=true;
    if(odds.reason==='quota')rateLimited=true;
-   const quotes=quotesFor(odds.rows,selection(p),fixture.utc);
+   const quotes=quotesFor(odds.rows,selection(p),fixture.utc,latest);
    if(quotes.length)legs[p.id]=quotes;
   }));
   if(rateLimited)break;

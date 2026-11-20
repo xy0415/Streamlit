@@ -120,7 +120,7 @@ async function matchSection(league,event,section,get){
  const sides=list(current.competitors).filter(p=>['home','away'].includes(p.homeAway)&&p.team?.id);
  const prior=(id)=>priorEvents(s,id);
  const history=(entry)=>get(summaryUrl(league,String(entry.id)),2*86400000);
- if(section==='lineup'){
+ if(section==='lineup'||section==='changes'){
   const fotmob=await findFotmobMatch(current,get).catch(()=>null);
   const quality={confirmed:4,reported:3,predicted:2,previous:1};
   const lineups=await Promise.all(sides.map(async side=>{
@@ -143,7 +143,13 @@ async function matchSection(league,event,section,get){
     }
     lineup.players=lineup.players.map(player=>({...player,photo:player.photo||photos.get(nameKey(player.fullName))||''}));
    }
-   return {side:side.homeAway,team:side.team.displayName||side.team.name,logo:image(side.team.logo||side.team.logos?.[0]?.href),lineup};
+   let previousStarters=[];
+   if(section==='changes'&&lineup?.kind==='confirmed'){
+    const previous=await Promise.all(prior(id).slice(0,3).map(history));
+    const latest=previous.filter(old=>fullTime(comp(old))).map(old=>rosterFor(old,id,'previous')).find(Boolean);
+    if(latest)previousStarters=latest.players.map(player=>player.fullName);
+   }
+   return {previousStarters,side:side.homeAway,team:side.team.displayName||side.team.name,logo:image(side.team.logo||side.team.logos?.[0]?.href),lineup};
   }));
   return {lineups,checkedAt:new Date().toISOString()};
  }

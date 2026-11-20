@@ -61,6 +61,11 @@
     <section class="history-table history-market-panel" aria-labelledby="parlay-roi-heading">
      <h3 class="history-heading" id="parlay-roi-heading">近期串關報酬率</h3>
      <p class="history-explain">自 2026/11/18 起，每組固定押 1 單位。只有同莊家、賠率齊全且已核實結算的串關才計入。賽前回補價格單獨計算。</p>
+     <details class="odds-guide"><summary>三種賠率的差別</summary><dl>
+      <dt>發布原價</dt><dd>原始推薦明文記錄的賠率，能核對莊家和不晚於發布的擷取時間。</dd>
+      <dt>發布前可核對價</dt><dd>外部來源有時間戳的賽前報價，時間不晚於推薦發布。</dd>
+      <dt>賽前回補價</dt><dd>開賽前的報價。若整組至少一關無法證明報價在發布前已存在，該組列在這裡。</dd>
+     </dl></details>
      <div id="parlayHistoryBody" class="parlay-history" aria-live="polite"></div>
     </section>
     <div class="history-performance">
@@ -87,6 +92,17 @@
      <h3 class="history-heading" id="history-market-heading">各玩法表現</h3>
      <div class="tablewrap"><table class="history-league-table history-market-table"><thead><tr><th scope="col">玩法</th><th scope="col">計入樣本</th><th scope="col">命中率</th></tr></thead><tbody id="historyMarketRows"></tbody></table></div>
     </section>
+    <details id="historyBetDetails" class="history-table history-market-panel">
+     <summary class="history-heading">歷史投注明細</summary>
+     <div class="history-filters">
+      <div class="inputset"><label for="historyBetStatus">紀錄狀態</label><select id="historyBetStatus">
+       <option value="">全部狀態</option><option value="settled">已結算</option>
+       <option value="pending">待核實</option><option value="missing">缺賠率</option>
+      </select></div>
+     </div>
+     <p class="history-explain">沿用上方篩選。每筆以 1 單位計算，賠率與賽果齊備才顯示損益。</p>
+     <div id="historyBetRows"></div>
+    </details>
     <section class="history-daily" aria-labelledby="history-daily-heading">
      <h3 class="history-heading" id="history-daily-heading">每日紀錄</h3>
      <div class="history-date-controls">
