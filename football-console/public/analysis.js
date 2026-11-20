@@ -628,7 +628,7 @@ function normalizeReport(r){
    status:m.status||m.scoreStatus||'待核對',homeScore:m.homeScore===null||m.homeScore===undefined||m.homeScore===''?null:Number(m.homeScore),
    awayScore:m.awayScore===null||m.awayScore===undefined||m.awayScore===''?null:Number(m.awayScore),
    settlement:m.settlement||'待核實',verified:m.verified===true||m.verified==='true',
-   analysis:String(m.analysis||m.rationale||''),risk:String(m.risk||''),
+   analysis:String(m.analysis||m.rationale||''),risk:String(m.risk||''),judgement:String(m.judgement||m.judgment||''),
    publishedOdds:INSIGHTS?.originalOdds(m,r.publishedAt||r.sentAt),
    source:m.source||'正式 Gmail',sourceUrl:m.sourceUrl||'',group:m.group||'串關單',groupPublished:Boolean(m.group),order:Number(m.order)||i+1
   }))};
@@ -994,7 +994,7 @@ async function pollLiveMatches(){
  if(state.view==='schedule'&&state.day===day)renderSchedule();
 }
 
-const matchTabs={facts:'賽況',preview:'Preview',lineup:'Lineup',h2h:'H2H',prediction:'賽前觀點',review:'賽後復盤',snapshot:'賽前快照'};
+const matchTabs={facts:'賽況',preview:'賽前資訊',lineup:'先發陣容',h2h:'歷史交鋒',prediction:'賽前觀點',review:'賽後復盤',snapshot:'賽前快照'};
 const gradeLabels={win:'全贏',halfwin:'半贏',loss:'全輸',halfloss:'半輸',push:'走盤'};
 let predictionOpenRequest=0;
 
@@ -1086,14 +1086,15 @@ function matchPredictionContent(f,tab,evidence=null,pending=false){
   if(tab==='snapshot')inputs.push(['串關組合',pick.group||'—']);
   if(tab==='prediction'){
    const originalAnalysis=p.analysis.trim(),originalRisk=p.risk.trim();
-   const form=(!originalAnalysis||!originalRisk)&&window.FXIPrematchAnalysis?.make(p,report,evidence,
+   const form=window.FXIPrematchAnalysis?.make(p,report,evidence,
     {home:p.homeZh||localizedTeamName(f.home),away:p.awayZh||localizedTeamName(f.away)});
    const unavailable=pending?'正在查核賽前資料…':'賽前資料不足';
-   inputs.push(['主要依據',originalAnalysis||form?.analysis||unavailable],['主要變數',originalRisk||form?.risk||unavailable]);
+   inputs.push(['主要依據',originalAnalysis||form?.analysis||unavailable],['主要變數',originalRisk||form?.risk||unavailable],
+    ['分析與判斷',p.judgement||form?.judgement||(originalAnalysis?originalAnalysis+' '+(originalRisk||''):'目前缺少可核對的賽前數據')]);
    if(form)inputs.push(['FXI 補充分析','ESPN 歷史賽果 · 截止 '+(fTaiwan(form.cutoff)?.stamp||'—')+'（台灣時間）']);
   }else{
    inputs.push(['完場比分',score?score.h+' : '+score.a:'—'],['結算',outcome]);
-   if(tab==='review')inputs.push(['比分來源',score?.source||'待核對']);
+   if(tab==='review')inputs.push(['原始推薦',p.market],['賽前主要依據',p.analysis||'原文未記錄'],['賽前主要變數',p.risk||'原文未記錄'],['比分來源',score?.source||'待核對']);
    if(tab==='snapshot'){
     inputs.push(['比分來源',score?.source||'待核對']);
     if(unit!==null&&unit!==undefined)inputs.push(['依原文賠率計算的損益',signedUnits(unit)+' 單位']);
@@ -1114,8 +1115,8 @@ async function showMatchSection(f,tab,background=false){
  const key=[f.leagueCode,f.id,tab].join('|');
  const prior=matchSectionCache.get(key);
  const active=()=>state.matchDetailPayload===f&&state.matchTab===tab;
- const show=html=>{if(active())host.innerHTML='<h3>'+matchTabs[tab]+'</h3>'+html};
- if(prior)show(renderer(prior.data));
+ const show=(html,at)=>{if(active())host.innerHTML='<h3>'+matchTabs[tab]+'</h3>'+html+(at&&['preview','lineup','h2h'].includes(tab)?'<p class="pitch-meta">資料查詢時間 '+escapeHtml(fTaiwan(at)?.stamp||'—')+'（台灣時間）</p>':'')};
+ if(prior)show(renderer(prior.data),prior.at);
  else if(!background)show(prediction?matchPredictionContent(f,tab,null,true):
   '<p class="match-detail-empty" role="status">正在查詢資料…</p>');
  if(!/^\d{4,14}$/.test(String(f.id))||!f.leagueCode){
@@ -1132,7 +1133,7 @@ async function showMatchSection(f,tab,background=false){
   if(request!==sectionRequest||!active())return;
   matchSectionCache.set(key,{data,at:Date.now()});
   if(matchSectionCache.size>80)matchSectionCache.delete(matchSectionCache.keys().next().value);
-  show(renderer(data));
+  show(renderer(data),Date.now());
  }catch{
   if(request===sectionRequest&&!prior)show(prediction?renderer(null):
    '<p class="match-detail-empty">資料暫時無法取得，請稍後重試。</p>');
@@ -1148,7 +1149,7 @@ function setMatchTab(tab){
  clearInterval(sectionPoll);
  ++sectionRequest;
  const picks=tab==='prediction'?matchReportRows(f):[];
- const needsEvidence=tab==='prediction'&&(!picks.length||picks.some(({p})=>!p.analysis.trim()||!p.risk.trim()));
+ const needsEvidence=tab==='prediction';
  if(tab==='snapshot')showPrematchSnapshot(f);
  else if(needsEvidence||window.FXIMatchSections?.[tab]){
   showMatchSection(f,tab);
@@ -1599,7 +1600,9 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
    legs.map(({p,score,grade},index)=>{
     const quote=odds.prices[index];
     const shared=[...affected.get(parlayMatchKey(p))].filter(item=>item!==group);
-    const stamp=review&&quote&&fTaiwan(INSIGHTS.oddsTimestamp(quote.capturedAt));
+    const stamp=quote&&fTaiwan(INSIGHTS.oddsTimestamp(quote.capturedAt));
+    const age=quote?Date.now()-INSIGHTS.oddsTimestamp(quote.capturedAt):null;
+    const freshness=quote&&stamp?'<small class="odds-freshness">'+(age>86400000?'報價較久 · ':'')+'更新 '+escapeHtml(stamp.stamp)+'</small>':'';
     return '<li><div><a href="'+escapeHtml(INSIGHTS.matchLink(p,review?'reviews':'predictions',review?'review':'prediction'))+'"><strong>'+
      escapeHtml((index+1)+'. '+localizedTeamName(p.home,p.homeZh)+' vs '+localizedTeamName(p.away,p.awayZh))+
      '</strong></a>'+(!review?prematchAlert(p,eventForPrediction(p,fixtures)):'')+(shared.length?'<div class="search-meta">同場亦見於 '+escapeHtml(shared.join('、'))+'</div>':'')+
@@ -1608,7 +1611,7 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
      (quote?quote.price.toFixed(2):'—')+'</strong>'+(quote?'<small>'+escapeHtml(review?quote.source+' · '+(quote.kind==='published'?'發布原價':'賽前價')+
      (stamp?' · '+stamp.stamp:''):quote.source==='1xBet'?'1xbet':quote.source)+(review&&quote.url&&/^https:\/\/tipsterarea\.com\/match\/[a-z0-9-]+$/.test(quote.url)?
      ' · <a href="'+escapeHtml(quote.url)+'" target="_blank" rel="noopener noreferrer">來源</a>':'')+'</small>':'')+(review?'<small>'+(score?score.h+' : '+score.a+' · ':'')+
-     (gradeLabels[grade]||'待結算')+'</small>':'')+'</div></li>';
+     (gradeLabels[grade]||'待結算')+'</small>':'')+freshness+'</div></li>';
    }).join('')+'</ol><footer><span>'+foot+'</span><strong>綜合賠率 '+(odds.product?odds.product.toFixed(2):'—')+
    (!review&&odds.product&&odds.commonBook?' '+escapeHtml(odds.prices[0].source==='1xBet'?'1xbet':odds.prices[0].source):'')+
    (net===null?'':' · 損益 '+signedUnits(net)+' 單位')+'</strong></footer></article>';
@@ -1978,6 +1981,24 @@ function renderHistory(){
  $('historyLoss').textContent=count(summary.loss+summary.halfloss);
  $('historyPush').textContent=count(summary.push);
  $('historyRate').textContent=summary.rate===null?'—':summary.rate.toFixed(1)+'%';
+ const calibration=$('historyProbabilityRows');
+ if(calibration){
+  const groups=new Map();
+  for(const {p,result} of rows){
+   if(!Number.isFinite(p.probability)||p.probability<0||p.probability>100||!result?.verified||!result.grade||result.grade==='push')continue;
+   const type=p.probabilityType||'命中';
+   const start=Math.min(90,Math.floor(p.probability/10)*10);
+   const key=type+'|'+start;
+   if(!groups.has(key))groups.set(key,{type,start,grades:[]});
+   groups.get(key).grades.push(result);
+  }
+  calibration.innerHTML=[...groups.values()].sort((a,b)=>a.type.localeCompare(b.type,'zh-Hant')||a.start-b.start).map(g=>{
+   const st=HISTORY.summarize(g.grades);
+   const actual=g.type==='全贏'?100*st.win/(st.finished-st.push):st.rate;
+   return '<tr><td>'+escapeHtml(g.type)+'</td><td>'+g.start+'%～'+(g.start===90?100:g.start+9)+'%</td><td>'+st.finished+'</td><td><div class="history-market-meter"><meter min="0" max="100" value="'+actual+'" aria-label="實際比率"></meter><strong>'+actual.toFixed(1)+'%</strong></div></td></tr>';
+  }).join('')||'<tr><td colspan="4">目前沒有可計算的已核實樣本</td></tr>';
+ }
+
  const label=missingFeed?(state.feedStatus==='loading'?'正在同步預測紀錄…':'正式預測來源暫時無法同步'):
   state.historyLoading?
   '比對歷史比分 '+state.historyChecks+'/'+state.historyRequired+(state.historyErrors?' · 來源失敗 '+state.historyErrors:''):

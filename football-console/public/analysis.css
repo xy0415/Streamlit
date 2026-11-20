@@ -1669,3 +1669,17 @@ tbody tr:hover{background:#f6f6f4}
 .snapshot-prices small, .snapshot-link { display:block; margin-top:3px; font-size:11px; }
 .snapshot-prices small { color:var(--muted); }
 .snapshot-link { width:fit-content; text-decoration:underline; text-underline-offset:3px; }
+
+@media(max-width:700px){
+ .match-insight-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+ .match-insight-tabs button{min-width:0;white-space:normal;padding:8px 4px;font-size:12px;line-height:1.25}
+ .match-snapshot dl{grid-template-columns:minmax(65px,auto) minmax(0,1fr)}
+ .parlay-group li{grid-template-columns:minmax(0,1fr) auto;align-items:start}
+ .parlay-group li>div:first-child{min-width:0;overflow-wrap:anywhere}
+ .parlay-result{white-space:normal;text-align:right;max-width:125px}
+ .parlay-group footer{gap:8px;flex-wrap:wrap}
+ .h2h-match{min-width:0}
+ .h2h-match>div{min-width:0;overflow-wrap:anywhere}
+ .pitch-row li{min-width:0;overflow-wrap:anywhere}
+ .snapshot-prices{min-width:460px}
+}
