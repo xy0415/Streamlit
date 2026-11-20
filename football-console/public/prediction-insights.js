@@ -2,18 +2,36 @@
 
 (function (root) {
   const marketLabels = Object.freeze({
-    totals:'大小球', handicap:'讓球', double:'不敗／雙重機會',
-    both:'雙方進球', winner:'勝平負', other:'其他玩法',
+    totals:'全場大小球', teamTotals:'球隊進球大小', halfTotals:'半場大小球',
+    handicap:'讓球', double:'不敗／雙重機會', both:'雙方進球', winner:'勝平負',
+    corners:'角球', cards:'牌數', exactScore:'正確比分', drawNoBet:'平局退款',
+    halfFull:'半全場', unknown:'玩法未記錄',
   });
 
   function marketType(market) {
-    const value = String(market || '');
-    if (/雙方進球|BTTS/i.test(value)) return 'both';
-    if (/讓球|讓分/.test(value)) return 'handicap';
-    if (/不敗|勝或和|勝或平|雙重機會/.test(value)) return 'double';
-    if (/總進球|進球數|全場\s*[大小]/.test(value)) return 'totals';
-    if (/勝|和局|平局/.test(value)) return 'winner';
-    return 'other';
+    const text=String(market||'').normalize('NFKC').replace(/\s+/g,' ').trim();
+    const value=text.replace(/\s+/g,'');
+    if(!value)return 'unknown';
+    if(/角球|corners?/i.test(value))return 'corners';
+    if(/牌數|黃牌|紅牌|總牌|cards?/i.test(value))return 'cards';
+    if(/正確比分|波膽|correctscore/i.test(value))return 'exactScore';
+    if(/半全場|半場.?全場/.test(value))return 'halfFull';
+    if(/平局退款|平局不算|和局退款|drawnobet/i.test(value))return 'drawNoBet';
+    if(/雙方(?:都有|均有)?進球|BTTS/i.test(value))return 'both';
+    if(/讓球|讓分/.test(value))return 'handicap';
+    if(/不敗|勝或和|勝或平|雙重機會/.test(value))return 'double';
+    if(/(?:球隊|單隊)(?:總)?進球(?:大|小|數)/.test(value))return 'teamTotals';
+    if(/半場|上半時|下半時/.test(value)){
+      if(/總進球|進球數|[大小]\d/.test(value))return 'halfTotals';
+      return 'published:'+text;
+    }
+    if(/總進球|進球數|全場[大小]/.test(value))return 'totals';
+    if(/(?:獲勝|勝出|勝利)$|^(?:主勝|客勝|和局|平局|勝平負)$/.test(value))return 'winner';
+    return 'published:'+text;
+  }
+
+  function marketLabel(type) {
+    return type.startsWith('published:')?type.slice('published:'.length):marketLabels[type];
   }
 
   function matchLink(match, view = 'schedule', tab = '') {
@@ -104,5 +122,5 @@
     return returns.reduce((product,net)=>product*(1+net),1)-1;
   }
 
-  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, matchLink, readMatchLink, originalOdds, oddsTimestamp, unitReturn, parlayStatus, parlayPrices, parlayProduct, parlayNet});
+  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, marketLabel, matchLink, readMatchLink, originalOdds, oddsTimestamp, unitReturn, parlayStatus, parlayPrices, parlayProduct, parlayNet});
 })(window);

@@ -1721,11 +1721,7 @@ function renderHistory(){
  if(state.view==='history')renderParlayHistory();
  const all=historyReportRows();
  const leagueControl=$('historyLeague'),periodControl=$('historyPeriod'),marketControl=$('historyMarket');
- const markets=INSIGHTS?.marketLabels||{};
  const previousMarket=marketControl.value;
- marketControl.innerHTML='<option value="">全部玩法</option>'+Object.entries(markets).map(([id,label])=>
-  '<option value="'+id+'">'+label+'</option>').join('');
- marketControl.value=Object.hasOwn(markets,previousMarket)?previousMarket:'';
  const previousLeague=leagueControl.value;
  const leagueLabel=name=>KN[PRED_LEAGUE_CODES[name]]||String(name||'').trim();
  const leagues=[...new Set(all.map(row=>leagueLabel(row.p.league)).filter(Boolean))]
@@ -1739,6 +1735,11 @@ function renderHistory(){
  const inPeriod=all.filter(row=>limit===null||Date.parse(row.reportDate+'T00:00:00+08:00')>=limit);
  const leagueRows=inPeriod.filter(row=>!selectedLeague||leagueLabel(row.p.league)===selectedLeague)
   .map(row=>({...row,result:state.historyScores.get(row.key)||null,market:INSIGHTS?.marketType(row.p.market)}));
+ const markets=new Map(leagueRows.filter(row=>row.market).map(row=>[row.market,INSIGHTS.marketLabel(row.market)]));
+ const marketOptions=[...markets].sort((a,b)=>a[1].localeCompare(b[1],'zh-TW'));
+ marketControl.innerHTML='<option value="">全部玩法</option>'+marketOptions.map(([id,label])=>
+  '<option value="'+escapeHtml(id)+'">'+escapeHtml(label)+'</option>').join('');
+ marketControl.value=markets.has(previousMarket)?previousMarket:'';
  const rows=leagueRows.filter(row=>!marketControl.value||row.market===marketControl.value);
  const missingFeed=!state.feed?.reports?.length&&state.feedStatus!=='ready';
  const count=value=>missingFeed?'—':String(value);
@@ -1771,15 +1772,15 @@ function renderHistory(){
    stats.win+stats.halfwin)+'</td><td>'+(stats.loss+stats.halfloss)+'</td><td>'+stats.push+'</td><td><strong>'+
    (stats.rate===null?'—':stats.rate.toFixed(1)+'%')+'</strong></td></tr>').join('')||
   '<tr><td colspan="7" class="history-no-data">'+(missingFeed?escapeHtml(label):'所選範圍尚無預測紀錄')+'</td></tr>';
- const marketRows=Object.entries(markets).filter(([id])=>!marketControl.value||marketControl.value===id).flatMap(([id,title])=>{
+ const marketRows=marketOptions.filter(([id])=>!marketControl.value||marketControl.value===id).flatMap(([id,title])=>{
   const group=rows.filter(row=>row.market===id);
   return group.length&&HISTORY?[{title,stats:HISTORY.summarize(group.map(row=>row.result||{}))}]:[];
  });
  $('historyMarketRows').innerHTML=marketRows.map(({title,stats})=>{
   const n=stats.finished-stats.push;
   const wins=stats.win+.5*stats.halfwin;
-  return '<tr><td><strong>'+title+'</strong></td><td>'+n+'</td><td><div class="history-market-meter">'+
-   (stats.rate===null?'—':'<meter min="0" max="100" value="'+stats.rate+'" aria-label="'+title+'命中率"></meter><strong>'+
+  return '<tr><td><strong>'+escapeHtml(title)+'</strong></td><td>'+n+'</td><td><div class="history-market-meter">'+
+   (stats.rate===null?'—':'<meter min="0" max="100" value="'+stats.rate+'" aria-label="'+escapeHtml(title)+'命中率"></meter><strong>'+
     stats.rate.toFixed(1)+'%（'+wins+'/'+n+'）</strong>')+'</div></td></tr>';
  }).join('')||'<tr><td colspan="3" class="history-no-data">'+(missingFeed?escapeHtml(label):'所選範圍尚無玩法紀錄')+'</td></tr>';
  const byDay=new Map();

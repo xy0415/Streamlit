@@ -29,7 +29,11 @@ test('Market grouping preserves the difference between totals, handicaps and dou
  assert.equal(insights.marketType('主隊亞洲讓球 -0.25'),'handicap');
  assert.equal(insights.marketType('全場 小 3.5'),'totals');
  assert.equal(insights.marketType('雙方進球：否'),'both');
- assert.equal(insights.marketType('全場角球大 8.5'),'other');
+ assert.equal(insights.marketType('全場角球大 8.5'),'corners');
+ assert.equal(insights.marketType('拜仁慕尼黑球隊進球大1.5'),'teamTotals');
+ assert.equal(insights.marketType('雙方都有進球：是'),'both');
+ assert.equal(insights.marketLabel(insights.marketType('兩隊各至少一張黃牌')),'牌數');
+ assert.equal(insights.marketLabel(insights.marketType('下半場最先進球')),'下半場最先進球');
 });
 
 test('Only an observed price no later than publication produces a return',()=>{
