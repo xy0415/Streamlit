@@ -68,7 +68,7 @@
    '</time><span>'+esc(m.competition)+'</span></header><div class="h2h-match"><div>'+side(m.home)+
    '</div><strong>'+m.home.score+' – '+m.away.score+'</strong><div>'+side(m.away)+'</div></div>'+
    (m.status&&!['FT','Final'].includes(m.status)?'<small>'+esc(m.status)+'</small>':'')+'</li>').join('')+
-   '</ul><p class="pitch-meta">台灣時間 · ESPN</p>';
+   '</ul><p class="pitch-meta">'+(d.matches.some(m=>m.source==='OpenFootball')?'日期由各賽事來源提供 · ESPN / OpenFootball':'台灣時間 · ESPN')+'</p>';
  }
  root.document.addEventListener('error',event=>{
   if(event.target?.classList?.contains('pitch-avatar'))event.target.hidden=true;

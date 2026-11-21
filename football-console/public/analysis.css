@@ -1719,3 +1719,8 @@ tbody tr:hover{background:#f6f6f4}
 
 /* Moving Letters: a single, restrained title entrance for each page view. */
 .fxi-motion-letter { display:inline-block; white-space:pre; }
+
+/* Shared editorial spacing, retaining FXI's existing black-and-white palette. */
+.history-chart { padding-inline: var(--eui-space-4, 16px); }
+.history-chart .rolling-title { padding-top: var(--eui-space-3, 12px); }
+.match-share { gap: var(--eui-space-2, 8px); }

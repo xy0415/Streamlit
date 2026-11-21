@@ -115,7 +115,11 @@ async function matchSection(league,event,section,get){
  const s=await get(summaryUrl(league,event),45000);
  if(!s||String(s.header?.id)!==event||!comp(s))return null;
  const current=comp(s);
- if(section==='h2h')return {matches:headToHead(s)};
+ if(section==='h2h'){
+  const original=headToHead(s);
+  const matches=await require('./openfootball').supplement(current,league,get,original).catch(()=>original);
+  return {matches};
+ }
  if(section==='prediction')return predictionEvidence(s);
  const sides=list(current.competitors).filter(p=>['home','away'].includes(p.homeAway)&&p.team?.id);
  const prior=(id)=>priorEvents(s,id);
