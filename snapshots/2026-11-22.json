@@ -1,0 +1,167 @@
+{
+  "snapshots": {
+    "[\"2026-11-22\",\"01:30\",\"Newcastle United\",\"Arsenal\",\"阿仙奴不敗（客勝或和局）\",\"串關單\"]": {
+      "market": "阿仙奴不敗（客勝或和局）",
+      "group": "串關單",
+      "probability": 82,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-21T08:06:47.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-22\",\"03:45\",\"Monaco\",\"Auxerre\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 78,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-21T08:06:47.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.13,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.13,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.14,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        }
+      }
+    },
+    "[\"2026-11-22\",\"03:45\",\"Napoli\",\"Torino\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 77,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-21T08:06:47.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.22,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.2,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.18,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        }
+      }
+    },
+    "[\"2026-11-22\",\"04:00\",\"Real Madrid\",\"Celta Vigo\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 84,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-21T08:06:47.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.1,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.08,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.08,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        }
+      }
+    },
+    "[\"2026-11-22\",\"19:30\",\"Juventus\",\"Venezia\",\"祖雲達斯不敗（主勝或和局）\",\"串關單\"]": {
+      "market": "祖雲達斯不敗（主勝或和局）",
+      "group": "串關單",
+      "probability": 88,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-21T08:06:47.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.09,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.06,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.07,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        }
+      }
+    },
+    "[\"2026-11-22\",\"21:00\",\"Barcelona\",\"Villarreal\",\"全場總進球大 2.0\",\"串關單\"]": {
+      "market": "全場總進球大 2.0",
+      "group": "串關單",
+      "probability": 77,
+      "probabilityType": "全贏",
+      "publishedAt": "2026-11-21T08:06:47.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-22\",\"21:30\",\"Ajax\",\"ADO Den Haag\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 87,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-21T08:06:47.000Z",
+      "original": null,
+      "books": {}
+    }
+  }
+}
