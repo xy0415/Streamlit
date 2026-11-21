@@ -110,6 +110,14 @@ async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes
   const liveQuotes=await oddspapi.reportQuotes(report,unresolved,selection);
   for(const [id,quotes] of Object.entries(liveQuotes))legs[id]=quotes;
  }
+ // User-provided price is a fallback when no verified bookmaker quote is available.
+ for(const pick of picks){
+  if(legs[pick.id]?.length)continue;
+  if(archiveKey(pick)==='2026-11-22|21:00|Barcelona|Villarreal|全場總進球大 2.0|串關單'){
+   legs[pick.id]=[{book:'manual',source:'使用者提供',price:1.041,
+    capturedAt:'2026-11-21T08:46:13Z',kind:'prematch'}];
+  }
+ }
  const unmatched=picks.filter(p=>!legs[p.id]?.length);
  if(!unmatched.length)return {status:'ready',legs,scores};
  if(days>7)return {status:'ready',legs,scores};
