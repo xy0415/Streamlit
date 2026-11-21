@@ -33,3 +33,22 @@ test('settles team totals and common published team name variants',()=>{
  assert.equal(evaluate({home:'Trival',away:'Leganés',awayZh:'萊加內斯足球俱樂部',
   market:'萊加內斯獲勝'},0,1),'win');
 });
+
+test('settles Bayern vs Cologne when the two sources use different club names',async()=>{
+ const m={id:'bayern',date:'2026-11-21',time:'03:30',league:'德甲',home:'Bayern München',homeZh:'拜仁慕尼黑',away:'1. FC Köln',awayZh:'科隆',market:'拜仁慕尼黑獲勝'};
+ const date='2026-11-20T19:30:00Z';
+ const get=async url=>url.includes('fotmob')?{leagues:[{matches:[{id:12,status:{utcTime:date,finished:true},home:{name:'Bayern München',score:1},away:{name:'1. FC Köln',score:1}}]}]}:
+ {events:url.endsWith('20261120')?[{id:'401884736',date,competitions:[{status:{type:{name:'STATUS_FULL_TIME'}},competitors:[{homeAway:'home',team:{displayName:'Bayern Munich'},score:'1'},{homeAway:'away',team:{displayName:'FC Cologne'},score:'1'}]}]}]:[]};
+ const result=(await resolveReport({matches:[m]},get,Date.parse('2026-11-22T00:00:00Z'))).bayern;
+ assert.equal(result.verified,true);assert.equal(result.status,'settled');assert.equal(result.grade,'loss');
+ assert.equal(result.h,1);assert.equal(result.a,1);assert.match(result.source,/ESPN.*FotMob/);
+});
+
+test('a conflicting final score remains unresolved instead of corrupting backtests',async()=>{
+ const m={id:'conflict',date:'2026-11-21',time:'03:30',league:'德甲',home:'Bayern München',homeZh:'拜仁慕尼黑',away:'1. FC Köln',awayZh:'科隆',market:'拜仁慕尼黑獲勝'};
+ const date='2026-11-20T19:30:00Z';
+ const get=async url=>url.includes('fotmob')?{leagues:[{matches:[{id:12,status:{utcTime:date,finished:true},home:{name:m.home,score:2},away:{name:m.away,score:1}}]}]}:
+ {events:[{id:'401884736',date,competitions:[{status:{type:{name:'STATUS_FULL_TIME'}},competitors:[{homeAway:'home',team:{displayName:'Bayern Munich'},score:'1'},{homeAway:'away',team:{displayName:'FC Cologne'},score:'1'}]}]}]};
+ const result=(await resolveReport({matches:[m]},get,Date.parse('2026-11-22T00:00:00Z'))).conflict;
+ assert.equal(result.status,'conflict');assert.equal(result.grade,undefined);
+});

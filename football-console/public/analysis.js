@@ -1557,7 +1557,7 @@ function renderParlayHistory(){
    !odds.commonBook?'缺同一莊家報價':net===null?(pendingKickoff?'尚未開賽':'比分待核實'):parlayKind[odds.kind];
   return {date:report.date,group,odds,net,status};
  }));
- const sample=rows.filter(row=>Number.isFinite(row.net)&&row.odds.kind==='reference');
+ const sample=rows.filter(row=>Number.isFinite(row.net));
  const charts=window.FootballHistoryCharts;
  const model=charts?.bankrollBacktest?.(sample,parlayCapitalSettings.initial,parlayCapitalSettings.percentage);
  if(!model)return;
@@ -1575,7 +1575,7 @@ function renderParlayHistory(){
   (rows.length?'<div class="tablewrap"><table class="history-league-table"><thead><tr><th>日期</th><th>串關</th><th>綜合賠率</th><th>下注金額</th><th>損益</th><th>狀態</th></tr></thead><tbody>'+
    rows.map(r=>{
     const bet=model.bets.get(r);
-    const status=r.status===parlayKind.reference?'已計入回測':r.status;
+    const status=Number.isFinite(r.net)?'已計入回測':r.status;
     return '<tr><td>'+escapeHtml(r.date)+'</td><td>'+escapeHtml(r.group)+'</td><td>'+
      (r.odds.product&&r.odds.commonBook?r.odds.product.toFixed(2):'—')+'</td><td>'+
      (bet?amount(bet.stake):'—')+'</td><td>'+(bet?profit(bet.profit):'—')+'</td><td>'+status+'</td></tr>';
@@ -1798,6 +1798,8 @@ function primeHistoryFromFeed(){
  if(!HISTORY)return;
  for(const {p,key} of historyReportRows()){
   if(!p.verified||!Number.isInteger(p.homeScore)||!Number.isInteger(p.awayScore))continue;
+  const prior=state.historyScores.get(key);
+  if(prior?.verified||prior?.status==='conflict')continue;
   const grade=gradeHistory(p,{h:p.homeScore,a:p.awayScore})||HISTORY.settledFromString(p.settlement);
   if(grade)state.historyScores.set(key,{grade,h:p.homeScore,a:p.awayScore,source:'Google 已核實',verified:true,updatedAt:Date.now(),status:'settled'});
  }
@@ -1862,9 +1864,15 @@ async function loadHistoryResults(force=false){
  if(state.historyLoading||!state.feed?.reports?.length||!HISTORY)return;
  state.historyLoading=true;
  const recent=todayTaiwan();
- const jobs=state.feed.reports.filter(r=>r.matches?.length&&r.date<=recent&&
-  (force||Date.now()-(historyChecksByDate.get(r.date)||0)>120000&&r.matches.some(p=>
-   !['settled','unsupported','cancelled'].includes(state.historyScores.get(historyId(p))?.status))));
+ const jobs=state.feed.reports.filter(r=>{
+  if(!r.matches?.length||r.date>recent)return false;
+  if(force)return true;
+  const elapsed=Date.now()-(historyChecksByDate.get(r.date)||0);
+  const pending=r.matches.some(p=>!['settled','unsupported','cancelled'].includes(state.historyScores.get(historyId(p))?.status));
+  // Retry unresolved matches frequently and periodically recheck recent results for corrections.
+  const recentReport=r.date>=addDay(recent,-3);
+  return pending?elapsed>=120000:recentReport&&elapsed>=30*60000;
+ });
  state.historyRequired=jobs.length;state.historyChecks=0;state.historyErrors=0;
  renderHistory();
  let index=0;
@@ -2329,6 +2337,7 @@ function init(){
   if(state.view==='schedule'){loadFixtures(false);pollLiveMatches()}
   if(state.view==='reviews')loadReviewScores(false);
   if(state.view==='predictions')loadFeed();
+  if(state.view==='history'){loadFeed();loadParlayHistory()}
  });
  $('exportDaily').onclick=getDailyExport;
  $('retryPredictions').onclick=()=>{

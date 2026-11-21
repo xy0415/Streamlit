@@ -13,7 +13,7 @@ const key=m=>[m.date,m.time,m.home,m.away].join('|');
 function normalize(name){
  const n=teamKey(name).replace(/\b(?:fc|cf|cd|ud|sc|afc|ac|saf)\b/g,' ').replace(/\s+/g,' ').trim();
  const aliases={'bayern munich':'bayern munchen','man utd':'manchester united','inter':'inter','internazionale':'inter',
-  'porto':'porto','tottenham hotspur':'tottenham','western sydney wanderers fc':'western sydney',
+  'porto':'porto','1 koln':'cologne','koln':'cologne','cologne':'cologne','tottenham hotspur':'tottenham','western sydney wanderers fc':'western sydney',
   'western sydney wanderers':'western sydney','western sydney':'western sydney',
   'athletico pr':'athletico paranaense','vasco':'vasco da gama','saudi arabia':'saudi arabia','korea republic':'south korea',
   'republic of korea':'south korea','s korea':'south korea','china taipei':'chinese taipei','taiwan':'chinese taipei',

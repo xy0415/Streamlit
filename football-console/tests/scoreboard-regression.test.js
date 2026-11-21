@@ -344,3 +344,17 @@ test('Only verified final scores recovered in review update historical hit-rate'
  assert.equal(document.getElementById('historyWin').textContent,'1');
  assert.equal(document.getElementById('historyRate').textContent,'100.0%');
 });
+
+test('history fetch loads verified results into the statistics without replacing them from a stale feed',async()=>{
+ const {context,state}=setup();
+ const day=vm.runInContext('todayTaiwan()',context);
+ const pick={id:'finished',date:day,time:'00:01',league:'德甲',home:'Bayern München',homeZh:'拜仁慕尼黑',away:'1. FC Köln',awayZh:'科隆',market:'拜仁慕尼黑獲勝',order:1};
+ state.view='history';state.feed={reports:[{date:day,matches:[pick]}]};
+ context.renderHistory=()=>{};context.saveHistoryCache=()=>{};context.AbortSignal=AbortSignal;context.URLSearchParams=URLSearchParams;
+ context.fetch=async()=>({ok:true,json:async()=>({results:{finished:{h:1,a:1,grade:'loss',verified:true,status:'settled',source:'ESPN / FotMob'}}})});
+ await context.loadHistoryResults();
+ const id=context.historyId(pick);assert.equal(state.historyScores.get(id).grade,'loss');
+ Object.assign(pick,{verified:true,homeScore:3,awayScore:0});
+ context.primeHistoryFromFeed();
+ assert.equal(state.historyScores.get(id).grade,'loss');assert.equal(state.historyScores.get(id).h,1);
+});
