@@ -14,6 +14,18 @@
             "source": "1xBet",
             "price": 1.16,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.16,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.16,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "betfair": {
@@ -22,6 +34,18 @@
             "source": "Betfair",
             "price": 1.1,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.1,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.1,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "unibet": {
@@ -30,6 +54,18 @@
             "source": "Unibet",
             "price": 1.12,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.13,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.13,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         }
       }
@@ -48,6 +84,18 @@
             "source": "1xBet",
             "price": 1.13,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.18,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.18,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "betfair": {
@@ -56,6 +104,18 @@
             "source": "Betfair",
             "price": 1.13,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.2,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.2,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "unibet": {
@@ -64,6 +124,18 @@
             "source": "Unibet",
             "price": 1.14,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.16,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.16,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         }
       }
@@ -82,6 +154,18 @@
             "source": "1xBet",
             "price": 1.22,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.22,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.22,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "betfair": {
@@ -90,6 +174,18 @@
             "source": "Betfair",
             "price": 1.2,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.2,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.2,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "unibet": {
@@ -98,6 +194,18 @@
             "source": "Unibet",
             "price": 1.18,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.18,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.18,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         }
       }
@@ -116,6 +224,18 @@
             "source": "1xBet",
             "price": 1.1,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.1,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.1,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "betfair": {
@@ -124,6 +244,18 @@
             "source": "Betfair",
             "price": 1.08,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.1,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.1,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "unibet": {
@@ -132,6 +264,18 @@
             "source": "Unibet",
             "price": 1.08,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.07,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.07,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         }
       }
@@ -150,6 +294,18 @@
             "source": "1xBet",
             "price": 1.09,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.09,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.09,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "betfair": {
@@ -158,6 +314,18 @@
             "source": "Betfair",
             "price": 1.06,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.06,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.06,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "unibet": {
@@ -166,6 +334,18 @@
             "source": "Unibet",
             "price": 1.07,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.07,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.07,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         }
       }
@@ -208,6 +388,18 @@
             "source": "1xBet",
             "price": 1.05,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.05,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.05,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "betfair": {
@@ -216,6 +408,18 @@
             "source": "Betfair",
             "price": 1.06,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.06,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.06,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         },
         "unibet": {
@@ -224,6 +428,18 @@
             "source": "Unibet",
             "price": 1.04,
             "capturedAt": "2026-11-21T08:00:00.000Z"
+          },
+          "first": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.04,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
+          },
+          "latest": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.04,
+            "capturedAt": "2026-11-21T12:06:00.000Z"
           }
         }
       }
