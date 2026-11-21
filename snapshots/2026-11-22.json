@@ -7,7 +7,32 @@
       "probabilityType": "命中",
       "publishedAt": "2026-11-21T08:06:47.000Z",
       "original": null,
-      "books": {}
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.16,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.1,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.12,
+            "capturedAt": "2026-11-21T04:02:00.000Z"
+          }
+        }
+      }
     },
     "[\"2026-11-22\",\"03:45\",\"Monaco\",\"Auxerre\",\"全場總進球大 1.5\",\"串關單\"]": {
       "market": "全場總進球大 1.5",
@@ -124,7 +149,7 @@
             "book": "1xbet",
             "source": "1xBet",
             "price": 1.09,
-            "capturedAt": "2026-11-21T04:02:00.000Z"
+            "capturedAt": "2026-11-21T08:00:00.000Z"
           }
         },
         "betfair": {
@@ -132,7 +157,7 @@
             "book": "betfair",
             "source": "Betfair",
             "price": 1.06,
-            "capturedAt": "2026-11-21T04:02:00.000Z"
+            "capturedAt": "2026-11-21T08:00:00.000Z"
           }
         },
         "unibet": {
@@ -140,7 +165,7 @@
             "book": "unibet",
             "source": "Unibet",
             "price": 1.07,
-            "capturedAt": "2026-11-21T04:02:00.000Z"
+            "capturedAt": "2026-11-21T08:00:00.000Z"
           }
         }
       }
@@ -152,7 +177,22 @@
       "probabilityType": "全贏",
       "publishedAt": "2026-11-21T08:06:47.000Z",
       "original": null,
-      "books": {}
+      "books": {
+        "manual": {
+          "first": {
+            "book": "manual",
+            "source": "使用者提供",
+            "price": 1.041,
+            "capturedAt": "2026-11-21T08:46:13.000Z"
+          },
+          "latest": {
+            "book": "manual",
+            "source": "使用者提供",
+            "price": 1.041,
+            "capturedAt": "2026-11-21T08:46:13.000Z"
+          }
+        }
+      }
     },
     "[\"2026-11-22\",\"21:30\",\"Ajax\",\"ADO Den Haag\",\"全場總進球大 1.5\",\"串關單\"]": {
       "market": "全場總進球大 1.5",
@@ -161,7 +201,32 @@
       "probabilityType": "命中",
       "publishedAt": "2026-11-21T08:06:47.000Z",
       "original": null,
-      "books": {}
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.05,
+            "capturedAt": "2026-11-21T08:00:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.06,
+            "capturedAt": "2026-11-21T08:00:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.04,
+            "capturedAt": "2026-11-21T08:00:00.000Z"
+          }
+        }
+      }
     }
   }
 }
