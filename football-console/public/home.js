@@ -243,6 +243,7 @@ function makeParticles(lines, width, fontSize, random) {
         size: 4 + random() * (compact ? 4 : 7),
         angle: (random() - .5) * .9,
         glyph: symbols[Math.floor(random() * symbols.length)],
+        lineIndex: index,
       };
     });
   });
@@ -268,20 +269,29 @@ if (context && document.fonts) {
   let animate = !reducedMotion.matches;
   let isVisible = true;
   let clockStart = performance.now();
+  const reveal = [{progress:1},{progress:1},{progress:1}];
+  let entrance;
 
   function paint(time) {
     const { width, height, base, lines, particles, fontSize } = scene;
     context.clearRect(0, 0, width, height);
     context.drawImage(base, 0, 0);
-    for (const line of lines) context.drawImage(line.layer, line.x, line.y);
-    drawReflection(context, lines[2], fontSize, time);
+    lines.forEach((line, index) => {
+      context.save();
+      context.beginPath();
+      context.rect(line.x, line.y - 2, Math.max(0,line.layer.width * reveal[index].progress), line.layer.height + 4);
+      context.clip();
+      context.drawImage(line.layer, line.x, line.y);
+      context.restore();
+    });
+    if (reveal[2].progress >= .98) drawReflection(context, lines[2], fontSize, time);
 
     context.fillStyle = '#2d342f';
     for (const particle of particles) {
       const sway = Math.sin(time * .76 + particle.phase);
       const phase = Math.cos(time * .58 + particle.phase);
       context.save();
-      context.globalAlpha = particle.opacity * (.82 + .18 * phase);
+      context.globalAlpha = particle.opacity * reveal[particle.lineIndex].progress * (.82 + .18 * phase);
       context.translate(particle.x + particle.dx + sway * (2 + particle.dx * .035),
         particle.y + particle.dy + phase * (2 + particle.dx * .023));
       context.rotate(particle.angle + sway * .17);
@@ -305,6 +315,12 @@ if (context && document.fonts) {
     motion.hidden = false;
     motion.textContent = animate ? '停用動態' : '啟用動態';
     motion.setAttribute('aria-pressed', String(animate));
+    if (!animate && entrance) {
+      entrance.pause(); entrance = null;
+      reveal.forEach(line => { line.progress = 1; });
+    } else if (entrance) {
+      if (document.hidden || !isVisible) entrance.pause(); else entrance.play();
+    }
     if (frame !== undefined) cancelAnimationFrame(frame);
     frame = undefined;
     if (!scene || !isVisible || document.hidden) return;
@@ -334,6 +350,19 @@ if (context && document.fonts) {
 
   document.fonts.load('700 120px "FXI Display"').then(() => {
     resize();
+    // A brief one-time reveal leaves the existing hand-drawn field and particles intact.
+    if (animate && scene && typeof window.anime === 'function') {
+      try {
+        reveal.forEach(line => { line.progress = 0; });
+        entrance = window.anime.timeline({autoplay:false, complete:()=>{entrance=null;}});
+        reveal.forEach((line,index) => entrance.add({targets:line,progress:1,duration:850,
+          easing:'easeOutCubic'}, index * 180));
+        entrance.play();
+      } catch (error) {
+        reveal.forEach(line => { line.progress = 1; });
+        entrance = null;
+      }
+    }
     new ResizeObserver(resize).observe(hero);
     new IntersectionObserver(([entry]) => {
       isVisible = entry.isIntersecting;

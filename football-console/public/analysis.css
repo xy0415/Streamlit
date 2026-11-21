@@ -1716,3 +1716,6 @@ tbody tr:hover{background:#f6f6f4}
 .fxi-bet-grid a { color:inherit; text-decoration:underline; }
 
 .history-trend-plot[hidden], .tablewrap[hidden] { display:none !important; }
+
+/* Moving Letters: a single, restrained title entrance for each page view. */
+.fxi-motion-letter { display:inline-block; white-space:pre; }
