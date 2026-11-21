@@ -1704,3 +1704,15 @@ tbody tr:hover{background:#f6f6f4}
  .history-probability-table .history-market-meter { gap:4px; flex-wrap:wrap; }
  .history-market-meter meter { width:70px; }
 }
+
+/* Editorial data surfaces: restrained type, borders and monochrome chart marks. */
+.fxi-interactive-chart { width:100%; height:180px; min-width:0; }
+.parlay-roi-chart .fxi-interactive-chart { height:230px; }
+.fxi-bet-grid .tabulator { border:1px solid var(--border); font-size:13px; background:#fff; }
+.fxi-bet-grid .tabulator-header { background:#efefed; border-bottom:1px solid var(--border); }
+.fxi-bet-grid .tabulator-col { background:#efefed; }
+.fxi-bet-grid .tabulator-row { border-bottom:1px solid #e1e2df; }
+.fxi-bet-grid .tabulator-cell { white-space:normal; line-height:1.45; }
+.fxi-bet-grid a { color:inherit; text-decoration:underline; }
+
+.history-trend-plot[hidden], .tablewrap[hidden] { display:none !important; }

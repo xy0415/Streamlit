@@ -1561,6 +1561,7 @@ function renderParlayHistory(){
  const charts=window.FootballHistoryCharts;
  const model=charts?.bankrollBacktest?.(sample,parlayCapitalSettings.initial,parlayCapitalSettings.percentage);
  if(!model)return;
+ charts.cleanupPlot?.(host.querySelector('.parlay-roi-chart'));
  const amount=value=>capitalFormat.format(value);
  const profit=value=>(value>0?'+':'')+amount(value);
  const coverage=rows.filter(row=>row.odds.product&&row.odds.commonBook).length;
@@ -1579,7 +1580,7 @@ function renderParlayHistory(){
      (r.odds.product&&r.odds.commonBook?r.odds.product.toFixed(2):'—')+'</td><td>'+
      (bet?amount(bet.stake):'—')+'</td><td>'+(bet?profit(bet.profit):'—')+'</td><td>'+status+'</td></tr>';
    }).join('')+'</tbody></table></div>':'');
-
+ charts.enhancePlot?.(host.querySelector('.parlay-roi-chart'),model.points,'roi');
 }
 function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.concat(state.fixtures)){
  const review=state.view==='reviews';
@@ -1930,6 +1931,7 @@ async function includeMissingClubPredictions(fixtures,force=false,selectedDay=st
  return added;
 }
 
+let historyBetGrid;
 function renderHistoryBets(rows){
  const panel=$('historyBetDetails'),host=$('historyBetRows');
  if(!panel?.open||!host||!INSIGHTS)return;
@@ -1944,6 +1946,7 @@ function renderHistoryBets(rows){
   return {p,result,quote,settled,upcoming,net,kind:priced.kind,loading:!entry||Boolean(entry.loading)};
  }).filter(x=>!status||(status==='missing'?(!x.quote&&!x.loading):
   status==='settled'?x.settled:!x.settled&&!x.upcoming));
+ if(historyBetGrid){try{historyBetGrid.destroy()}catch{} historyBetGrid=null}
  host.innerHTML='<div class="tablewrap"><table class="history-league-table bet-detail-table"><thead><tr>'+
   '<th>日期</th><th>比賽</th><th>原始選項</th><th>賠率</th><th>比分</th><th>結算</th><th>損益</th>'+
   '</tr></thead><tbody>'+items.map(({p,result,quote,settled,upcoming,net,kind,loading})=>
@@ -1956,6 +1959,32 @@ function renderHistoryBets(rows){
    (settled?gradeLabels[result.grade]:upcoming?'未開賽':result?.status==='cancelled'?'取消':result?.status==='postponed'?'延期':'待核實')+
    '</td><td>'+(net===null?'—':signedUnits(net))+'</td></tr>').join('')+
   (items.length?'':'<tr><td colspan="7">目前沒有符合篩選的紀錄</td></tr>')+'</tbody></table></div>';
+ // Tabulator supplies sortable, searchable columns on larger screens; the native
+ // table is retained when the library or screen space is unavailable.
+ if(window.Tabulator && items.length && matchMedia('(min-width: 768px)').matches){
+  const fallback=host.firstElementChild, mount=document.createElement('div');
+  mount.className='fxi-bet-grid'; mount.style.visibility='hidden'; mount.style.position='absolute'; host.append(mount);
+  const data=items.map(({p,result,quote,settled,upcoming,net,loading})=>({
+   date:p.date+' '+p.time, match:localizedTeamName(p.home,p.homeZh)+' – '+localizedTeamName(p.away,p.awayZh),
+   url:INSIGHTS.matchLink(p,'reviews','review'), snapshot:INSIGHTS.matchLink(p,'history','snapshot'), selection:displayPredictionText(p,p.market),
+   price:quote?formatOdds(quote):loading?'等待查詢':'缺賠率',
+   score:Number.isInteger(result?.h)&&Number.isInteger(result?.a)?result.h+' : '+result.a:'—',
+   status:settled?gradeLabels[result.grade]:upcoming?'未開賽':result?.status==='cancelled'?'取消':result?.status==='postponed'?'延期':'待核實',
+   net:net===null?'—':signedUnits(net)
+  }));
+  try {
+   historyBetGrid = new Tabulator(mount,{data,layout:'fitColumns',pagination:true,paginationSize:20,
+    paginationSizeSelector:[20,50,100],locale:'zh-tw',langs:{'zh-tw':{pagination:{page_size:'每頁',first:'首頁',first_title:'首頁',last:'末頁',last_title:'末頁',prev:'上一頁',prev_title:'上一頁',next:'下一頁',next_title:'下一頁',all:'全部'}}},placeholder:'目前沒有符合篩選的紀錄',
+    columns:[{title:'日期',field:'date',minWidth:125},{title:'比賽',field:'match',minWidth:180,
+      formatter:cell=>'<a href="'+escapeHtml(cell.getRow().getData().url)+'">'+escapeHtml(cell.getValue())+'</a><a class="snapshot-link" href="'+escapeHtml(cell.getRow().getData().snapshot)+'">賽前快照</a>'},
+     {title:'原始選項',field:'selection',minWidth:160,formatter:cell=>escapeHtml(cell.getValue())},
+     {title:'賠率',field:'price',minWidth:95},{title:'比分',field:'score',minWidth:85},
+     {title:'結算',field:'status',minWidth:85},{title:'損益',field:'net',minWidth:85}]});
+   const reveal=()=>{if(!fallback.hidden && mount.isConnected && mount.querySelector('.tabulator-row')){mount.style.position='';mount.style.visibility='';fallback.hidden=true;historyBetGrid?.redraw(true)}};
+   historyBetGrid.on('renderComplete',reveal);
+   setTimeout(()=>{reveal();if(!fallback.hidden)mount.remove()},3000);
+  } catch(error) {mount.remove(); console.warn('互動表格無法載入，使用基本表格',error)}
+ }
 }
 
 function renderHistory(){

@@ -1,6 +1,49 @@
 'use strict';
 
 (function (root) {
+  // The native SVG remains available if the optional chart library cannot load.
+  const instances = new WeakMap();
+  function cleanupPlot(container) {
+    const previous = container && instances.get(container);
+    if (previous) { previous.observer?.disconnect(); previous.chart.dispose(); instances.delete(container); }
+  }
+  function enhancePlot(container, points, type) {
+    if (!container || !points.length || !root.echarts) return;
+    const fallback = container.querySelector('svg');
+    if (!fallback) return;
+    cleanupPlot(container);
+    const chartNode = document.createElement('div');
+    chartNode.className = 'fxi-interactive-chart';
+    chartNode.setAttribute('role', 'img');
+    chartNode.setAttribute('aria-label', type === 'roi' ? '累計串關報酬率互動折線圖' : '命中率互動折線圖');
+    fallback.after(chartNode);
+    let chart;
+    try {
+      chart = root.echarts.init(chartNode, null, {renderer: 'svg'});
+      const values = points.map(p => Number(p.rate.toFixed(2)));
+      chart.setOption({
+        animation: !root.matchMedia('(prefers-reduced-motion: reduce)').matches,
+        tooltip: {trigger: 'axis', valueFormatter: value => Number(value).toFixed(1) + '%'},
+        grid: {left: 55, right: 18, top: 15, bottom: 30},
+        xAxis: {type:'category', boundaryGap: false, data: points.map(p => p.date || p.day),
+          axisLabel: {formatter: value => value.slice(5).replace('-', '/'), hideOverlap: true},
+          axisLine: {lineStyle: {color:'#a1a6a2'}}, axisTick: {show: false}},
+        yAxis: {type:'value', ...(type === 'roi' ? {scale:true} : {min:0,max:100}),
+          axisLabel:{formatter:'{value}%'}, splitLine:{lineStyle:{color:'#e2e4e1'}}},
+        series:[{type:'line', data:values, step:type === 'roi' ? false : 'end',
+          symbol:'circle', symbolSize:5, lineStyle:{width:2,color:'#171b19'},
+          itemStyle:{color:'#171b19'}, emphasis:{focus:'series'}}]
+      });
+      fallback.setAttribute('hidden', '');
+      const observer = root.ResizeObserver ? new root.ResizeObserver(() => chart.resize()) : null;
+      observer?.observe(container);
+      instances.set(container, {chart,observer});
+    } catch (error) {
+      chart?.dispose(); chartNode.remove(); fallback.removeAttribute('hidden');
+      console.warn('互動圖表無法載入，使用基本圖表', error);
+    }
+  }
+
   function cumulativePoints(daily) {
     let graded = 0;
     let weightedWins = 0;
@@ -51,6 +94,7 @@
   }
 
   function renderTrend(target, points, title) {
+    cleanupPlot(target);
     if (!points.length) {
       target.innerHTML = '<p class="history-chart-empty">目前沒有可計入命中率的預測。</p>';
       return;
@@ -89,6 +133,7 @@
     target.innerHTML = `<div class="history-trend-value"><strong>${last.rate.toFixed(1)}%</strong><span>${last.graded} 項計入</span></div>` +
       `<svg class="history-trend-plot" viewBox="0 0 ${width} ${height}" role="img" aria-label="${first.day} 至 ${last.day}，${title} ${last.rate.toFixed(1)}%，共 ${last.graded} 項計入">` +
       ticks + dates + (elapsed ? `<path class="chart-line" d="${step}"/>` : '') + dots + '</svg>';
+    enhancePlot(target, points, 'trend');
   }
 
   function render(mix, trend, summary, daily, rolling, rows = []) {
@@ -143,5 +188,5 @@
       '<svg class="history-trend-plot" viewBox="0 0 630 176" role="img" aria-label="累計串關報酬率折線圖">'+grid+dateTicks+graph+'</svg></div>';
   }
 
-  root.FootballHistoryCharts = Object.freeze({ render,parlayPlot,bankrollBacktest });
+  root.FootballHistoryCharts = Object.freeze({ render,parlayPlot,bankrollBacktest,enhancePlot,cleanupPlot });
 })(window);
