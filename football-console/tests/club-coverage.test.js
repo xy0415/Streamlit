@@ -26,7 +26,7 @@ function harness(entries=[]){
   }
   throw Error('Unexpected URL '+url);
  };
- const context={document,window:{FOOTBALL_TEAM_NAMES_ZH:{Arsenal:'兵工廠',Chelsea:'切爾西'}},
+ const context={document,window:{FOOTBALL_TEAM_NAMES_ZH:{Arsenal:'兵工廠',Chelsea:'切爾西',Juventus:'尤文圖斯'}},
   URL,Date,Intl,console,fetch:fakeFetch,localStorage:{getItem(){return null},setItem(){}},
   setTimeout,clearTimeout};
  vm.createContext(context);
@@ -77,4 +77,15 @@ test('early Taiwan kickoff maps to correct previous UTC date for free backup loo
  assert.ok(result);
  assert.equal(result.final,true);
  assert.match(h.requests[0],/date=2026-11-09/);
+});
+
+
+test('prediction names match the display names while original selections remain intact',()=>{
+ const {context}=harness();
+ const display=vm.runInContext('displayPredictionText',context);
+ const arsenal={home:'Newcastle United',homeZh:'紐卡素',away:'Arsenal',awayZh:'阿仙奴',market:'阿仙奴不敗（客勝或和局）'};
+ const juventus={home:'Juventus',homeZh:'祖雲達斯',away:'Venezia',awayZh:'威尼斯',market:'祖雲達斯不敗（主勝或和局）'};
+ assert.equal(display(arsenal,arsenal.market),'兵工廠不敗（客勝或和局）');
+ assert.equal(display(juventus,juventus.market),'尤文圖斯不敗（主勝或和局）');
+ assert.equal(arsenal.market,'阿仙奴不敗（客勝或和局）');
 });
