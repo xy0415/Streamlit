@@ -11,6 +11,7 @@ const books=new Map([
  ['williamhill','William Hill'],['betfair','Betfair'],['unibet','Unibet']
 ]);
 const aliases={
+ 'newcastle united':'newcastle','ajax amsterdam':'ajax',
  'western sydney wanderers':'western sydney','ws wanderers':'western sydney',
  'atletico mg':'atletico mineiro','atletico pr':'athletico paranaense','athletico pr':'athletico paranaense',
  'czechia':'czech republic','turkiye':'turkey','republic of ireland':'ireland',
@@ -96,14 +97,18 @@ async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes
   if(record.score)scores[pick.id]={h:record.score[0],a:record.score[1]};
  }
  if(days< -2)return {status:'outside_window',legs,scores};
- const liveQuotes=await oddspapi.reportQuotes(report,picks.filter(p=>!legs[p.id]?.length),selection);
- for(const [id,quotes] of Object.entries(liveQuotes))legs[id]=quotes;
+ // Query the public source first, preserving the limited API quota for gaps.
  const missing=picks.filter(p=>!legs[p.id]?.length);
  for(let i=0;i<missing.length;i+=4){
   await Promise.all(missing.slice(i,i+4).map(async pick=>{
    const quotes=await publicQuotes(pick,selection(pick),teamKey,books,latest);
    if(quotes.length)legs[pick.id]=quotes;
   }));
+ }
+ const unresolved=picks.filter(p=>!legs[p.id]?.length);
+ if(unresolved.length){
+  const liveQuotes=await oddspapi.reportQuotes(report,unresolved,selection);
+  for(const [id,quotes] of Object.entries(liveQuotes))legs[id]=quotes;
  }
  const unmatched=picks.filter(p=>!legs[p.id]?.length);
  if(!unmatched.length)return {status:'ready',legs,scores};

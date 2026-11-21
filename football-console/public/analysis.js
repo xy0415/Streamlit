@@ -1467,13 +1467,13 @@ async function loadParlayOdds(report,force=false){
    entry.legs={...entry.legs,...data.legs};
    entry.scores={...entry.scores,...data.scores};
    entry.status=data.status;
-   entry.complete=['ready','outside_window'].includes(data.status);
+   entry.complete=data.status==='outside_window'||(data.status==='ready'&&report.matches.filter(p=>p.groupPublished).every(p=>data.legs?.[p.id]?.length));
   }catch{
    entry.status='unavailable';
    entry.complete=false;
   }finally{
    entry.loading=null;
-   entry.retryAt=Date.now()+(entry.complete?10*60*1000:65*1000);
+   entry.retryAt=Date.now()+(entry.complete?5*60*1000:60*1000);
    if(state.day===report.date&&['predictions','reviews'].includes(state.view))renderParlayPanel();
    if(state.view==='history')renderHistory();
   }
@@ -2255,6 +2255,10 @@ function init(){
  setInterval(()=>{
   if(document.visibilityState==='visible'&&state.view==='predictions')loadFeed();
  },45000);
+ // Retry incomplete odds while the prediction view is open.
+ setInterval(()=>{
+  if(document.visibilityState==='visible'&&state.view==='predictions'&&state.report)loadParlayOdds(state.report);
+ },60000);
  // The upstream shared cache is 45 seconds; refresh only while the table is visible.
  setInterval(()=>{if(document.visibilityState==='visible'&&state.view==='standings')loadStandings(false)},45000);
  // Review is independently refreshed while visible; finished fixtures settle from actual data.

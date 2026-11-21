@@ -83,7 +83,7 @@ async function tipsterQuotes(pick,selection,teamKey,books,refresh=false){
  if(!Number.isFinite(local))return [];
  const kickoff=new Date(local).toISOString();
  const day=kickoff.slice(0,10).split('-').reverse().join('-');
- const ttl=refresh?120000:local<Date.now()-4*60*60*1000?8*60*60*1000:30*60*1000;
+ const ttl=refresh?120000:local<Date.now()-4*60*60*1000?8*60*60*1000:2*60*1000;
  const listing=await page('/matches-hour/date-'+day,ttl,refresh);
  const path=matchingPath(listing,pick,kickoff,teamKey);
  return path?parsePage(await page(path,ttl,refresh),path,selection,kickoff,books):[];

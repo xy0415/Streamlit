@@ -1,14 +1,16 @@
 'use strict';
 
 const cache=new Map();
+let quotaBlockedUntil=0;
 async function request(path,params,ttl){
  const key=process.env.ODDSPAPI_KEY;
- if(!key)return null;
+ if(!key||Date.now()<quotaBlockedUntil)return null;
  const id=path+JSON.stringify(params), old=cache.get(id);
  if(old&&old.until>Date.now())return old.promise;
  const url=new URL('https://api.oddspapi.io/v4/'+path);
  for(const [name,value] of Object.entries({...params,apiKey:key}))url.searchParams.set(name,String(value));
  const promise=fetch(url,{signal:AbortSignal.timeout(12000)}).then(async response=>{
+  if(response.status===429){quotaBlockedUntil=Date.now()+60*60*1000;return null}
   if(!response.ok)throw Error('OddsPapi HTTP '+response.status);
   return response.json();
  }).catch(()=>{cache.delete(id);return null});
@@ -19,6 +21,7 @@ function nameKey(value){
  const name=String(value||'').normalize('NFKD').toLowerCase().replace(/\p{M}/gu,'').replace(/[^a-z0-9]+/g,' ').trim()
   .replace(/^(?:fc|sc|afc|rcd|1 fc) /,'').replace(/ (?:fc|sc|afc)$/,'');
  const aliases={'athletic club':'athletic bilbao','espanyol barcelona':'espanyol','tottenham hotspur':'tottenham',
+  'newcastle united':'newcastle','ajax amsterdam':'ajax',
   'bayern munchen':'bayern munich','koln':'cologne','ipswich town':'ipswich'};
  return aliases[name]||name;
 }

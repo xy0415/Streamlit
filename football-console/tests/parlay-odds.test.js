@@ -62,3 +62,10 @@ test('published public odds retain their market, signed kickoff and source times
  assert.equal(quote.url,'https://tipsterarea.com/match/example-1');
  assert.deepEqual(parsePage(html,'/match/example-1',pick,'2026-11-19T22:31:00Z',books),[]);
 });
+
+test('matches common public-provider club name variants',()=>{
+ const {teamKey}=require('../parlay-odds');
+ assert.equal(teamKey('Newcastle United'),teamKey('Newcastle'));
+ assert.equal(teamKey('Ajax Amsterdam'),teamKey('Ajax'));
+ assert.notEqual(teamKey('Ajax Amsterdam'),teamKey('Jong Ajax'));
+});
