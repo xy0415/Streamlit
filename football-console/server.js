@@ -2,7 +2,7 @@ const http = require('node:http');
 const apiFootball = require('./api-football');
 const {parseStandings} = require('./standings');
 const {reportOdds} = require('./parlay-odds');
-const {snapshotKey,kickoffTime,collectSnapshot} = require('./prematch-snapshots');
+const {snapshotKey,kickoffTime,collectSnapshot,mergeArchivedQuotes} = require('./prematch-snapshots');
 const {resolveReport} = require('./history-results');
 const {includePublishedCards} = require('./report-cards');
 const https = require('node:https');
@@ -272,7 +272,12 @@ async function api(req,res,route){
   const feed=await currentReports();
   const report=feed.reports.find(item=>item.date===date);
   if(!report)return send(res,404,{status:'no_report',legs:{}});
-  return send(res,200,await reportOdds(report,undefined,undefined,route.searchParams.get('mode')==='current'));
+  const current=route.searchParams.get('mode')==='current';
+  const [odds,stored]=await Promise.all([
+   reportOdds(report,undefined,undefined,current).catch(()=>({status:'unavailable',legs:{},scores:{}})),
+   current?Promise.resolve(null):cachedRemoteGet('https://raw.githubusercontent.com/xy0415/Streamlit/fxi-prematch-archive/snapshots/'+date+'.json',120000).catch(()=>null)
+  ]);
+  return send(res,200,stored?.status===200?mergeArchivedQuotes(report,odds,stored.data):odds);
  }
  if(route.pathname==='/api/prematch-snapshots'&&req.method==='GET'){
   const date=route.searchParams.get('date');

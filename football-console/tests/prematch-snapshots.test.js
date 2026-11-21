@@ -36,3 +36,19 @@ test('rejects reports and undated odds that cannot be verified as pre-match',()=
  assert.equal(collectSnapshot({publishedAt:'2026-11-20 20:00'},pick,null,[],now),null);
  assert.equal(collect([],null,{...pick,publishedOdds:1.96,publishedOddsSource:'1xBet'}).original,null);
 });
+
+test('restores saved pre-match quotes without replacing current providers or accepting in-play records',()=>{
+ const {mergeArchivedQuotes,snapshotKey}=require('../prematch-snapshots');
+ const match={...pick,id:'selection-1',home:'A',away:'B'};
+ const saved={snapshots:{[snapshotKey(match)]:{books:{
+  '1xbet':{latest:quote('19:30',1.9),first:quote('17:11',1.8)},
+  'bet365':{latest:quote('20:30',2.0,'bet365')}
+ }}}};
+ const result=mergeArchivedQuotes({matches:[match]},{status:'partial',legs:{'selection-1':[
+  {book:'pinnacle',source:'Pinnacle',price:1.8,capturedAt:quote('19:00',1.8).capturedAt}
+ ]}},saved,now);
+ assert.deepEqual(result.legs['selection-1'].map(q=>q.book),['pinnacle','1xbet']);
+ assert.equal(result.legs['selection-1'][1].price,1.9);
+ const existing={book:'1xbet',source:'1xBet',price:1.7};
+ assert.equal(mergeArchivedQuotes({matches:[match]},{legs:{'selection-1':[existing]}},saved,now).legs['selection-1'][0],existing);
+});

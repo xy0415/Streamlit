@@ -48,4 +48,21 @@ function collectSnapshot(report,pick,previous,quotes,now=Date.now()){
  return row;
 }
 
-module.exports={snapshotKey,kickoffTime,collectSnapshot};
+function mergeArchivedQuotes(report,result,archive,now=Date.now()){
+ const legs={...result.legs};
+ for(const pick of report.matches||[]){
+  const stored=archive?.snapshots?.[snapshotKey(pick)];
+  if(!stored?.books)continue;
+  const quotes=[...(legs[pick.id]||[])];
+  for(const [book,record] of Object.entries(stored.books)){
+   if(quotes.some(quote=>quote.book===book))continue;
+   const found=[record.latest,record.first,record.baseline].map(q=>q&&priceQuote(q,kickoffTime(pick),now))
+    .find(q=>q&&q.book===book);
+   if(found)quotes.push({...found,kind:'prematch'});
+  }
+  if(quotes.length)legs[pick.id]=quotes;
+ }
+ return {...result,legs};
+}
+
+module.exports={snapshotKey,kickoffTime,collectSnapshot,mergeArchivedQuotes};
