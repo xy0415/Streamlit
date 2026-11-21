@@ -52,3 +52,15 @@ test('a conflicting final score remains unresolved instead of corrupting backtes
  const result=(await resolveReport({matches:[m]},get,Date.parse('2026-11-22T00:00:00Z'))).conflict;
  assert.equal(result.status,'conflict');assert.equal(result.grade,undefined);
 });
+
+test('recent archived results are checked again and conflicting corrections are not settled',async()=>{
+ const m={id:'archived',date:'2026-11-20',time:'06:30',league:'巴甲',home:'Vasco da Gama',away:'Internacional',market:'全場總進球大 1.5'};
+ const date='2026-11-19T22:30:00Z',calls=[];
+ const get=async url=>{
+  calls.push(url);
+  if(url.includes('fotmob'))return {leagues:[{matches:[{id:99,status:{utcTime:date,finished:true},home:{name:m.home,score:1},away:{name:m.away,score:1}}]}]};
+  return {events:[{id:'401841308',date,competitions:[{status:{type:{name:'STATUS_FULL_TIME'}},competitors:[{homeAway:'home',team:{displayName:m.home},score:'1'},{homeAway:'away',team:{displayName:m.away},score:'1'}]}]}]};
+ };
+ const result=(await resolveReport({matches:[m]},get,Date.parse('2026-11-21T18:00:00Z'))).archived;
+ assert.equal(result.status,'conflict');assert.ok(calls.length>0);
+});

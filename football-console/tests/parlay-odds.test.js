@@ -68,4 +68,7 @@ test('matches common public-provider club name variants',()=>{
  assert.equal(teamKey('Newcastle United'),teamKey('Newcastle'));
  assert.equal(teamKey('Ajax Amsterdam'),teamKey('Ajax'));
  assert.notEqual(teamKey('Ajax Amsterdam'),teamKey('Jong Ajax'));
+ assert.equal(teamKey('1. FC Köln'),teamKey('FC Cologne'));
+ assert.equal(teamKey('Bayern München'),teamKey('Bayern Munich'));
+ assert.notEqual(teamKey('Köln'),teamKey('Fortuna Köln'));
 });

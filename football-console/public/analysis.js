@@ -1465,10 +1465,18 @@ async function loadParlayOdds(report,force=false){
    const res=await fetch('/api/parlay-odds?'+new URLSearchParams({date:report.date}),{signal:AbortSignal.timeout(45000)});
    if(!res.ok)throw Error('Odds HTTP '+res.status);
    const data=await res.json();
-   entry.legs={...entry.legs,...data.legs};
+   const saved={...entry.legs};
+   for(const [id,quotes] of Object.entries(data.legs||{})){
+    if(!Array.isArray(quotes)||!quotes.length)continue;
+    const prior=Array.isArray(saved[id])?saved[id]:[];
+    // A temporary source outage must not erase an earlier bookmaker quote.
+    saved[id]=quotes.concat(prior.filter(old=>!quotes.some(q=>q.book===old.book)));
+   }
+   entry.legs=saved;
    entry.scores={...entry.scores,...data.scores};
    entry.status=data.status;
-   entry.complete=data.status==='outside_window'||(data.status==='ready'&&report.matches.filter(p=>p.groupPublished).every(p=>data.legs?.[p.id]?.length));
+   const picks=report.matches.filter(p=>p.groupPublished);
+   entry.complete=data.status==='outside_window'||(picks.length>0&&picks.every(p=>entry.legs[p.id]?.length));
   }catch{
    entry.status='unavailable';
    entry.complete=false;
@@ -1796,6 +1804,15 @@ function gradeHistory(p,score){
 }
 function primeHistoryFromFeed(){
  if(!HISTORY)return;
+ // Restore the most recently verified browser record before consulting the
+ // separately synchronised feed, whose score check can lag behind.
+ try{
+  const saved=JSON.parse(localStorage.getItem(HIST_CACHE_KEY)||'{}');
+  if(saved.version===2&&Array.isArray(saved.results))for(const entry of saved.results){
+   if(!entry||typeof entry.key!=='string'||!entry.verified||!entry.grade||!Number.isInteger(entry.h)||!Number.isInteger(entry.a))continue;
+   if(!state.historyScores.has(entry.key))state.historyScores.set(entry.key,entry);
+  }
+ }catch{}
  for(const {p,key} of historyReportRows()){
   if(!p.verified||!Number.isInteger(p.homeScore)||!Number.isInteger(p.awayScore))continue;
   const prior=state.historyScores.get(key);
@@ -1803,14 +1820,6 @@ function primeHistoryFromFeed(){
   const grade=gradeHistory(p,{h:p.homeScore,a:p.awayScore})||HISTORY.settledFromString(p.settlement);
   if(grade)state.historyScores.set(key,{grade,h:p.homeScore,a:p.awayScore,source:'Google 已核實',verified:true,updatedAt:Date.now(),status:'settled'});
  }
- try{
-  const saved=JSON.parse(localStorage.getItem(HIST_CACHE_KEY)||'{}');
-  if(saved.version!==2||!Array.isArray(saved.results))return;
-  for(const entry of saved.results){
-   if(!entry||typeof entry.key!=='string'||!entry.grade||!Number.isInteger(entry.h)||!Number.isInteger(entry.a))continue;
-   if(!state.historyScores.has(entry.key))state.historyScores.set(entry.key,entry);
-  }
- }catch{}
 }
 function saveHistoryCache(){
  try{

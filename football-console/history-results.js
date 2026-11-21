@@ -55,7 +55,7 @@ function verifiedResult(m,e,f){
   ...(e?.status!=='extended'&&!saved?.regulation&&f?.status==='final'&&f.h!==null&&f.a!==null?[{h:f.h,a:f.a,source:'FotMob'}]:[]),
   ...(m.verified===true&&integer(m.homeScore)!==null&&integer(m.awayScore)!==null?[{h:Number(m.homeScore),a:Number(m.awayScore),source:'正式結算',trusted:true}]:[]),
   ...(saved?[{...saved,trusted:true}]:[]),
-  ...(archived?[{h:archived[0],a:archived[1],source:'賠率歷史封存',trusted:true}]:[])
+  ...(archived?[{h:archived[0],a:archived[1],source:'賠率歷史封存'}]:[])
  ];
  const first=evidence[0];
  if(first){
@@ -78,7 +78,10 @@ async function resolveReport(report,get,now=Date.now()){
   if(!Number.isFinite(at))return {status:'missing'};
   if(at>now)return {status:'upcoming'};
   if(at>now-15*minute)return {status:'pending'};
-  if(backfill[key(m)])return verifiedResult(m,null,null);
+  // Recent archived results must still be compared with current sources so a
+  // corrected score cannot stay frozen indefinitely. Older corroborated
+  // archives avoid repeated large historical lookups.
+  if(backfill[key(m)]&&at<now-3*day)return verifiedResult(m,null,null);
   const league=Object.hasOwn(leagues,m.league)?leagues[m.league]:null;
   const utc=isoDay(at);
   if(league){

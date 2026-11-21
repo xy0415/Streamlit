@@ -12,6 +12,7 @@ const books=new Map([
 ]);
 const aliases={
  'newcastle united':'newcastle','ajax amsterdam':'ajax',
+ 'bayern munich':'bayern munchen','1 fc koln':'cologne','1 koln':'cologne','koln':'cologne',
  'western sydney wanderers':'western sydney','ws wanderers':'western sydney',
  'atletico mg':'atletico mineiro','atletico pr':'athletico paranaense','athletico pr':'athletico paranaense',
  'czechia':'czech republic','turkiye':'turkey','republic of ireland':'ireland',

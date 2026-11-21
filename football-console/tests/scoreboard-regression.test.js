@@ -358,3 +358,29 @@ test('history fetch loads verified results into the statistics without replacing
  context.primeHistoryFromFeed();
  assert.equal(state.historyScores.get(id).grade,'loss');assert.equal(state.historyScores.get(id).h,1);
 });
+
+test('odds refresh keeps earlier bookmaker quotes and recognizes all covered legs',async()=>{
+ const {context,state}=setup();context.AbortSignal=AbortSignal;context.URLSearchParams=URLSearchParams;
+ const day='2026-11-21',pick={id:'leg1',groupPublished:true};
+ state.view='schedule';state.day=day;
+ vm.runInContext("parlayOddsByDate.set('2026-11-21',{legs:{leg1:[{book:'1xbet',price:1.4}]}})",context);
+ context.fetch=async()=>({ok:true,json:async()=>({status:'partial',legs:{leg1:[]}})});
+ await context.loadParlayOdds({date:day,matches:[pick]},true);
+ const stored=vm.runInContext("parlayOddsByDate.get('2026-11-21')",context);
+ assert.equal(stored.legs.leg1[0].book,'1xbet');assert.equal(stored.complete,true);
+ context.fetch=async()=>({ok:true,json:async()=>({status:'partial',legs:{leg1:[{book:'bet365',price:1.5}]}})});
+ await context.loadParlayOdds({date:day,matches:[pick]},true);
+ assert.deepEqual(Array.from(stored.legs.leg1,x=>x.book),['1xbet']);
+ const updated=vm.runInContext("parlayOddsByDate.get('2026-11-21')",context);
+ assert.deepEqual(Array.from(updated.legs.leg1,x=>x.book),['bet365','1xbet']);
+});
+
+test('restores a verified browser result before an older verified feed after reopening',()=>{
+ const {context,state}=setup();
+ const pick={id:'x',date:'2026-11-21',time:'03:30',league:'德甲',home:'Bayern München',homeZh:'拜仁慕尼黑',away:'1. FC Köln',awayZh:'科隆',market:'拜仁慕尼黑獲勝',order:1,verified:true,homeScore:3,awayScore:0};
+ state.feed={reports:[{date:pick.date,matches:[pick]}]};
+ const key=context.historyId(pick);
+ context.localStorage={getItem:()=>JSON.stringify({version:2,results:[{key,verified:true,grade:'loss',h:1,a:1,status:'settled'}]})};
+ context.primeHistoryFromFeed();
+ assert.equal(state.historyScores.get(key).grade,'loss');assert.equal(state.historyScores.get(key).h,1);
+});
