@@ -1,0 +1,167 @@
+{
+  "snapshots": {
+    "[\"2026-11-23\",\"00:30\",\"Liverpool\",\"Manchester United\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 82,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-22T08:09:12.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.12,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.11,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.13,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        }
+      }
+    },
+    "[\"2026-11-23\",\"00:30\",\"Werder Bremen\",\"Hamburger SV\",\"雲達不來梅不敗（主勝或和局）\",\"串關單\"]": {
+      "market": "雲達不來梅不敗（主勝或和局）",
+      "group": "串關單",
+      "probability": 79,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-22T08:09:12.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-23\",\"01:00\",\"AC Milan\",\"Frosinone\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 84,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-22T08:09:12.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-23\",\"03:45\",\"Atalanta\",\"Inter\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 81,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-22T08:09:12.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.1,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.1,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.1,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        }
+      }
+    },
+    "[\"2026-11-23\",\"03:45\",\"Marseille\",\"Le Mans\",\"馬賽不敗（主勝或和局）\",\"串關單\"]": {
+      "market": "馬賽不敗（主勝或和局）",
+      "group": "串關單",
+      "probability": 87,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-22T08:09:12.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.14,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.08,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.11,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        }
+      }
+    },
+    "[\"2026-11-23\",\"04:00\",\"Getafe\",\"Atlético Madrid\",\"全場總進球小 4.0\",\"串關單\"]": {
+      "market": "全場總進球小 4.0",
+      "group": "串關單",
+      "probability": 79,
+      "probabilityType": "全贏",
+      "publishedAt": "2026-11-22T08:09:12.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-23\",\"05:30\",\"Fluminense\",\"Mirassol\",\"全場總進球小 3.5\",\"串關單\"]": {
+      "market": "全場總進球小 3.5",
+      "group": "串關單",
+      "probability": 77,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-22T08:09:12.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.41,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.4,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.32,
+            "capturedAt": "2026-11-22T04:02:00.000Z"
+          }
+        }
+      }
+    }
+  }
+}
