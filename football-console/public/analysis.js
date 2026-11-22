@@ -238,6 +238,7 @@ function nameKey(name){
   // while published predictions use the short names. Keep this explicit:
   // stripping arbitrary prefixes can accidentally match a different club.
   'as monaco':'monaco','aj auxerre':'auxerre','as roma':'roma',
+  'newcastle united':'newcastle','ajax amsterdam':'ajax','tottenham hotspur':'tottenham',
   'bayern munich':'bayern munchen','fc bayern munich':'bayern munchen',
   'czech republic':'czechia','turkiye':'turkey','türkiye':'turkey',
   'republic of ireland':'ireland','bosnia and herzegovina':'bosnia herzegovina',
@@ -255,8 +256,9 @@ function nameKey(name){
  return aliases[s]||s;
 }
 function sameTeam(a,b){
+ if(!window.FXITeamIdentity?.compatible(a,b))return false;
  const x=nameKey(a),y=nameKey(b);
- return !!x&&!!y&&(x===y||Math.min(x.length,y.length)>=7&&(x.includes(y)||y.includes(x)));
+ return !!x&&!!y&&x===y;
 }
 function compareEventTime(p,f){
  if(!/^\d\d:\d\d$/.test(String(p.time||'')))return false;
@@ -265,7 +267,8 @@ function compareEventTime(p,f){
 }
 function eventForPrediction(p,list){
  const code=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
- const samePair=f=>(sameTeam(f.home,p.home)||sameTeam(f.homeShort,p.home))&&
+ const samePair=f=>window.FXITeamIdentity?.compatible(f.home,p.home)&&window.FXITeamIdentity?.compatible(f.away,p.away)&&
+  (sameTeam(f.home,p.home)||sameTeam(f.homeShort,p.home))&&
   (sameTeam(f.away,p.away)||sameTeam(f.awayShort,p.away));
  const eligible=(list||[]).filter(f=>f.date===p.date&&(!code||f.leagueCode===code)&&samePair(f));
  const near=eligible.filter(f=>compareEventTime(p,f));
@@ -517,7 +520,7 @@ function matchingFixture(primary,additional){
  const identityMatches=primary.filter(f=>{
   if(f.leagueCode!==additional.leagueCode||f.date!==additional.date)return false;
   const sameName=(a,b)=>sameTeam(a,b)||
-    (readableChinese(localizedTeamName(a))&&localizedTeamName(a)===localizedTeamName(b));
+    (window.FXITeamIdentity?.compatible(a,b)&&readableChinese(localizedTeamName(a))&&localizedTeamName(a)===localizedTeamName(b));
   return sameName(f.home,additional.home)&&sameName(f.away,additional.away);
  });
  // A changed kickoff is not a new match. Only accept an extended time window

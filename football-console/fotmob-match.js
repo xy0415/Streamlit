@@ -1,4 +1,5 @@
 'use strict';
+const {compatible}=require('./public/team-identity');
 
 const origin='https://www.fotmob.com';
 const rows=value=>Array.isArray(value)?value:[];
@@ -72,7 +73,7 @@ async function findFotmobMatch(current,get){
  const getTeam=side=>rows(current.competitors).find(p=>p.homeAway===side)?.team;
  const home=getTeam('home'),away=getTeam('away');
  if(!home?.displayName||!away?.displayName)return null;
- const names=(a,b)=>Boolean(nameKey(a?.name))&&[b.displayName,b.name,b.shortDisplayName].some(n=>nameKey(n)===nameKey(a.name));
+ const names=(a,b)=>Boolean(nameKey(a?.name))&&compatible(b.displayName||b.name,a.name)&&[b.displayName,b.name,b.shortDisplayName].some(n=>compatible(n,a.name)&&nameKey(n)===nameKey(a.name));
  const daily=await get(origin+'/api/data/matches?date='+day,5*60000);
  const matches=rows(daily?.leagues).flatMap(l=>rows(l.matches)).filter(m=>/^\d{4,14}$/.test(String(m.id))&&
   Date.parse(m.status?.utcTime)===kickoff&&names(m.home,home)&&names(m.away,away));

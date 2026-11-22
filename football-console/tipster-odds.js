@@ -1,4 +1,5 @@
 'use strict';
+const {compatible}=require('./public/team-identity');
 
 const https=require('node:https');
 const origin='https://tipsterarea.com';
@@ -43,7 +44,7 @@ function matchingPath(html,pick,kickoff,teamKey){
  for(const [,path,body] of html.matchAll(/<a class="game" href="(\/match\/[a-z0-9-]+)"[^>]*>([\s\S]*?)<\/a>/g)){
   const home=decode(body.match(/<span class="home">([\s\S]*?)<span class="(?:score|away)"/)?.[1]);
   const away=decode(body.match(/<span class="away">([\s\S]*?)<\/span>\s*<\/span>\s*<\/span>/)?.[1]);
-  if(teamKey(home)===teamKey(pick.home)&&teamKey(away)===teamKey(pick.away)&&
+  if(compatible(home,pick.home)&&compatible(away,pick.away)&&teamKey(home)===teamKey(pick.home)&&teamKey(away)===teamKey(pick.away)&&
    body.match(/<span class="time[^"]*"[^>]*>\s*(\d{2}:\d{2})/)?.[1]===kickoff.slice(11,16))matches.add(path);
  }
  return matches.size===1?[...matches][0]:null;

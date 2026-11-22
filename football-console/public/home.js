@@ -16,7 +16,7 @@ const recapLeagues = {'巴甲':'bra.1','巴乙':'bra.2','澳職':'aus.1','澳甲
  '國際友誼賽':'fifa.friendly','葡超':'por.1','荷甲':'ned.1','阿甲':'arg.1','美職聯':'usa.1'};
 const teamKey = name => String(name||'').normalize('NFKD').replace(/[^\p{L}\p{N}]/gu,'').toLowerCase();
 function matchesTeam(team,name) {
-  return [team.displayName,team.shortDisplayName,team.name].some(value=>value&&teamKey(value)===teamKey(name));
+  return window.FXITeamIdentity?.compatible(team.displayName||team.name,name)&&[team.displayName,team.shortDisplayName,team.name].some(value=>window.FXITeamIdentity?.compatible(value,name)&&teamKey(value)===teamKey(name));
 }
 
 async function recentRecap(reports) {

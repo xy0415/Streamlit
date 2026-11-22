@@ -178,7 +178,7 @@ function normTeam(name){
  const aliases={'manchester utd':'manchester united','man united':'manchester united','man city':'manchester city','psg':'paris saint germain','inter milan':'internazionale','internazionale milano':'internazionale','atletico de madrid':'atletico madrid','bayern munchen':'bayern munich','bayern muenchen':'bayern munich','spurs':'tottenham hotspur','newcastle utd':'newcastle united','wolves':'wolverhampton wanderers'};
  return aliases[s]||s
 }
-function teamsEqual(a,b){const x=normTeam(a),y=normTeam(b);return !!x&&!!y&&(x===y||x.length>=8&&y.length>=8&&(x.includes(y)||y.includes(x)))}
+function teamsEqual(a,b){const x=normTeam(a),y=normTeam(b);return !!x&&!!y&&Boolean(window.FXITeamIdentity?.compatible(a,b))&&x===y}
 function recordCompleteness(x){
  let count=0;if(x.eventId)count++;if(x.league)count++;if(x.home)count++;if(x.away)count++;if(x.dateTime&&Number.isFinite(Date.parse(x.dateTime)))count++;return count*20
 }

@@ -42,6 +42,7 @@ function setup(batchReply=null){
    return {ok:false,status:503,json:async()=>({error:'無法查核備援來源'})};
   }
  };
+ context.window.FXITeamIdentity=require('../public/team-identity');
  vm.createContext(context);
  vm.runInContext(liveSource,context,{filename:'live-details.js'});
  vm.runInContext(historySource,context,{filename:'history-engine.js'});
@@ -77,6 +78,17 @@ test('Unique source short names match while ambiguous matches remain unresolved'
  const f={id:'1',date:p.date,time:p.time,leagueCode:'fra.1',home:'Racing Club de Lens',away:'Toulouse Football Club',homeShort:'Lens',awayShort:'Toulouse'};
  assert.equal(context.eventForPrediction(p,[f]),f);
  assert.equal(context.eventForPrediction(p,[f,{...f,id:'2'}]),null);
+});
+test('senior, youth, women and reserve teams cannot be mixed even when short names match',()=>{
+ const {context}=setup();
+ for(const variant of ['Arsenal Women','Arsenal U21','Arsenal II','Arsenal B'])
+  assert.equal(context.sameTeam('Arsenal',variant),false,variant);
+ const p={date:'2026-11-22',time:'03:45',league:'英超',home:'Arsenal',away:'Chelsea'};
+ const f={id:'1',date:p.date,time:p.time,leagueCode:'eng.1',home:'Arsenal Women',away:'Chelsea Women',homeShort:'Arsenal',awayShort:'Chelsea'};
+ assert.equal(context.eventForPrediction(p,[f]),null);
+ assert.equal(context.sameTeam('Manchester United','Manchester United Women'),false);
+ assert.equal(context.sameTeam('Monaco','AS Monaco'),true);
+ assert.equal(context.sameTeam('Newcastle United','Newcastle'),true);
 });
 test('Every available league is selected by default, while broken K League feed stays hidden',()=>{
  const {context,state}=setup();

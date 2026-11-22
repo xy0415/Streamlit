@@ -1,4 +1,5 @@
 'use strict';
+const {compatible}=require('./public/team-identity');
 
 const cache=new Map();
 let quotaBlockedUntil=0;
@@ -39,8 +40,9 @@ async function reportQuotes(report,picks,selection){
  for(const pick of upcoming){
   const kickoff=Date.parse(pick.date+'T'+pick.time+':00+08:00');
   const matches=fixtures.filter(f=>Math.abs(Date.parse(f.startTime)-kickoff)<=3600000&&
-   [f.participant1Name,f.participant1ShortName].some(n=>nameKey(n)===nameKey(pick.home))&&
-   [f.participant2Name,f.participant2ShortName].some(n=>nameKey(n)===nameKey(pick.away)));
+   compatible(f.participant1Name||f.participant1ShortName,pick.home)&&compatible(f.participant2Name||f.participant2ShortName,pick.away)&&
+   [f.participant1Name,f.participant1ShortName].some(n=>compatible(n,pick.home)&&nameKey(n)===nameKey(pick.home))&&
+   [f.participant2Name,f.participant2ShortName].some(n=>compatible(n,pick.away)&&nameKey(n)===nameKey(pick.away)));
   if(matches.length!==1)continue;
   const id=matches[0].fixtureId;
   if(!events.has(id))events.set(id,[]);

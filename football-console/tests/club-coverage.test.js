@@ -29,6 +29,7 @@ function harness(entries=[]){
  const context={document,window:{FOOTBALL_TEAM_NAMES_ZH:{Arsenal:'兵工廠',Chelsea:'切爾西',Juventus:'尤文圖斯'}},
   URL,Date,Intl,console,fetch:fakeFetch,localStorage:{getItem(){return null},setItem(){}},
   setTimeout,clearTimeout};
+ context.window.FXITeamIdentity=require('../public/team-identity');
  vm.createContext(context);
  vm.runInContext(liveCode,context);
  vm.runInContext(code,context);

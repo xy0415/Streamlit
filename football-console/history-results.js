@@ -5,6 +5,7 @@ const {teamKey}=require('./parlay-odds');
 const {evaluate}=require('./public/history-engine');
 const archive=require('./parlay-odds-archive.json');
 const backfill=require('./history-results-archive.json');
+const {compatible}=require('./public/team-identity');
 const minute=60000;
 const day=86400000;
 const isoDay=t=>new Date(t).toISOString().slice(0,10);
@@ -41,8 +42,8 @@ function fotmobEvent(e){
 }
 function select(events,m,at){
  const home=normalize(m.home),away=normalize(m.away);
- const equal=(arr,n)=>arr.some(v=>v&&normalize(v)===n);
- const exact=new Map(events.filter(e=>e&&home&&away&&equal(e.home,home)&&equal(e.away,away)&&
+ const equal=(arr,n,original)=>compatible(arr.find(Boolean),original)&&arr.some(v=>compatible(v,original)&&normalize(v)===n);
+ const exact=new Map(events.filter(e=>e&&home&&away&&equal(e.home,home,m.home)&&equal(e.away,away,m.away)&&
   Math.abs(e.time-at)<=120*minute).map(e=>[e.id,e]));
  return exact.size===1?[...exact.values()][0]:null;
 }

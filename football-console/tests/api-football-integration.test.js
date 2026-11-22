@@ -8,7 +8,7 @@ const code=fs.readFileSync(path.join(__dirname,'../public/analysis.js'),'utf8')
  .replace("document.addEventListener('DOMContentLoaded',init);",'');
 function context(){
  const document={getElementById(){return {value:'',innerHTML:'',textContent:'',classList:{toggle(){}}}}};
- const ctx={window:{FOOTBALL_TEAM_NAMES_ZH:{}},document,URL,Date,Intl,console,
+ const ctx={window:{FOOTBALL_TEAM_NAMES_ZH:{},FXITeamIdentity:require('../public/team-identity')},document,URL,Date,Intl,console,
   setTimeout,clearTimeout,localStorage:{getItem(){return null},setItem(){}}};
  vm.createContext(ctx);vm.runInContext(code,ctx);
  return {ctx, state:vm.runInContext('state',ctx), api:vm.runInContext('apiFixtureView',ctx),

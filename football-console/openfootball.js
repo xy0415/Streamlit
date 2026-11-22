@@ -3,6 +3,7 @@
 // OpenFootball publishes local calendar dates without an explicit time zone.
 // Treat dates as date-only and require an exact match of both team identities.
 const {nameKey}=require('./fotmob-match');
+const {compatible}=require('./public/team-identity');
 const files={'eng.1':['en.1','英超'],'eng.2':['en.2','英冠'],'esp.1':['es.1','西甲'],
  'ger.1':['de.1','德甲'],'ita.1':['it.1','義甲'],'fra.1':['fr.1','法甲']};
 const norm=value=>nameKey(value).replace(/\b(?:cf|cd|ud|ac)\b/g,' ').replace(/\s+/g,' ').trim();
@@ -17,7 +18,7 @@ function selectRows(payload,current,league){
  return list(payload?.matches).flatMap(match=>{
   if(!/^\d{4}-\d{2}-\d{2}$/.test(match.date||'')||match.date>=localDate(current.date))return [];
   const home=norm(match.team1),away=norm(match.team2);
-  const left=names.filter(t=>t.keys.has(home)),right=names.filter(t=>t.keys.has(away));
+  const left=names.filter(t=>compatible(t.name,match.team1)&&t.keys.has(home)),right=names.filter(t=>compatible(t.name,match.team2)&&t.keys.has(away));
   if(left.length!==1||right.length!==1||left[0].id===right[0].id)return [];
   const ft=match.score?.ft;
   if(!Array.isArray(ft)||ft.length!==2||ft.some(n=>!Number.isInteger(n)||n<0||n>30))return [];

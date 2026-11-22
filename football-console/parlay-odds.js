@@ -5,6 +5,7 @@ const {selection}=require('./public/history-engine');
 const {tipsterQuotes}=require('./tipster-odds');
 const archive=require('./parlay-odds-archive.json');
 const oddspapi=require('./oddspapi');
+const {compatible}=require('./public/team-identity');
 
 const books=new Map([
  ['1xbet','1xBet'],['pinnacle','Pinnacle'],['bet365','Bet365'],
@@ -32,7 +33,7 @@ function matchFixture(pick,fixtures){
  const target=Date.parse(pick.date+'T'+pick.time+':00+08:00');
  const home=teamKey(pick.home),away=teamKey(pick.away);
  if(!home||!away)return null;
- const matches=fixtures.filter(f=>f.date===pick.date&&teamKey(f.home)===home&&teamKey(f.away)===away&&
+ const matches=fixtures.filter(f=>f.date===pick.date&&compatible(f.home,pick.home)&&compatible(f.away,pick.away)&&teamKey(f.home)===home&&teamKey(f.away)===away&&
   Math.abs(Date.parse(f.utc)-target)<=60*60*1000);
  return matches.length===1?matches[0]:null;
 }
