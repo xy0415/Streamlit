@@ -63,8 +63,9 @@ function parsePage(html,path,pick,kickoff,books){
   const label=decode(table.match(/<th class="odds-type"[^>]*>([^<]+)<\/th>/)?.[1]);
   if(!labels[pick.market]||label!==labels[pick.market])continue;
   for(const [,row] of table.matchAll(/<tr>([\s\S]*?)<\/tr>/g)){
-   const key=String(row.match(/class="bookie"[^>]*alt="([^"]+)"/)?.[1]||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-   if(!books.has(key))continue;
+   const source=decode(row.match(/class="bookie"[^>]*alt="([^"]+)"/)?.[1]);
+   const key=source.toLowerCase().replace(/[^a-z0-9]/g,'');
+   if(!key)continue;
    const values=[...row.matchAll(/<td class="(center|odd)(?: [^"]*)?"[^>]*>([\s\S]*?)<\/td>/g)];
    if(pick.market==='totals'&&Number(decode(values.find(value=>value[1]==='center')?.[2]))!==pick.line)continue;
    const columns={over:1,under:0,home:0,away:2,draw:1,yes:0,no:1};
@@ -72,10 +73,10 @@ function parsePage(html,path,pick,kickoff,books){
    if(!Number.isFinite(price)||price<=1)continue;
    const old=chosen.get(key);
    if(old&&old.price!==price)conflicts.add(key);
-   else chosen.set(key,{book:key,source:books.get(key),price,capturedAt,kind:'prematch',url:origin+path});
+   else chosen.set(key,{book:key,source:books.get(key)||source,price,capturedAt,kind:'prematch',url:origin+path});
   }
  }
- return [...books.keys()].filter(key=>chosen.has(key)&&!conflicts.has(key)).map(key=>chosen.get(key));
+ return [...chosen.values()].filter(q=>!conflicts.has(q.book)).sort((a,b)=>Number(b.book==='1xbet')-Number(a.book==='1xbet'));
 }
 
 async function tipsterQuotes(pick,selection,teamKey,books,refresh=false){

@@ -91,21 +91,22 @@
 
   function priceBook(value) {
     const name=String(value||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-    return ['1xbet','pinnacle','bet365','williamhill','betfair','unibet'].includes(name)?name:'';
+    return name;
   }
 
   function parlayPrices(legs,quotes,publishedAt) {
     const published=oddsTimestamp(publishedAt);
-    const options=legs.map(leg=>leg.publishedOdds?[{...leg.publishedOdds,kind:'published',book:priceBook(leg.publishedOdds.source)}]:
-      [...(quotes[leg.id]||[])].sort((a,b)=>
-        Number(Date.parse(b.capturedAt)<=published)-Number(Date.parse(a.capturedAt)<=published)));
-    const books=[...new Set(options.flatMap(quotes=>quotes.map(q=>q.book).filter(Boolean)))];
-    const common=books.map(book=>options.map(quotes=>quotes.find(q=>q.book===book)))
-      .filter(list=>list.every(Boolean))
-      .sort((a,b)=>b.filter(q=>Date.parse(q.capturedAt)<=published).length-a.filter(q=>Date.parse(q.capturedAt)<=published).length)[0];
-    const prices=common||options.map(list=>list[0]||null);
+    const options=legs.map(leg=>[
+      ...(leg.publishedOdds?[{...leg.publishedOdds,kind:'published',book:priceBook(leg.publishedOdds.source)}]:[]),
+      ...(quotes[leg.id]||[])
+    ].filter(q=>Number.isFinite(Number(q?.price))&&Number(q.price)>1&&q.book)
+     .sort((a,b)=>Number(b.book==='1xbet')-Number(a.book==='1xbet')||
+       Number(a.book==='manual')-Number(b.book==='manual')||
+       Number(Date.parse(b.capturedAt)<=published)-Number(Date.parse(a.capturedAt)<=published)));
+    const prices=options.map(list=>list[0]||null);
+    const selectedBooks=new Set(prices.map(q=>q?.book).filter(Boolean));
     const priced=prices.filter(Boolean).length;
-    return {prices,priced,commonBook:Boolean(common),
+    return {prices,priced,commonBook:priced===legs.length&&selectedBooks.size===1&& !selectedBooks.has('manual'),
       kind:prices.every(q=>q?.kind==='published')?'published':
        prices.every(q=>q&&Date.parse(q.capturedAt)<=published)?'beforePublication':'reference'};
   }

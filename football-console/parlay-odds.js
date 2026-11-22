@@ -66,16 +66,16 @@ function quotesFor(rows,pick,kickoff,latest=false){
   if(!Number.isFinite(observed)||observed>=Date.parse(kickoff))continue;
   for(const book of row.bookmakers||[]){
    const key=String(book.name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-   if(!books.has(key))continue;
+   if(!key)continue;
    const matches=(book.bets||[]).map(bet=>matchPrice(bet,pick)).filter(x=>x!==null);
    if(new Set(matches).size!==1)continue;
    const old=chosen.get(key);
    if(!old||(latest?observed>Date.parse(old.capturedAt):observed<Date.parse(old.capturedAt)))chosen.set(key,{
-    book:key,source:books.get(key),price:matches[0],capturedAt:new Date(observed).toISOString(),kind:'prematch'
+    book:key,source:books.get(key)||String(book.name).trim(),price:matches[0],capturedAt:new Date(observed).toISOString(),kind:'prematch'
    });
   }
  }
- return [...books.keys()].map(key=>chosen.get(key)).filter(Boolean);
+ return [...chosen.values()].sort((a,b)=>Number(b.book==='1xbet')-Number(a.book==='1xbet'));
 }
 
 function taiwanDay(){
@@ -100,17 +100,17 @@ async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes
  }
  if(days< -2)return {status:'outside_window',legs,scores};
  // Query the public source first, preserving the limited API quota for gaps.
- const missing=picks.filter(p=>!legs[p.id]?.length);
+ const missing=picks.filter(p=>!legs[p.id]?.length||Date.parse(p.date+'T'+p.time+':00+08:00')>Date.now()&&!legs[p.id].some(q=>q.book==='1xbet'));
  for(let i=0;i<missing.length;i+=4){
   await Promise.all(missing.slice(i,i+4).map(async pick=>{
    const quotes=await publicQuotes(pick,selection(pick),teamKey,books,latest);
-   if(quotes.length)legs[pick.id]=quotes;
+   if(quotes.length)legs[pick.id]=quotes.concat((legs[pick.id]||[]).filter(old=>!quotes.some(q=>q.book===old.book)));
   }));
  }
- const unresolved=picks.filter(p=>!legs[p.id]?.length);
- if(unresolved.length){
-  const liveQuotes=await oddspapi.reportQuotes(report,unresolved,selection);
-  for(const [id,quotes] of Object.entries(liveQuotes))legs[id]=quotes;
+ const without1xbet=picks.filter(p=>!legs[p.id]?.some(q=>q.book==='1xbet'));
+ if(without1xbet.length){
+  const liveQuotes=await oddspapi.reportQuotes(report,without1xbet,selection);
+  for(const [id,quotes] of Object.entries(liveQuotes))legs[id]=[...(legs[id]||[]),...quotes];
  }
  // User-provided price is a fallback when no verified bookmaker quote is available.
  for(const pick of picks){

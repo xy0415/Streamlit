@@ -30,15 +30,15 @@ test('extract the exact odds line and ignore prices with post-kickoff updates',(
  assert.deepEqual(quotesFor([row],{...pick,line:4.5},'2026-11-20T08:00:00Z'),[]);
 });
 
-test('use a common bookmaker and account for half win, half loss and refunded stakes',()=>{
+test('prefer 1xbet per leg, use other books, and account for fractional returns',()=>{
  const price=(book,price,capturedAt='2026-11-20T02:00:00Z')=>({book,price,capturedAt,kind:'prematch'});
  const prices=parlayPrices([{id:'a'},{id:'b'},{id:'c'}],{
   a:[price('1xbet',1.8),price('bet365',2)],b:[price('bet365',1.8)],c:[price('bet365',1.5)],
  },'2026-11-20 11:00:00');
- assert.equal(prices.commonBook,true);
+ assert.equal(prices.commonBook,false);
  assert.equal(prices.kind,'beforePublication');
- assert.equal(parlayProduct(prices.prices).toFixed(2),'5.40');
- assert.equal(parlayNet(['halfwin','halfloss','push'],prices.prices),-.25);
+ assert.equal(parlayProduct(prices.prices).toFixed(2),'4.86');
+ assert.ok(Math.abs(parlayNet(['halfwin','halfloss','push'],prices.prices)+.3)<1e-9);
  assert.equal(parlayNet(['win',null,'push'],prices.prices),null);
  assert.equal(parlayNet(['loss',null,'push'],[null,null,null]),-1);
  assert.equal(parlayNet(['halfloss',null,'push'],prices.prices),null);
@@ -48,6 +48,32 @@ test('use a common bookmaker and account for half win, half loss and refunded st
  const mixed=parlayPrices([{id:'a'},{id:'b'}],{a:[price('1xbet',1.8)],b:[price('bet365',1.8)]},'');
  assert.equal(mixed.commonBook,false);
  assert.equal(mixed.kind,'reference');
+ const same=parlayPrices([{id:'a'},{id:'b'}],{a:[price('otherbook',1.8)],b:[price('otherbook',1.9)]},'');
+ assert.equal(same.commonBook,true);
+ assert.equal(same.prices[0].book,'otherbook');
+ const published=parlayPrices([{id:'a',publishedOdds:{book:'bet365',source:'bet365',price:2}},{id:'b'}],{a:[price('1xbet',1.8)],b:[price('otherbook',1.9)]},'');
+ assert.equal(published.prices[0].book,'1xbet');
+});
+
+test('accept exact-market prices from additional bookmakers',()=>{
+ const pick=selection({market:'全場總進球大 1.5'});
+ const rows=[{update:'2026-11-20T06:00:00Z',bookmakers:[{name:'Example Sports',bets:[{name:'Goals Over/Under',values:[{value:'Over 1.5',odd:'1.45'}]}]}]}];
+ assert.equal(quotesFor(rows,pick,'2026-11-20T08:00:00Z')[0].book,'examplesports');
+ assert.equal(quotesFor(rows,{...pick,line:2.5},'2026-11-20T08:00:00Z').length,0);
+});
+
+test('supplements another bookmaker with 1xbet when it becomes available',async()=>{
+ const oddspapi=require('../oddspapi');
+ const {reportOdds}=require('../parlay-odds');
+ const original=oddspapi.reportQuotes;
+ const now=new Date(Date.now()+86400000+8*3600000);
+ const date=now.toISOString().slice(0,10),time=now.toISOString().slice(11,16);
+ const pick={id:'x',date,time,home:'Team A',away:'Team B',market:'全場總進球大 1.5'};
+ try{
+  oddspapi.reportQuotes=async()=>({x:[{book:'1xbet',source:'1xBet',price:1.2}]});
+  const result=await reportOdds({date,matches:[pick]}, {},async()=>[{book:'bet365',source:'Bet365',price:1.3}]);
+  assert.deepEqual(result.legs.x.map(q=>q.book),['bet365','1xbet']);
+ }finally{oddspapi.reportQuotes=original}
 });
 
 test('published public odds retain their market, signed kickoff and source timestamp',()=>{
