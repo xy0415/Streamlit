@@ -73,3 +73,20 @@ html[data-theme="dark"] :is(.leagueoption input,.league-item input){accent-color
 html[data-theme="dark"] :is(.linkbtn:hover,.textbtn:hover,.filter-reset:hover,.history-market-link:hover){color:#fff!important;border-color:#e4e4ea}
 html[data-theme="dark"] :is(.tabulator-row:hover,.tabulator-row.tabulator-selectable:hover){background:#30313a!important}
 html[data-theme="dark"] .hero-actions a:hover{background:#d8d8df;color:#101115}
+
+/* Match details and review content have their own light-theme colour rules. */
+html[data-theme="dark"] :is(.match-dialog-head h2,.hero-team>strong,.hero-score,.match-details-section h3,.scorer,.scorer strong,.review-table .team-names strong){color:#f2f2f6!important}
+html[data-theme="dark"] :is(.match-dialog-overline,.hero-english,.hero-time,.hero-dash,.match-detail-empty,.no-goal-events,.review-table .team-names small){color:#c2c4ce!important}
+html[data-theme="dark"] .hero-side{background:#343640;color:#eceef4}
+html[data-theme="dark"] .hero-status{color:#a5efc5}
+html[data-theme="dark"] .hero-status.warn{color:#ffe1ab}
+html[data-theme="dark"] .hero-status.bad{color:#ffbec6}
+html[data-theme="dark"] .hero-status.blue{color:#b7d3ff}
+html[data-theme="dark"] .hero-status.neutral{color:#c2c4ce}
+html[data-theme="dark"] .match-source-footer{background:#22232a;color:#c2c4ce;border-color:#41434c}
+html[data-theme="dark"] .review-result.win{color:#9ee8ba}
+html[data-theme="dark"] .review-result.loss{color:#ffb4bd}
+html[data-theme="dark"] .review-result.neutral{color:#c2c4ce}
+html[data-theme="dark"] .team-position.away{background:#343640;color:#eceef4}
+html[data-theme="dark"] :is(.source-heading,.kpi-label,.empty strong,.metric-top,.metric small,.source-card small,.sync-record small){color:#c2c4ce!important}
+html[data-theme="dark"] :is(.navitem.active>span:first-child,.nav-item.active .nav-glyph){color:#383b3c}
