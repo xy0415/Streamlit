@@ -5,7 +5,7 @@
   const instances = new WeakMap();
   function cleanupPlot(container) {
     const previous = container && instances.get(container);
-    if (previous) { previous.observer?.disconnect(); previous.chart.dispose(); instances.delete(container); }
+    if (previous) { previous.observer?.disconnect(); document.removeEventListener('fxi-theme-change',previous.refreshTheme); previous.chart.dispose(); instances.delete(container); }
   }
   function enhancePlot(container, points, type) {
     if (!container || !points.length || !root.echarts) return;
@@ -39,7 +39,17 @@
       fallback.setAttribute('hidden', '');
       const observer = root.ResizeObserver ? new root.ResizeObserver(() => chart.resize()) : null;
       observer?.observe(container);
-      instances.set(container, {chart,observer});
+      const refreshTheme = () => {
+        const dark = document.documentElement.dataset.theme === 'dark';
+        const ink = dark ? '#eceef4' : '#171b19';
+        chart.setOption({
+          xAxis:{axisLabel:{color:dark?'#c6c7ce':'#555954'}},
+          yAxis:{axisLabel:{color:dark?'#c6c7ce':'#555954'},splitLine:{lineStyle:{color:dark?'#45464e':'#e2e4e1'}}},
+          series:[{lineStyle:{color:ink},itemStyle:{color:ink}}]
+        });
+      };
+      document.addEventListener('fxi-theme-change',refreshTheme);
+      instances.set(container, {chart,observer,refreshTheme});
     } catch (error) {
       chart?.dispose(); chartNode.remove(); fallback.removeAttribute('hidden');
       console.warn('互動圖表無法載入，使用基本圖表', error);

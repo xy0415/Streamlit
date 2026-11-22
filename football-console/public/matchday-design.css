@@ -1,0 +1,115 @@
+/* FXI matchday UI: editorial hierarchy and responsive data surfaces,
+   informed by Tabler's open-source dashboard patterns. */
+:root {
+  --fxi-surface: #fff;
+  --fxi-soft: #f3f4f1;
+  --fxi-border: #d5d8d4;
+  --fxi-text: #171a19;
+  --fxi-muted: #575e5a;
+  --fxi-hover: #eef0ed;
+  --fxi-focus: #4d67d7;
+}
+html[data-theme="dark"] {
+  --fxi-surface: #191a20;
+  --fxi-soft: #24262d;
+  --fxi-border: #43464f;
+  --fxi-text: #f1f2f5;
+  --fxi-muted: #c0c3cd;
+  --fxi-hover: #2e3039;
+  --fxi-focus: #beb3ff;
+}
+.content { max-width: 1500px; }
+.controls { padding: 15px 18px; gap: 14px 18px; }
+.inputset label { font-size: 12px; }
+.inputset input, .inputset select { min-height: 40px; font-size: 14px; }
+.direction { height: 40px; width: 38px; }
+.sectionhead { min-height: 62px; padding: 14px 18px; }
+.sectionhead h2 { font-size: 19px; letter-spacing: -.02em; }
+.sectionhint, .data-provider { font-size: 11px; }
+.btn, .direction { transition: background-color .16s, border-color .16s, color .16s; }
+:is(.btn,.direction,.navitem,.mobile-item,.clickable-match,.linkbtn):focus-visible {
+  outline: 2px solid var(--fxi-focus); outline-offset: 3px;
+}
+
+/* A compact ledger puts fixture, selection and price on a consistent grid. */
+.parlay-review { padding: 19px; }
+.parlay-review > h3 { font-size: 16px; line-height: 1.3; letter-spacing: -.02em; }
+.parlay-group { margin-top: 13px; border-color: var(--fxi-border); }
+.parlay-group header { padding: 11px 15px; min-height: 44px; }
+.parlay-group header h4 { font-size: 14px; }
+.parlay-group li { grid-template-columns: minmax(0,1.1fr) minmax(0,1fr) 82px; gap: 9px 18px; padding: 12px 15px; min-height: 65px; }
+.parlay-group li > div:first-child { min-width: 0; }
+.parlay-group li a { text-underline-offset: 3px; text-decoration-color: #8f9490; }
+.parlay-group li a:hover { text-decoration-thickness: 2px; }
+.parlay-market { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.parlay-result { justify-self: end; font-variant-numeric: tabular-nums; font-size: 14px; }
+.parlay-group footer { min-height: 49px; padding: 11px 15px; background: var(--fxi-soft); color: var(--fxi-text); }
+.parlay-group footer span { color: var(--fxi-muted); }
+
+/* Match cards retain the site's square, high-contrast editorial character. */
+.predictiongrid { padding: 0 19px 19px; gap: 10px; grid-template-columns: repeat(auto-fit,minmax(min(100%,315px),1fr)); }
+.prediction { padding: 0; overflow: hidden; border-color: var(--fxi-border); }
+.prediction > .clickable-match { padding: 15px; min-height: 155px; }
+.pred-top { align-items: center; margin-bottom: 12px; border-color: var(--fxi-border); }
+.pred-top > span:first-child { font-size: 12px; }
+.pred-top > span:last-child { font-size: 11px; padding: 5px 8px; }
+.pred-team-stack { gap: 8px; margin-block: 0 13px; }
+.pred-team-stack .team-crest { width: 30px; height: 30px; flex-basis: 30px; }
+.pred-team-stack .team-names strong { font-size: 15px; }
+.pred-team-stack .team-names small { font-size: 11px; }
+.pred-choice { border-color: var(--fxi-border); padding-top: 12px; }
+.pred-choice strong { font-size: 14px; line-height: 1.45; }
+.probability { font-size: 23px; }
+.pred-discussion { margin: 0; padding: 0 15px 14px; }
+.pred-discussion summary { min-height: 32px; display: flex; align-items: center; }
+.pred-discussion summary::before { content: '▸'; margin-right: 7px; }
+.pred-discussion[open] summary::before { content: '▾'; }
+
+/* Dense data remains tabular, with stronger headings and breathing room. */
+.history-filters { gap: 12px; padding: 14px 18px 9px; }
+.history-statgrid { padding: 10px 18px 15px; }
+.history-statgrid > div { min-height: 78px; padding: 13px; }
+.history-statgrid label { font-size: 12px; }
+.history-statgrid strong { font-size: 23px; font-variant-numeric: tabular-nums; }
+.history-heading { min-height: 43px; display: flex; align-items: center; padding-inline: 18px; font-size: 14px; }
+summary.history-heading { cursor: pointer; display: list-item; padding-block: 12px; }
+.history-explain { line-height: 1.65; }
+.history-chart { padding: 17px; }
+.history-chart h3 { font-size: 15px; }
+.history-league-table th, .history-league-table td { padding-block: 11px; font-size: 13px; }
+.history-item { min-height: 56px; }
+.review-table td { padding-block: 12px; }
+.match-insight-tabs { gap: 7px; }
+.match-insight-tabs .btn { min-height: 40px; }
+.match-snapshot { padding: 16px; }
+.match-snapshot dl { gap: 9px 16px; line-height: 1.55; }
+html[data-theme="dark"] .parlay-group footer { background: var(--fxi-soft); }
+html[data-theme="dark"] .prediction > .clickable-match:hover,
+html[data-theme="dark"] .prediction > .clickable-match:focus-visible { background: var(--fxi-hover) !important; }
+html[data-theme="dark"] .parlay-group li a { text-decoration-color: #a6a8b1; }
+
+@media (max-width: 700px) {
+  .content { padding-inline: 12px; }
+  .controls { padding: 13px; gap: 12px; }
+  .inputset label { font-size: 12px; }
+  .sectionhead { padding: 14px; min-height: 56px; }
+  .sectionhead h2 { font-size: 17px; }
+  .parlay-review { padding: 14px 12px; }
+  .parlay-group li { grid-template-columns: minmax(0,1fr) auto; gap: 5px 12px; padding: 12px; }
+  .parlay-group li .parlay-market { grid-column: 1; grid-row: 2; }
+  .parlay-result { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+  .parlay-group footer { padding: 11px 12px; }
+  .predictiongrid { grid-template-columns: 1fr; padding: 0 12px 14px; }
+  .prediction > .clickable-match { min-height: 0; padding: 14px; }
+  .history-filters { padding-inline: 12px; }
+  .history-statgrid { padding-inline: 12px; }
+  .history-statgrid > div { min-height: 70px; padding: 10px; }
+  .history-statgrid strong { font-size: 19px; }
+  .history-heading { padding-inline: 13px; }
+  .history-league-table th, .history-league-table td { font-size: 12px; }
+  .match-insight-tabs .btn { min-height: 42px; }
+  .match-snapshot dl { grid-template-columns: minmax(68px,auto) minmax(0,1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn, .direction { transition: none; }
+}
