@@ -234,6 +234,10 @@ function nameKey(name){
   .replace(/\b(fc|cf|sc|afc|ac|club|football|soccer|the)\b/g,' ')
   .replace(/\s+/g,' ').trim();
  const aliases={
+  // Official French and Italian names often include these club prefixes,
+  // while published predictions use the short names. Keep this explicit:
+  // stripping arbitrary prefixes can accidentally match a different club.
+  'as monaco':'monaco','aj auxerre':'auxerre','as roma':'roma',
   'bayern munich':'bayern munchen','fc bayern munich':'bayern munchen',
   'czech republic':'czechia','turkiye':'turkey','türkiye':'turkey',
   'republic of ireland':'ireland','bosnia and herzegovina':'bosnia herzegovina',
@@ -261,7 +265,8 @@ function compareEventTime(p,f){
 }
 function eventForPrediction(p,list){
  const code=PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league);
- const samePair=f=>sameTeam(f.home,p.home)&&sameTeam(f.away,p.away);
+ const samePair=f=>(sameTeam(f.home,p.home)||sameTeam(f.homeShort,p.home))&&
+  (sameTeam(f.away,p.away)||sameTeam(f.awayShort,p.away));
  const eligible=(list||[]).filter(f=>f.date===p.date&&(!code||f.leagueCode===code)&&samePair(f));
  const near=eligible.filter(f=>compareEventTime(p,f));
  // Unique renamed/rescheduled fixtures remain matchable without guessing across teams.
@@ -1210,7 +1215,9 @@ async function openMatchDetail(f,tab='facts',linkedPrediction=null,refresh=false
   }
  }catch{
   if(request!==matchDialogRequest||$('matchModal').classList.contains('hidden'))return;
-  $('matchGoals').innerHTML='<div class="match-detail-empty">目前沒有可信的進球者與分鐘資料。</div>';
+  const scoreboardGoals=goalEventsFromSummary(null,f);
+  $('matchGoals').innerHTML=scoreboardGoals.length?goalDetailMarkup(scoreboardGoals):
+   '<div class="match-detail-empty">目前沒有可信的進球者與分鐘資料。</div>';
  }
 }
 async function openPredictionMatchDetail(p,tab='prediction'){

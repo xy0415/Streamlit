@@ -57,6 +57,27 @@ function fixtureEvent(home,away,utc){
   ]}]
  };
 }
+test('Monaco and Auxerre prediction resolves official full names and final result',()=>{
+ const {context}=setup();
+ const event=fixtureEvent('AS Monaco','AJ Auxerre','2026-11-21T19:45:00Z');
+ event.id='401876399';event._league='fra.1';
+ event.status.type={name:'STATUS_FULL_TIME',state:'post',completed:true};
+ event.competitions[0].competitors[0].score='1';
+ event.competitions[0].competitors[1].score='1';
+ const fixture=context.parseScore(event);
+ const prediction={date:'2026-11-22',time:'03:45',league:'法甲',home:'Monaco',away:'Auxerre'};
+ assert.equal(context.eventForPrediction(prediction,[fixture]),fixture);
+ assert.equal(fixture.status,'finished');
+ assert.match(context.matchHero(fixture),/1 <span class="hero-dash">–<\/span> 1/);
+ assert.equal(context.eventForPrediction({...prediction,away:'Lyon'},[fixture]),null);
+});
+test('Unique source short names match while ambiguous matches remain unresolved',()=>{
+ const {context}=setup();
+ const p={date:'2026-11-22',time:'03:45',league:'法甲',home:'Lens',away:'Toulouse'};
+ const f={id:'1',date:p.date,time:p.time,leagueCode:'fra.1',home:'Racing Club de Lens',away:'Toulouse Football Club',homeShort:'Lens',awayShort:'Toulouse'};
+ assert.equal(context.eventForPrediction(p,[f]),f);
+ assert.equal(context.eventForPrediction(p,[f,{...f,id:'2'}]),null);
+});
 test('Every available league is selected by default, while broken K League feed stays hidden',()=>{
  const {context,state}=setup();
  const codes=vm.runInContext('LEAGUES.map(([code])=>code)',context);
