@@ -59,3 +59,4 @@ html[data-theme="dark"] .roi-series polyline{stroke:#e7e8ec}
 html[data-theme="dark"] .roi-series circle{fill:#e7e8ec}
 @media(max-width:700px){.heading{flex-wrap:wrap}.heading .actions{flex-wrap:wrap;align-items:center}}
 @media(max-width:500px){.heading .actions{width:100%;justify-content:flex-end}.hero-top{flex-wrap:wrap}.hero-top>.label{flex:1 1 100%}.hero-top .fxi-theme-controls{margin-left:auto}.topright{display:flex}.topright>span{display:none}}
+html[data-theme="dark"] :is(.history-explain,.parlay-roi-chart p,.parlay-history small,.statgrid label,.data-provider,.standings-updated,.footer,.pred-team-stack .team-names small,.pitch-meta,.history-trend-value){color:#bfc0c9!important}
