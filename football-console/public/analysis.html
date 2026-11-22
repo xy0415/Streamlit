@@ -61,9 +61,15 @@
     <div class="statgrid history-statgrid"><div><label>預測選項</label><strong id="historyTotal">—</strong></div><div><label>已結算</label><strong id="historyVerified">—</strong></div><div><label>贏（含半贏）</label><strong id="historyWin">—</strong></div><div><label>輸（含半輸）</label><strong id="historyLoss">—</strong></div><div><label>走盤</label><strong id="historyPush">—</strong></div><div><label>命中率</label><strong id="historyRate">—</strong></div></div>
     <p class="history-explain">命中率 =（全贏 + 半贏 × 0.5）÷（全贏 + 半贏 + 全輸 + 半輸），走盤不計。未取得可靠賽果的不納入命中率。</p>
     <section class="history-table history-market-panel" aria-labelledby="parlay-roi-heading">
-     <h3 class="history-heading" id="parlay-roi-heading">近期串關報酬率</h3>
-     <p class="history-explain">自 2026/11/18 起，只計入賠率齊全且結算已核實的串關。同日各組以當日開始時的本金計算，合計下注超過本金時按比例縮減。</p>
+     <h3 class="history-heading" id="parlay-roi-heading">串關報酬率回測</h3>
+     <p class="history-explain">依預測日期篩選，起訖日期均包含在內；只計入賠率齊全且結算已核實的串關。同日各組以當日開始時的本金計算，合計下注超過本金時按比例縮減。</p>
      <form class="history-filters parlay-backtest-form" id="parlayBacktestForm">
+      <div style="display:flex;flex-wrap:wrap;gap:inherit;width:100%">
+      <div class="inputset"><label for="parlayStartDate">開始日期</label>
+       <input id="parlayStartDate" type="date" required></div>
+      <div class="inputset"><label for="parlayEndDate">結束日期</label>
+       <input id="parlayEndDate" type="date" required></div>
+      </div>
       <div class="inputset"><label for="parlayInitialCapital">初始本金</label>
        <input id="parlayInitialCapital" type="number" min="0.01" max="1000000000000" step="0.01" value="10000" required></div>
       <div class="inputset"><label for="parlayStakePercent">每組下注比例（%）</label>

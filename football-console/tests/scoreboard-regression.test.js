@@ -58,6 +58,14 @@ function fixtureEvent(home,away,utc){
   ]}]
  };
 }
+test('parlay backtest selects both date boundaries and supports earlier history',()=>{
+ const {context,state}=setup();
+ state.feed={reports:['2026-11-16','2026-11-17','2026-11-18','2026-11-19'].map(date=>({date,matches:[{groupPublished:true,group:'A'}]}))};
+ vm.runInContext("parlayCapitalSettings.start='2026-11-17';parlayCapitalSettings.end='2026-11-18'",context);
+ assert.deepEqual(Array.from(context.recentParlayReports(),r=>r.date),['2026-11-17','2026-11-18']);
+ vm.runInContext("parlayCapitalSettings.start='2026-11-19';parlayCapitalSettings.end='2026-11-19'",context);
+ assert.deepEqual(Array.from(context.recentParlayReports(),r=>r.date),['2026-11-19']);
+});
 test('Monaco and Auxerre prediction resolves official full names and final result',()=>{
  const {context}=setup();
  const event=fixtureEvent('AS Monaco','AJ Auxerre','2026-11-21T19:45:00Z');

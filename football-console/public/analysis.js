@@ -1461,8 +1461,8 @@ function groupParlays(report){
  return groups;
 }
 function recentParlayReports(){
- const from='2026-11-18';
- return (state.feed?.reports||[]).filter(r=>r.date>=from&&r.date<=todayTaiwan()&&groupParlays(r).size);
+ const {start,end}=parlayCapitalSettings;
+ return (state.feed?.reports||[]).filter(r=>r.date>=start&&r.date<=end&&groupParlays(r).size);
 }
 async function loadParlayOdds(report,force=false){
  if(!report?.matches?.length)return 'ready';
@@ -1505,6 +1505,7 @@ async function loadParlayOdds(report,force=false){
 async function loadParlayHistory(force=false){
  if(parlayHistoryLoading)return;
  parlayHistoryLoading=true;
+ const rangeAtStart=parlayCapitalSettings.start+'|'+parlayCapitalSettings.end;
  clearTimeout(parlayRecheckTimer);
  parlayRecheckTimer=null;
  const detailsOpen=$('historyBetDetails')?.open;
@@ -1521,7 +1522,7 @@ async function loadParlayHistory(force=false){
   parlayHistoryLoading=false;
   if(state.view==='history'){
    renderParlayHistory();
-   if($('historyBetDetails')?.open&&!detailsOpen&&!parlayRecheckTimer)loadParlayHistory();
+   if(!parlayRecheckTimer&&(rangeAtStart!==parlayCapitalSettings.start+'|'+parlayCapitalSettings.end||$('historyBetDetails')?.open&&!detailsOpen))loadParlayHistory();
   }
  }
 }
@@ -1532,7 +1533,7 @@ function parlayValues(picks,report){
  const product=duplicate?null:INSIGHTS.parlayProduct(result.prices);
  return {...result,product,duplicate};
 }
-const parlayCapitalSettings={initial:10000,percentage:5};
+const parlayCapitalSettings={initial:10000,percentage:5,start:'2026-11-18',end:todayTaiwan()};
 const parlayCapitalStorage='fxi.parlayCapitalSettings';
 const capitalFormat=new Intl.NumberFormat('zh-TW',{minimumFractionDigits:2,maximumFractionDigits:2});
 function validParlayCapital({initial,percentage}){
@@ -1541,19 +1542,27 @@ function validParlayCapital({initial,percentage}){
 function bindParlayBacktest(){
  const form=$('parlayBacktestForm');
  const initial=$('parlayInitialCapital'),percentage=$('parlayStakePercent');
- if(!form||!initial||!percentage)return;
+ const start=$('parlayStartDate'),end=$('parlayEndDate');
+ if(!form||!initial||!percentage||!start||!end)return;
  try{
   const saved=JSON.parse(localStorage.getItem(parlayCapitalStorage));
-  if(saved&&validParlayCapital(saved))Object.assign(parlayCapitalSettings,saved);
+  if(saved&&validParlayCapital(saved)){
+   parlayCapitalSettings.initial=saved.initial;parlayCapitalSettings.percentage=saved.percentage;
+   if(/^\d{4}-\d{2}-\d{2}$/.test(saved.start||'')&&/^\d{4}-\d{2}-\d{2}$/.test(saved.end||'')&&saved.start<=saved.end){parlayCapitalSettings.start=saved.start;parlayCapitalSettings.end=saved.end}
+  }
  }catch{}
  initial.value=String(parlayCapitalSettings.initial);
  percentage.value=String(parlayCapitalSettings.percentage);
+ start.value=parlayCapitalSettings.start;end.value=parlayCapitalSettings.end;
  const calculate=()=>{
-  const values={initial:initial.valueAsNumber,percentage:percentage.valueAsNumber};
+  end.setCustomValidity(start.value&&end.value&&start.value>end.value?'結束日期不得早於開始日期':'');
+  const values={initial:initial.valueAsNumber,percentage:percentage.valueAsNumber,start:start.value,end:end.value};
   if(!validParlayCapital(values)||!form.checkValidity())return;
+  const rangeChanged=values.start!==parlayCapitalSettings.start||values.end!==parlayCapitalSettings.end;
   Object.assign(parlayCapitalSettings,values);
   try{localStorage.setItem(parlayCapitalStorage,JSON.stringify(values))}catch{}
   renderParlayHistory();
+  if(rangeChanged&&state.view==='history')loadParlayHistory();
  };
  form.addEventListener('input',calculate);
  form.addEventListener('submit',event=>{event.preventDefault();calculate()});
