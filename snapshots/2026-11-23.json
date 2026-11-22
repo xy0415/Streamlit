@@ -113,7 +113,7 @@
             "book": "1xbet",
             "source": "1xBet",
             "price": 1.1,
-            "capturedAt": "2026-11-22T12:06:00.000Z"
+            "capturedAt": "2026-11-22T16:04:00.000Z"
           }
         },
         "betfair": {
@@ -133,7 +133,7 @@
             "book": "betfair",
             "source": "Betfair",
             "price": 1.1,
-            "capturedAt": "2026-11-22T12:06:00.000Z"
+            "capturedAt": "2026-11-22T16:04:00.000Z"
           }
         },
         "unibet": {
@@ -153,7 +153,21 @@
             "book": "unibet",
             "source": "Unibet",
             "price": 1.1,
-            "capturedAt": "2026-11-22T12:06:00.000Z"
+            "capturedAt": "2026-11-22T16:04:00.000Z"
+          }
+        },
+        "bwin": {
+          "first": {
+            "book": "bwin",
+            "source": "bwin",
+            "price": 1.11,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
+          },
+          "latest": {
+            "book": "bwin",
+            "source": "bwin",
+            "price": 1.11,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
           }
         }
       }
@@ -182,8 +196,8 @@
           "latest": {
             "book": "1xbet",
             "source": "1xBet",
-            "price": 1.14,
-            "capturedAt": "2026-11-22T12:06:00.000Z"
+            "price": 1.13,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
           }
         },
         "betfair": {
@@ -203,7 +217,7 @@
             "book": "betfair",
             "source": "Betfair",
             "price": 1.08,
-            "capturedAt": "2026-11-22T12:06:00.000Z"
+            "capturedAt": "2026-11-22T16:04:00.000Z"
           }
         },
         "unibet": {
@@ -222,8 +236,36 @@
           "latest": {
             "book": "unibet",
             "source": "Unibet",
-            "price": 1.11,
-            "capturedAt": "2026-11-22T12:06:00.000Z"
+            "price": 1.1,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
+          }
+        },
+        "betathome": {
+          "first": {
+            "book": "betathome",
+            "source": "bet-at-home",
+            "price": 1.03,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
+          },
+          "latest": {
+            "book": "betathome",
+            "source": "bet-at-home",
+            "price": 1.03,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
+          }
+        },
+        "bwin": {
+          "first": {
+            "book": "bwin",
+            "source": "bwin",
+            "price": 1.12,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
+          },
+          "latest": {
+            "book": "bwin",
+            "source": "bwin",
+            "price": 1.12,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
           }
         }
       }
@@ -262,7 +304,7 @@
             "book": "1xbet",
             "source": "1xBet",
             "price": 1.41,
-            "capturedAt": "2026-11-22T12:06:00.000Z"
+            "capturedAt": "2026-11-22T16:04:00.000Z"
           }
         },
         "betfair": {
@@ -281,8 +323,8 @@
           "latest": {
             "book": "betfair",
             "source": "Betfair",
-            "price": 1.4,
-            "capturedAt": "2026-11-22T12:06:00.000Z"
+            "price": 1.36,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
           }
         },
         "unibet": {
@@ -301,8 +343,22 @@
           "latest": {
             "book": "unibet",
             "source": "Unibet",
-            "price": 1.33,
-            "capturedAt": "2026-11-22T12:06:00.000Z"
+            "price": 1.34,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
+          }
+        },
+        "bwin": {
+          "first": {
+            "book": "bwin",
+            "source": "bwin",
+            "price": 1.38,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
+          },
+          "latest": {
+            "book": "bwin",
+            "source": "bwin",
+            "price": 1.38,
+            "capturedAt": "2026-11-22T16:04:00.000Z"
           }
         }
       }
