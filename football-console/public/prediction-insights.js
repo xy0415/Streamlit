@@ -116,7 +116,9 @@
   }
 
   function parlayNet(grades,prices) {
-    if(!parlayProduct(prices)||grades.length!==prices.length)return null;
+    if(!Array.isArray(grades)||!Array.isArray(prices)||grades.length<2||grades.length!==prices.length)return null;
+    if(grades.includes('loss'))return -1;
+    if(!parlayProduct(prices))return null;
     const returns=grades.map((grade,i)=>unitReturn(grade,prices[i].price));
     if(returns.some(value=>value===null))return null;
     return returns.reduce((product,net)=>product*(1+net),1)-1;

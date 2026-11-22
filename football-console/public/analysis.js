@@ -1578,7 +1578,7 @@ function renderParlayHistory(){
    const score=state.historyScores.get(historyId(p));
    return score?.verified&&score.status==='settled'?score.grade:null;
   });
-  const net=odds.product&&odds.commonBook?INSIGHTS.parlayNet(grades,odds.prices):null;
+  const net=!odds.duplicate&&picks.length>=2&&(grades.includes('loss')||odds.product&&odds.commonBook)?INSIGHTS.parlayNet(grades,odds.prices):null;
   const pendingKickoff=picks.some(p=>scheduledKickoff(p)>Date.now());
   const status=odds.duplicate?'同場多關':picks.length<2?'單場':!odds.product?(parlayOddsByDate.get(report.date)?.status==='rate_limited'?'賠率待查詢':'缺賠率'):
    !odds.commonBook?'缺同一莊家報價':net===null?(pendingKickoff?'尚未開賽':'比分待核實'):parlayKind[odds.kind];
@@ -1637,7 +1637,8 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
     (stored&&!conflict?HISTORY?.settledFromString(p.settlement):null)};
   });
   const status=review?' · '+INSIGHTS.parlayStatus(legs.map(leg=>leg.grade)):'';
-  const net=review&&odds.product&&odds.commonBook?INSIGHTS.parlayNet(legs.map(leg=>leg.verified?leg.grade:null),odds.prices):null;
+  const grades=legs.map(leg=>leg.verified?leg.grade:null);
+  const net=review&&!odds.duplicate&&picks.length>=2&&(grades.includes('loss')||odds.product&&odds.commonBook)?INSIGHTS.parlayNet(grades,odds.prices):null;
   const foot=odds.duplicate?'同場多關，無法以獨立賠率相乘':picks.length<2?'單場推薦':
    odds.product?odds.commonBook?'':'莊家不同或未確認，僅供參考':
    entry?.loading?'查詢賠率中…':entry?.status==='unavailable'?'賠率來源暫無資料':'賠率齊全後可計算（'+odds.priced+'／'+legs.length+' 關）';

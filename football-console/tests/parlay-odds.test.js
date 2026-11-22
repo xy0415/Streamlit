@@ -40,6 +40,10 @@ test('use a common bookmaker and account for half win, half loss and refunded st
  assert.equal(parlayProduct(prices.prices).toFixed(2),'5.40');
  assert.equal(parlayNet(['halfwin','halfloss','push'],prices.prices),-.25);
  assert.equal(parlayNet(['win',null,'push'],prices.prices),null);
+ assert.equal(parlayNet(['loss',null,'push'],[null,null,null]),-1);
+ assert.equal(parlayNet(['halfloss',null,'push'],prices.prices),null);
+ assert.equal(parlayNet(['loss'],[null]),null);
+ assert.equal(parlayNet(['loss',null],[null]),null);
  assert.equal(parlayProduct([prices.prices[0],null]),null);
  const mixed=parlayPrices([{id:'a'},{id:'b'}],{a:[price('1xbet',1.8)],b:[price('bet365',1.8)]},'');
  assert.equal(mixed.commonBook,false);
