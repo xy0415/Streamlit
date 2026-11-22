@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8"><script src="/theme.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f4ef">
   <meta name="description" content="FXI 足球賽程、賽前分析、賽後復盤、歷史統計與聯賽積分榜。">
@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/fxi-brand.css">
   <link rel="preload" href="/fxi-display.woff" as="font" type="font/woff" crossorigin>
   <link rel="stylesheet" href="/home.css">
+  <link rel="stylesheet" href="/theme.css">
   <script src="/vendor/anime-3.2.2.min.js" defer></script>
   <script src="/prediction-insights.js" defer></script>
 <script src="/home.js" defer></script>
@@ -44,7 +45,7 @@
         <canvas class="hero-art" aria-hidden="true"></canvas>
         <div class="hero-top">
           <span class="label">FOOTBALL INTELLIGENCE</span>
-          <button class="motion" type="button" aria-pressed="true" hidden>停用動態</button>
+          <div class="fxi-theme-controls"><button class="motion" type="button" aria-pressed="true" hidden>停用動態</button><button type="button" class="fxi-theme-switch" data-theme-switch role="switch" aria-checked="false" aria-label="切換為暗色模式"><span class="fxi-theme-track-icon" aria-hidden="true">✦</span><span class="fxi-theme-knob" aria-hidden="true"><span class="fxi-theme-moon"></span></span></button></div>
         </div>
         <div class="hero-copy">
           <h1 class="headline" id="headline" lang="en"><span>BET</span> <span>WITH</span> <span>INSIGHT.</span></h1>

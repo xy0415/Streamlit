@@ -21,18 +21,20 @@
     try {
       chart = root.echarts.init(chartNode, null, {renderer: 'svg'});
       const values = points.map(p => Number(p.rate.toFixed(2)));
+      const dark = document.documentElement.dataset.theme === 'dark';
+      const ink = dark ? '#eceef4' : '#171b19';
       chart.setOption({
         animation: !root.matchMedia('(prefers-reduced-motion: reduce)').matches,
         tooltip: {trigger: 'axis', valueFormatter: value => Number(value).toFixed(1) + '%'},
         grid: {left: 55, right: 18, top: 15, bottom: 30},
         xAxis: {type:'category', boundaryGap: false, data: points.map(p => p.date || p.day),
-          axisLabel: {formatter: value => value.slice(5).replace('-', '/'), hideOverlap: true},
+          axisLabel: {color:dark?'#c6c7ce':'#555954',formatter: value => value.slice(5).replace('-', '/'), hideOverlap: true},
           axisLine: {lineStyle: {color:'#a1a6a2'}}, axisTick: {show: false}},
         yAxis: {type:'value', ...(type === 'roi' ? {scale:true} : {min:0,max:100}),
-          axisLabel:{formatter:'{value}%'}, splitLine:{lineStyle:{color:'#e2e4e1'}}},
+          axisLabel:{formatter:'{value}%',color:dark?'#c6c7ce':'#555954'}, splitLine:{lineStyle:{color:dark?'#45464e':'#e2e4e1'}}},
         series:[{type:'line', data:values, step:type === 'roi' ? false : 'end',
-          symbol:'circle', symbolSize:5, lineStyle:{width:2,color:'#171b19'},
-          itemStyle:{color:'#171b19'}, emphasis:{focus:'series'}}]
+          symbol:'circle', symbolSize:5, lineStyle:{width:2,color:ink},
+          itemStyle:{color:ink}, emphasis:{focus:'series'}}]
       });
       fallback.setAttribute('hidden', '');
       const observer = root.ResizeObserver ? new root.ResizeObserver(() => chart.resize()) : null;

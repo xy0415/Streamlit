@@ -2191,6 +2191,7 @@ function getDailyExport(){
  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='football-'+state.day+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 function init(){
+ document.addEventListener('fxi-theme-change',()=>{if(state.view==='history')renderHistory()});
  $('standingsLeague').innerHTML=standingsLeagues.map(([code,name])=>'<option value="'+code+'">'+escapeHtml(name)+'</option>').join('');
  $('standingsLeague').value=standingsState.league;
  $('standingsLeague').onchange=event=>{standingsState.league=event.target.value;renderStandings();loadStandings(false)};

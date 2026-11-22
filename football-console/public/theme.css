@@ -1,0 +1,61 @@
+/* FXI appearance switch */
+.fxi-theme-switch{position:relative;display:inline-flex;align-items:center;flex:none;width:76px;height:38px;border:1px solid #424454;border-radius:999px;background:linear-gradient(145deg,#050508,#151321);padding:3px;cursor:pointer;box-shadow:inset 0 1px 3px #000,inset 0 -1px 2px #61657a55,0 1px 2px #0005;vertical-align:middle}
+.fxi-theme-switch:focus-visible{outline:2px solid #9b8cff;outline-offset:3px}
+.fxi-theme-track-icon{position:absolute;right:10px;top:9px;color:#c9c3ff;font:13px/1 monospace;text-shadow:0 0 8px #8e7cff;pointer-events:none}
+.fxi-theme-knob{position:relative;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:linear-gradient(145deg,#ffffffb8,#7b7fa6a6 43%,#292e49db);border:1px solid #ffffff8a;box-shadow:inset 1px 2px 4px #ffffff85,inset -2px -3px 6px #0b0b21aa,0 0 10px #8b7bff80,0 2px 4px #0009;backdrop-filter:blur(7px);transition:transform .32s cubic-bezier(.22,1,.36,1);pointer-events:none}
+.fxi-theme-switch[aria-checked="true"] .fxi-theme-knob{transform:translateX(38px);box-shadow:inset 1px 2px 4px #ffffff90,inset -2px -3px 6px #171739aa,0 0 15px #806effbb,0 0 5px #77d4ff;}
+.fxi-theme-switch[aria-checked="true"] .fxi-theme-track-icon{right:auto;left:10px;color:#a6a9bc}
+.fxi-theme-moon{width:3px;height:3px;background:#eaf1ff;box-shadow:3px 0 #eaf1ff,6px 0 #eaf1ff,-3px 3px #eaf1ff,0 3px #eaf1ff,-3px 6px #eaf1ff,0 6px #eaf1ff,3px 9px #eaf1ff,6px 9px #eaf1ff,9px 6px #eaf1ff,12px -3px #b0adff;transform:translate(-4px,-4px);filter:drop-shadow(0 0 3px #aab9ff)}
+.fxi-theme-controls{display:flex;align-items:center;gap:10px;margin-left:auto}
+@media(prefers-reduced-motion:reduce){.fxi-theme-knob{transition:none}}
+@media(max-width:500px){.fxi-theme-switch{width:68px;height:34px}.fxi-theme-knob{width:26px;height:26px}.fxi-theme-switch[aria-checked="true"] .fxi-theme-knob{transform:translateX(34px)}.fxi-theme-track-icon{top:7px}.fxi-theme-controls{gap:6px}}
+
+/* Dark surfaces: keep content, labels and real team photos readable. */
+html[data-theme="dark"]{color-scheme:dark;--paper:#0d0e12;--bg:#101115;--canvas:#101115;--text:#e7e8ec;--ink:#eceef4;--muted:#b4b6c0;--secondary:#b4b6c0;--border:#3a3c46;--rule:#474953;--line:#3a3c46;--line2:#363842;--primary:#e9e9ef}
+html[data-theme="dark"] body{background:#101115;color:#e7e8ec}
+html[data-theme="dark"] .hero{background:radial-gradient(ellipse at 75% 52%,#252232 0%,transparent 55%)}
+html[data-theme="dark"] .hero-art{filter:invert(1)}
+html[data-theme="dark"] .hero.has-art .headline span{color:transparent}
+html[data-theme="dark"] .rail .fxi-mark,html[data-theme="dark"] .backhome .fxi-mark{filter:invert(1)}
+html[data-theme="dark"] :is(.rail,.shell,.overview article){border-color:#41434c}
+html[data-theme="dark"] :is(.overview,.rail-date,.label,.tile-meta){color:#bfc0ca}
+html[data-theme="dark"] .hero-actions a:first-child{background:#efeff3;color:#101115}
+html[data-theme="dark"] .hero-actions a:last-child{color:#eceef4;border-color:#858894}
+html[data-theme="dark"] :is(.topbar,.panel,.modal,.fxi-search,.review-article,.prediction,.history-statgrid>div,.preview-grid>div,.source-card,.kpi,.config-panel,.source-summary,.results-panel){background:#191a20!important;color:#e7e8ec;border-color:#41434c}
+html[data-theme="dark"] :is(.sidebar,.mobile-nav){background:#0b0b0e!important;color:#e7e8ec;border-color:#34343b}
+html[data-theme="dark"] :is(.heading,.history-table .history-heading,.history-daily .history-heading,.match-league-toggle,.match-league-heading td,.parlay-group header,.pitch-heading){background:#08090c!important;color:#f3f3f7!important}
+html[data-theme="dark"] :is(.heading h1,.heading .btn.secondary,.match-league-toggle,.history-heading,.pitch-heading strong){color:#f3f3f7!important}
+html[data-theme="dark"] :is(.sectionhead h2,.modalhead h2,.modal-head h2,.history-chart h3,.statgrid strong,.history-statgrid strong,.history-league-table td:first-child,.history-item>strong,.history-item .history-percentage,.review-article h3,.review-score strong,.review-market,.pred-team-stack .team-names strong,.pred-choice strong,.probability,.schedule-table .team-names strong,.schedule-table .fixture-time strong,.standing-team strong,.standings-table td,.team-pair,.league-cell,.time-primary,.kpi-number,.source-card strong,.pageheading h1,.crumb strong,.breadcrumb strong,.parlay-group footer,.parlay-result strong,.pitch-list){color:#eceef4!important}
+html[data-theme="dark"] :is(.inputset label,.field label,.history-statgrid label,.history-item span,.history-chart p,.sectionhint,.search-hint,.search-meta,.pitch-meta,.preview-grid dt,.preview-grid small,.h2h-list header,.parlay-group footer span,.parlay-result small,.parlay-metrics small,.history-trend-value,.review-article p,#reviewArticleBody,.pred-discussion,.sync-record small){color:#babcc5!important}
+html[data-theme="dark"] :is(input,select,textarea,.direction,.history-item button,.close-btn,.cross,.btn.secondary,.btn.ghost,.search-form input,.search-form select){background:#24252d!important;color:#f0f0f4!important;border-color:#555762!important}
+html[data-theme="dark"] :is(.btn.primary,.history-item button:hover){background:#e4e4ea!important;color:#111217!important;border-color:#e4e4ea!important}
+html[data-theme="dark"] .heading .btn.secondary{background:#171816!important;color:#f5f4ef!important}
+html[data-theme="dark"] :is(th,.tabulator-header,.tabulator-col,.standings-season,.standings-group h3,.history-charts,.preview-grid,.source-mark,.pred-top>span:last-child,.pred-team-stack .team-position){background:#272830!important;color:#d7d8df!important;border-color:#41434c!important}
+html[data-theme="dark"] :is(td,.tabulator-row,.tabulator-cell){color:#dedfe5;border-color:#393a43!important}
+html[data-theme="dark"] :is(tbody tr:hover,.schedule-table tbody tr:hover,.review-table tbody tr:hover,.prediction:hover){background:#30313a!important}
+html[data-theme="dark"] :is(.fxi-bet-grid .tabulator,.tabulator-table,.tabulator-footer,.tabulator-row){background:#191a20!important;color:#e7e8ec!important}
+html[data-theme="dark"] :is(.tabulator-page,.tabulator-page-size){background:#292a32!important;color:#eee!important;border-color:#555!important}
+html[data-theme="dark"] :is(.linkbtn,.filter-reset,.bottom-note button,.match-insight-tabs button,.history-market-link){color:#e3e3ea!important}
+html[data-theme="dark"] .match-insight-tabs button[aria-pressed=true]{background:#e3e3ea!important;color:#16171b!important}
+html[data-theme="dark"] :is(.prematch-alert span,.notice){background:#302c25;color:#eee0bd!important;border-color:#615343}
+html[data-theme="dark"] :is(.pill.ok,.status.ok){background:#173a2c!important;color:#a5efc5!important}
+html[data-theme="dark"] :is(.pill.bad,.status.error){background:#452128!important;color:#ffbec6!important}
+html[data-theme="dark"] :is(.pill.warn,.status.warn,.status.missing){background:#463820!important;color:#ffe1ab!important}
+html[data-theme="dark"] :is(.pill.neutral,.status.pending){background:#35363e!important;color:#dbdbe1!important}
+html[data-theme="dark"] .history-trend-plot{fill:#c6c7ce}
+html[data-theme="dark"] .chart-gridline{stroke:#54555e}
+html[data-theme="dark"] .chart-line{stroke:#eceef4}
+html[data-theme="dark"] .chart-point{fill:#eceef4;stroke:#292a30}
+html[data-theme="dark"] .wins,html[data-theme="dark"] .history-market-meter meter::-webkit-meter-optimum-value{background:#e4e5eb}
+html[data-theme="dark"] .history-market-meter meter::-webkit-meter-bar{background:#51515a}
+html[data-theme="dark"] :is(button,a,input,select):focus-visible{outline-color:#b0a6ff}
+html[data-theme="dark"] .report-tile{background:#202127}
+html[data-theme="dark"] .headline span:last-child{color:#b0b2bb}
+html[data-theme="dark"] .hero.has-art .headline span:last-child{color:transparent}
+html[data-theme="dark"] .bubble{background:#44454d;color:#f6f6f7}
+html[data-theme="dark"] :is(.fxi-search,.match-dialog,.match-detail-view,.match-snapshot,.h2h-list li,.fxi-lineup){background:#191a20;color:#e7e8ec;border-color:#41434c}
+html[data-theme="dark"] .history-mix-bar .wins{background:#d9dae2}
+html[data-theme="dark"] .roi-series polyline{stroke:#e7e8ec}
+html[data-theme="dark"] .roi-series circle{fill:#e7e8ec}
+@media(max-width:700px){.heading{flex-wrap:wrap}.heading .actions{flex-wrap:wrap;align-items:center}}
+@media(max-width:500px){.heading .actions{width:100%;justify-content:flex-end}.hero-top{flex-wrap:wrap}.hero-top>.label{flex:1 1 100%}.hero-top .fxi-theme-controls{margin-left:auto}.topright{display:flex}.topright>span{display:none}}

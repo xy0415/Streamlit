@@ -1,5 +1,5 @@
 <!doctype html><html lang="zh-Hant"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fff">
+<meta charset="utf-8"><script src="/theme.js"></script><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fff">
 <meta name="description" content="每日賽程、正式足球預測、賽後復盤與歷史統計">
 <title>FXI｜足球賽程與分析</title>
 <link rel="icon" href="/favicon.ico?v=d" sizes="16x16 32x32 48x48">
@@ -7,7 +7,7 @@
   <link rel="apple-touch-icon" href="/fxi-touch.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.3.1/dist/css/tabulator_simple.min.css">
 <link rel="stylesheet" href="/vendor/editorial-tokens.css">
-  <link rel="stylesheet" href="/fxi-brand.css"><link rel="stylesheet" href="/analysis.css"></head>
+  <link rel="stylesheet" href="/fxi-brand.css"><link rel="stylesheet" href="/analysis.css"><link rel="stylesheet" href="/theme.css"></head>
 <body><div class="layout">
 <aside class="sidebar">
  <a class="brand" href="/" aria-label="FXI 首頁"><img class="fxi-mark fxi-mark-light" src="/fxi-mark.svg" width="70" height="39" alt=""></a>
@@ -36,7 +36,7 @@
   <a class="mobile-item more-link" href="/index.html">資料驗證</a>
  </nav>
  <div class="content">
-   <div class="heading"><div><h1 id="viewTitle">每日賽程</h1></div><div class="actions"><button class="btn secondary" id="openSiteSearch">搜尋</button><button class="btn secondary" id="exportDaily">匯出資料</button><button class="btn primary" id="refreshAll">更新資料</button></div></div>
+   <div class="heading"><div><h1 id="viewTitle">每日賽程</h1></div><div class="actions"><button type="button" class="fxi-theme-switch" data-theme-switch role="switch" aria-checked="false" aria-label="切換為暗色模式"><span class="fxi-theme-track-icon" aria-hidden="true">✦</span><span class="fxi-theme-knob" aria-hidden="true"><span class="fxi-theme-moon"></span></span></button><button class="btn secondary" id="openSiteSearch">搜尋</button><button class="btn secondary" id="exportDaily">匯出資料</button><button class="btn primary" id="refreshAll">更新資料</button></div></div>
    <div class="controls panel">
     <div class="inputset"><label for="selectedDay">台灣日期</label><div class="date-row"><button class="direction" id="prevDay" title="前一天">‹</button><input id="selectedDay" type="date"><button class="direction" id="nextDay" title="後一天">›</button></div></div>
     <div class="inputset league-select"><label for="leagueFilter">聯賽</label><select id="leagueFilter"><option value="">所有聯賽</option></select></div>

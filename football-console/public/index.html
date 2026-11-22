@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8"><script src="/theme.js"></script>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#ffffff">
   <meta name="description" content="足球賽程資料驗證與分析控制台">
@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" href="/fxi-touch.png">
   <link rel="stylesheet" href="/fxi-brand.css">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/theme.css">
 </head>
 <body>
 <div class="shell">
@@ -26,7 +27,7 @@
   <main class="main">
     <header class="topbar">
       <div class="breadcrumb"><a class="backhome fxi-home-link" href="/" aria-label="FXI 首頁"><img class="fxi-mark" src="/fxi-mark.svg" width="34" height="19" alt="">首頁</a><span>／</span><strong id="crumbName">賽程總覽</strong></div>
-      <div class="topright"><span id="todayLabel"></span><span class="separator"></span><span class="clocktag">台灣時間 UTC+8</span></div>
+      <div class="topright"><button type="button" class="fxi-theme-switch" data-theme-switch role="switch" aria-checked="false" aria-label="切換為暗色模式"><span class="fxi-theme-track-icon" aria-hidden="true">✦</span><span class="fxi-theme-knob" aria-hidden="true"><span class="fxi-theme-moon"></span></span></button><span id="todayLabel"></span><span class="separator"></span><span class="clocktag">台灣時間 UTC+8</span></div>
     </header>
     <div class="content">
       <section class="panel sync-record" aria-labelledby="syncTitle">
