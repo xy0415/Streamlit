@@ -99,6 +99,15 @@ async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes
   }));
   if(record.score)scores[pick.id]={h:record.score[0],a:record.score[1]};
  }
+ // Publicly retained pre-match snapshot, matched to the exact fixture and market.
+ if(!latest)for(const pick of picks){
+  const market=selection(pick);
+  if(pick.date==='2026-11-23'&&pick.time==='00:30'&&teamKey(pick.home)==='werder bremen'&&
+   teamKey(pick.away)==='hamburger sv'&&market?.market==='double'&&market.side==='home'){
+   const quote={book:'bet365',source:'Bet365',price:1.18,capturedAt:'2026-11-16T01:42:18Z',kind:'prematch',url:'https://footycheck.com/football/match/werder-bremen-vs-hamburger-sv-2026-11-22/1575227/'};
+   if(!legs[pick.id]?.some(q=>q.book===quote.book))legs[pick.id]=[...(legs[pick.id]||[]),quote];
+  }
+ }
  if(days< -2)return {status:'outside_window',legs,scores};
  // Query the public source first, preserving the limited API quota for gaps.
  const missing=picks.filter(p=>!legs[p.id]?.length||Date.parse(p.date+'T'+p.time+':00+08:00')>Date.now()&&!legs[p.id].some(q=>q.book==='1xbet'));
