@@ -590,6 +590,17 @@ async function loadReviewScores(force=false){
    return;
  }
  const day=state.day,prev=state.reviewDate===day;
+ // Review also needs independently reconciled results, even when no scoreboard
+ // fixture can be matched by the browser.
+ fetch('/api/history-results?'+new URLSearchParams({date:day}),{signal:AbortSignal.timeout(42000)})
+  .then(response=>response.ok?response.json():null).then(data=>{
+   if(!data?.results)return;
+   for(const p of state.feed?.reports?.find(r=>r.date===day)?.matches||[]){
+    const result=data.results[p.id];
+    if(result?.verified||result?.status==='conflict')state.historyScores.set(historyId(p),{...result,updatedAt:Date.now()});
+   }
+   if(state.day===day&&state.view==='reviews')renderReview();
+  }).catch(()=>{});
  if(!force&&prev&&state.reviewUpdatedAt&&Date.now()-state.reviewUpdatedAt<SCOREBOARD_TTL){renderReview();return}
  const codes=[...new Set(state.report.matches.map(p=>PRED_LEAGUE_CODES[p.league]||Object.keys(KN).find(k=>KN[k]===p.league)).filter(Boolean))];
  if(!codes.length){state.reviewFixtures=[];state.reviewUpdatedAt=Date.now();state.reviewDate=day;renderReview();return}
@@ -1439,6 +1450,9 @@ function renderPredictions(){
 }
 function reviewResultLabel(settlement){
  const value=String(settlement||'');
+ if(value==='win'||value==='halfwin')return '贏';
+ if(value==='loss'||value==='halfloss')return '輸';
+ if(value==='push')return '走盤';
  if(/全贏|半贏/.test(value))return '贏';
  if(/全輸|半輸/.test(value))return '輸';
  if(/走盤|退款|退回本金|無效/.test(value))return '走盤';
@@ -1627,11 +1641,12 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
   const legs=picks.map(p=>{
    const event=review?eventForPrediction(p,fixtures):null;
    const eventScore=resultScoreFromFixture(p,event);
-   const archived=review?entry?.scores?.[p.id]:null;
+   const reconciled=review?state.historyScores.get(historyId(p)):null;
+   const archived=review?(reconciled?.verified?reconciled:entry?.scores?.[p.id]):null;
    const live=archived?{...archived,scoreVerified:true}:eventScore;
    const different=archived&&eventScore&&(archived.h!==eventScore.h||archived.a!==eventScore.a);
    const stored=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
-   const conflict=different||event?.scoreConflict||(stored&&live&&(live.h!==p.homeScore||live.a!==p.awayScore));
+   const conflict=reconciled?.status==='conflict'||different||event?.scoreConflict||(stored&&live&&(live.h!==p.homeScore||live.a!==p.awayScore));
    const score=conflict?null:stored?{h:p.homeScore,a:p.awayScore}:live;
    return {p,score,verified:!conflict&&(stored||live?.scoreVerified),grade:gradeHistory(p,score)||
     (stored&&!conflict?HISTORY?.settledFromString(p.settlement):null)};
@@ -1667,23 +1682,27 @@ function renderReview(){
    checked?'更新 '+checked+(state.reviewErrors.length?' · 部分賽事尚未更新':''):'尚未更新比分';
  const reviewRows=rows.map((p,i)=>{
   const live=eventForPrediction(p,available);
+  const reconciled=state.historyScores.get(historyId(p));
   const liveScore=!!live&&['finished','inprogress','halftime'].includes(live.status)&&
     Number.isInteger(Number(live.scoreHome))&&live.scoreHome!==null&&live.scoreHome!==undefined&&
     Number.isInteger(Number(live.scoreAway))&&live.scoreAway!==null&&live.scoreAway!==undefined;
   const recorded=Number.isInteger(Number(p.homeScore))&&p.homeScore!==null&&p.homeScore!==undefined&&
     Number.isInteger(Number(p.awayScore))&&p.awayScore!==null&&p.awayScore!==undefined;
-  const inconsistent=!!live?.scoreConflict||(p.verified&&recorded&&liveScore&&
+  const verified=reconciled?.verified&&reconciled.status==='settled';
+  const inconsistent=reconciled?.status==='conflict'||!!live?.scoreConflict||(verified&&liveScore&&live.status==='finished'&&(reconciled.h!==Number(live.scoreHome)||reconciled.a!==Number(live.scoreAway)))||(p.verified&&recorded&&liveScore&&
     (Number(live.scoreHome)!==Number(p.homeScore)||Number(live.scoreAway)!==Number(p.awayScore)));
-  const h=inconsistent?null:p.verified&&recorded?Number(p.homeScore):
+  const h=inconsistent?null:verified?reconciled.h:p.verified&&recorded?Number(p.homeScore):
     liveScore?Number(live.scoreHome):recorded?Number(p.homeScore):null;
-  const a=inconsistent?null:p.verified&&recorded?Number(p.awayScore):
+  const a=inconsistent?null:verified?reconciled.a:p.verified&&recorded?Number(p.awayScore):
     liveScore?Number(live.scoreAway):recorded?Number(p.awayScore):null;
   const extraTime=!!live&&/penalt|extra.time|\bAET\b|\bPEN\b/i.test(live.stateName||'');
   // A win or loss is shown only for a confirmed stored settlement or a complete
   // 90-minute score. An in-progress match never receives an inferred result.
   let result='';
   if(!inconsistent){
-   if(p.verified&&recorded){
+   if(verified){
+     result=reviewResultLabel(reconciled.grade);
+   }else if(p.verified&&recorded){
      result=reviewResultLabel(p.settlement);
    }else if(live?.status==='finished'&&liveScore&&!extraTime){
      result=reviewResultLabel(referenceResult(p,Number(live.scoreHome),Number(live.scoreAway)));
