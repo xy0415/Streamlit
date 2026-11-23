@@ -9,7 +9,7 @@ const {compatible}=require('./public/team-identity');
 
 const books=new Map([
  ['1xbet','1xBet'],['pinnacle','Pinnacle'],['bet365','Bet365'],
- ['williamhill','William Hill'],['betfair','Betfair'],['unibet','Unibet']
+ ['williamhill','William Hill'],['betfair','Betfair'],['unibet','Unibet'],['compactstats','CompactStats']
 ]);
 const aliases={
  'sv werder bremen':'werder bremen','bremen':'werder bremen','hamburg sv':'hamburger sv','hamburg':'hamburger sv',

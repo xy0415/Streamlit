@@ -62,6 +62,16 @@ test('accept exact-market prices from additional bookmakers',()=>{
  assert.equal(quotesFor(rows,{...pick,line:2.5},'2026-11-20T08:00:00Z').length,0);
 });
 
+test('recovered historical prices are tied to their exact date, teams and goal line',async()=>{
+ const {reportOdds}=require('../parlay-odds');
+ const picks=[{id:'m',date:'2026-11-23',time:'01:00',home:'AC Milan',away:'Frosinone',market:'全場總進球大 1.5',group:'串關單'},
+  {id:'g',date:'2026-11-23',time:'04:00',home:'Getafe',away:'Atlético Madrid',market:'全場總進球小 4.0',group:'串關單'}];
+ const result=await reportOdds({date:'2026-11-23',matches:picks},{getFixtures:async()=>({ok:false})},async()=>[]);
+ assert.equal(result.legs.m[0].price,1.12);
+ assert.equal(result.legs.g[0].price,1.12);
+ assert.equal(result.legs.g[0].book,'bet365');
+});
+
 test('supplements another bookmaker with 1xbet when it becomes available',async()=>{
  const oddspapi=require('../oddspapi');
  const {reportOdds}=require('../parlay-odds');
