@@ -12,6 +12,7 @@ const books=new Map([
  ['williamhill','William Hill'],['betfair','Betfair'],['unibet','Unibet']
 ]);
 const aliases={
+ 'sv werder bremen':'werder bremen','bremen':'werder bremen','hamburg sv':'hamburger sv','hamburg':'hamburger sv',
  'newcastle united':'newcastle','ajax amsterdam':'ajax',
  'bayern munich':'bayern munchen','1 fc koln':'cologne','1 koln':'cologne','koln':'cologne',
  'western sydney wanderers':'western sydney','ws wanderers':'western sydney',

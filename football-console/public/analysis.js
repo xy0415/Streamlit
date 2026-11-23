@@ -238,6 +238,7 @@ function nameKey(name){
   // while published predictions use the short names. Keep this explicit:
   // stripping arbitrary prefixes can accidentally match a different club.
   'as monaco':'monaco','aj auxerre':'auxerre','as roma':'roma',
+  'sv werder bremen':'werder bremen','bremen':'werder bremen','hamburg sv':'hamburger sv','hamburg':'hamburger sv',
   'newcastle united':'newcastle','ajax amsterdam':'ajax','tottenham hotspur':'tottenham',
   'bayern munich':'bayern munchen','fc bayern munich':'bayern munchen',
   'czech republic':'czechia','turkiye':'turkey','türkiye':'turkey',
