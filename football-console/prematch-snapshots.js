@@ -18,7 +18,14 @@ function priceQuote(row,kickoff,now){
  const source=String(row.source||'').trim();
  if(!Number.isFinite(time)||!(time<kickoff)||time>now||!Number.isFinite(price)||price<=1||!source)return null;
  const book=String(row.book||source).toLowerCase().replace(/[^a-z0-9]/g,'')||source.toLowerCase();
- return {book,source,price,capturedAt:new Date(time).toISOString()};
+ const quote={book,source,price,capturedAt:new Date(time).toISOString()};
+ const provider=String(row.provider||'').trim();
+ if(provider)quote.provider=provider;
+ try{
+  const url=new URL(String(row.url||''));
+  if(['http:','https:'].includes(url.protocol)&&!url.username&&!url.password)quote.url=url.href;
+ }catch{}
+ return quote;
 }
 
 function collectSnapshot(report,pick,previous,quotes,now=Date.now()){
@@ -66,3 +73,4 @@ function mergeArchivedQuotes(report,result,archive,now=Date.now()){
 }
 
 module.exports={snapshotKey,kickoffTime,collectSnapshot,mergeArchivedQuotes};
+

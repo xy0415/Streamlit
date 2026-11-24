@@ -52,3 +52,15 @@ test('restores saved pre-match quotes without replacing current providers or acc
  const existing={book:'1xbet',source:'1xBet',price:1.7};
  assert.equal(mergeArchivedQuotes({matches:[match]},{legs:{'selection-1':[existing]}},saved,now).legs['selection-1'][0],existing);
 });
+
+
+test('preserves verifiable provider and source URL through saved snapshots',()=>{
+ const {collectSnapshot,mergeArchivedQuotes,snapshotKey}=require('../prematch-snapshots');
+ const report={publishedAt:'2026-11-23T08:00:00Z'};
+ const pick={id:'x',date:'2026-11-24',time:'04:00',home:'A',away:'B',market:'Over 1.5'};
+ const quote={book:'1xbet',source:'1xBet',provider:'OddsPapi',url:'https://example.com/match',price:1.5,capturedAt:'2026-11-23T09:00:00Z'};
+ const saved=collectSnapshot(report,pick,null,[quote],Date.parse('2026-11-23T10:00:00Z'));
+ const restored=mergeArchivedQuotes({matches:[pick]},{legs:{}},{snapshots:{[snapshotKey(pick)]:saved}},Date.parse('2026-11-24T00:00:00Z'));
+ assert.equal(restored.legs.x[0].provider,'OddsPapi');
+ assert.equal(restored.legs.x[0].url,'https://example.com/match');
+});
