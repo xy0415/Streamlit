@@ -1,0 +1,49 @@
+{
+  "snapshots": {
+    "[\"2026-11-25\",\"01:45\",\"Galatasaray\",\"Aston Villa\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 74,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-24T08:40:02.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-25\",\"04:00\",\"Arsenal\",\"Borussia Dortmund\",\"全場總進球小 4.0\",\"串關單\"]": {
+      "market": "全場總進球小 4.0",
+      "group": "串關單",
+      "probability": 74,
+      "probabilityType": "全贏",
+      "publishedAt": "2026-11-24T08:40:02.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-25\",\"04:00\",\"Feyenoord\",\"FC Porto\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 78,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-24T08:40:02.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-25\",\"04:00\",\"Manchester City\",\"Napoli\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 79,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-24T08:40:02.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-25\",\"04:00\",\"Real Madrid\",\"PSV Eindhoven\",\"全場總進球大 2.0\",\"串關單\"]": {
+      "market": "全場總進球大 2.0",
+      "group": "串關單",
+      "probability": 71,
+      "probabilityType": "全贏",
+      "publishedAt": "2026-11-24T08:40:02.000Z",
+      "original": null,
+      "books": {}
+    }
+  }
+}
