@@ -16,7 +16,26 @@
       "probabilityType": "命中",
       "publishedAt": "2026-11-25T08:06:50.000Z",
       "original": null,
-      "books": {}
+      "books": {
+        "1xbet": {
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "provider": "TipsterArea",
+            "price": 1.08,
+            "capturedAt": "2026-11-25T11:49:14.680Z",
+            "url": "https://tipsterarea.com/match/club-brugge-liverpool-champions-league-group-stage-956876"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "provider": "TipsterArea",
+            "price": 1.08,
+            "capturedAt": "2026-11-25T11:49:14.680Z",
+            "url": "https://tipsterarea.com/match/club-brugge-liverpool-champions-league-group-stage-956876"
+          }
+        }
+      }
     },
     "[\"2026-11-26\",\"04:00\",\"Inter\",\"VfB Stuttgart\",\"全場總進球大 1.5\",\"串關單\"]": {
       "market": "全場總進球大 1.5",
@@ -25,7 +44,26 @@
       "probabilityType": "命中",
       "publishedAt": "2026-11-25T08:06:50.000Z",
       "original": null,
-      "books": {}
+      "books": {
+        "1xbet": {
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "provider": "TipsterArea",
+            "price": 1.04,
+            "capturedAt": "2026-11-25T11:49:14.680Z",
+            "url": "https://tipsterarea.com/match/inter-stuttgart-champions-league-group-stage-956877"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "provider": "TipsterArea",
+            "price": 1.04,
+            "capturedAt": "2026-11-25T11:49:14.680Z",
+            "url": "https://tipsterarea.com/match/inter-stuttgart-champions-league-group-stage-956877"
+          }
+        }
+      }
     },
     "[\"2026-11-26\",\"04:00\",\"Lille\",\"Bayern München\",\"全場總進球小 4.0\",\"串關單\"]": {
       "market": "全場總進球小 4.0",
@@ -43,7 +81,26 @@
       "probabilityType": "命中",
       "publishedAt": "2026-11-25T08:06:50.000Z",
       "original": null,
-      "books": {}
+      "books": {
+        "1xbet": {
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "provider": "TipsterArea",
+            "price": 1.1,
+            "capturedAt": "2026-11-25T11:49:14.680Z",
+            "url": "https://tipsterarea.com/match/paris-saint-germain-roma-champions-league-group-stage-956879"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "provider": "TipsterArea",
+            "price": 1.1,
+            "capturedAt": "2026-11-25T11:49:14.680Z",
+            "url": "https://tipsterarea.com/match/paris-saint-germain-roma-champions-league-group-stage-956879"
+          }
+        }
+      }
     }
   }
 }
