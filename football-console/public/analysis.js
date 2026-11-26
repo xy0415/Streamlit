@@ -598,7 +598,7 @@ async function loadReviewScores(force=false){
    if(!data?.results)return;
    for(const p of state.feed?.reports?.find(r=>r.date===day)?.matches||[]){
     const result=data.results[p.id];
-    if(result?.verified||result?.status==='conflict')state.historyScores.set(historyId(p),{...result,updatedAt:Date.now()});
+    if(INSIGHTS.usableResult(result)||result?.status==='conflict')state.historyScores.set(historyId(p),{...result,updatedAt:Date.now()});
    }
    if(state.day===day&&state.view==='reviews')renderReview();
   }).catch(()=>{});
@@ -1593,13 +1593,14 @@ function renderParlayHistory(){
   const odds=parlayValues(picks,report);
   const grades=picks.map(p=>{
    const score=state.historyScores.get(historyId(p));
-   return score?.verified&&score.status==='settled'?score.grade:null;
+   return INSIGHTS.usableResult(score)?score.grade:null;
   });
   const net=!odds.duplicate&&picks.length>=2&&(grades.includes('loss')||odds.displayProduct)?INSIGHTS.parlayNet(grades,odds.displayPrices):null;
   const pendingKickoff=picks.some(p=>scheduledKickoff(p)>Date.now());
   const status=odds.duplicate?'同場多關':picks.length<2?'單場':!odds.displayProduct?(parlayOddsByDate.get(report.date)?.status==='rate_limited'?'賠率待查詢':'缺有效賠率'):
-   net===null?(pendingKickoff?'尚未開賽':'比分待核實'):parlayKind[odds.kind];
-  return {date:report.date,group,odds,net,status};
+   net===null?(pendingKickoff?'尚未開賽':'待取得完場比分'):parlayKind[odds.kind];
+  const referenceScore=picks.some(p=>state.historyScores.get(historyId(p))?.status==='reference');
+  return {date:report.date,group,odds,net,status,referenceScore};
  }));
  const sample=rows.filter(row=>Number.isFinite(row.net));
  const charts=window.FootballHistoryCharts;
@@ -1615,11 +1616,11 @@ function renderParlayHistory(){
   metric('淨損益',model.count?profit(model.profit):'—')+
   metric('累計報酬率',model.count?signedUnits(model.roi)+'%':'—',model.count?model.count+' 組已計入':'無可用樣本')+
   '</div>'+charts.parlayPlot(model.points)+
-  '<p class="history-explain">實價齊全 '+coverage+'／'+rows.length+' 組 · 含估算的組合已納入模擬回測，並非實際投注報酬；未核實賽果或缺少有效賠率的組合尚無法完整計算'+(parlayHistoryLoading?' · 正在查詢':'')+'</p>'+
+  '<p class="history-explain">實價齊全 '+coverage+'／'+rows.length+' 組 · 單一來源比分與估算賠率均納入模擬回測；單一來源比分可能更正，結果可能變動'+(parlayHistoryLoading?' · 正在查詢':'')+'</p>'+
   (rows.length?'<div class="tablewrap"><table class="history-league-table"><thead><tr><th>日期</th><th>串關</th><th>綜合賠率</th><th>下注金額</th><th>損益</th><th>狀態</th></tr></thead><tbody>'+
    rows.map(r=>{
     const bet=model.bets.get(r);
-    const status=Number.isFinite(r.net)?'已計入回測'+(r.odds.hasEstimates?'（含估算）':r.odds.product&&!r.odds.commonBook?'（跨平台參考）':''):r.status;
+    const status=Number.isFinite(r.net)?'已計入回測'+(r.odds.hasEstimates?'（含估算）':r.odds.product&&!r.odds.commonBook?'（跨平台參考）':'')+(r.referenceScore?'（單一來源比分）':''):r.status;
     return '<tr><td>'+escapeHtml(r.date)+'</td><td>'+escapeHtml(r.group)+'</td><td>'+
      (r.odds.displayProduct?r.odds.displayProduct.toFixed(2)+(r.odds.hasEstimates?' <small>含估算</small>':''):'—')+'</td><td>'+
      (bet?amount(bet.stake):'—')+'</td><td>'+(bet?profit(bet.profit):'—')+'</td><td>'+status+'</td></tr>';
@@ -1645,13 +1646,13 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
    const event=review?eventForPrediction(p,fixtures):null;
    const eventScore=resultScoreFromFixture(p,event);
    const reconciled=review?state.historyScores.get(historyId(p)):null;
-   const archived=review?(reconciled?.verified?reconciled:entry?.scores?.[p.id]):null;
+   const archived=review?(INSIGHTS.usableResult(reconciled)?reconciled:entry?.scores?.[p.id]):null;
    const live=archived?{...archived,scoreVerified:true}:eventScore;
    const different=archived&&eventScore&&(archived.h!==eventScore.h||archived.a!==eventScore.a);
    const stored=p.verified&&Number.isInteger(p.homeScore)&&Number.isInteger(p.awayScore);
    const conflict=reconciled?.status==='conflict'||different||event?.scoreConflict||(stored&&live&&(live.h!==p.homeScore||live.a!==p.awayScore));
    const score=conflict?null:stored?{h:p.homeScore,a:p.awayScore}:live;
-   return {p,score,verified:!conflict&&(stored||live?.scoreVerified),grade:gradeHistory(p,score)||
+   return {p,score,verified:!conflict&&(stored||live?.scoreVerified||INSIGHTS.usableResult(reconciled)),grade:gradeHistory(p,score)||
     (stored&&!conflict?HISTORY?.settledFromString(p.settlement):null)};
   });
   const {displayPrices,hasEstimates,displayProduct}=odds;
@@ -1693,7 +1694,7 @@ function renderReview(){
     Number.isInteger(Number(live.scoreAway))&&live.scoreAway!==null&&live.scoreAway!==undefined;
   const recorded=Number.isInteger(Number(p.homeScore))&&p.homeScore!==null&&p.homeScore!==undefined&&
     Number.isInteger(Number(p.awayScore))&&p.awayScore!==null&&p.awayScore!==undefined;
-  const verified=reconciled?.verified&&reconciled.status==='settled';
+  const verified=INSIGHTS.usableResult(reconciled);
   const inconsistent=reconciled?.status==='conflict'||!!live?.scoreConflict||(verified&&liveScore&&live.status==='finished'&&(reconciled.h!==Number(live.scoreHome)||reconciled.a!==Number(live.scoreAway)))||(p.verified&&recorded&&liveScore&&
     (Number(live.scoreHome)!==Number(p.homeScore)||Number(live.scoreAway)!==Number(p.awayScore)));
   const h=inconsistent?null:verified?reconciled.h:p.verified&&recorded?Number(p.homeScore):
@@ -1853,7 +1854,7 @@ function primeHistoryFromFeed(){
  try{
   const saved=JSON.parse(localStorage.getItem(HIST_CACHE_KEY)||'{}');
   if(saved.version===2&&Array.isArray(saved.results))for(const entry of saved.results){
-   if(!entry||typeof entry.key!=='string'||!entry.verified||!entry.grade||!Number.isInteger(entry.h)||!Number.isInteger(entry.a))continue;
+   if(!entry||typeof entry.key!=='string'||!INSIGHTS.usableResult(entry))continue;
    if(!state.historyScores.has(entry.key))state.historyScores.set(entry.key,entry);
   }
  }catch{}
@@ -1880,11 +1881,11 @@ function utcDayForPrediction(p){
 }
 function applyHistoricalResult(p,fixture){
  const key=historyId(p),s=resultScoreFromFixture(p,fixture);
- if(!s?.scoreVerified)return false;
+ if(!s)return false;
  const grade=gradeHistory(p,s);
  const output={
   grade, h:s.h,a:s.a, source:s.source,eventId:s.eventId,
-  verified:s.scoreVerified,status:grade?'settled':'unsupported',updatedAt:Date.now()
+  verified:s.scoreVerified,status:grade?(s.scoreVerified?'settled':'reference'):'unsupported',updatedAt:Date.now()
  };
  const existing=state.historyScores.get(key);
  if(existing?.verified&&!output.verified){
@@ -1941,7 +1942,7 @@ async function loadHistoryResults(force=false){
      if(!result)continue;
      const id=historyId(p),old=state.historyScores.get(id);
      if(old?.verified&&!result.verified&&result.status!=='conflict')continue;
-     state.historyScores.set(id,{...result,grade:result.verified?result.grade:null,updatedAt:Date.now()});
+     state.historyScores.set(id,{...result,grade:INSIGHTS.usableResult(result)?result.grade:null,updatedAt:Date.now()});
     }
     historyChecksByDate.set(report.date,Date.now());
    }catch{state.historyErrors++}
@@ -2001,7 +2002,7 @@ function renderHistoryBets(rows){
   const entry=parlayOddsByDate.get(reportDate);
   const report=(state.feed?.reports||[]).find(r=>r.date===reportDate);
   const priced=INSIGHTS.parlayPrices([p],entry?.legs||{},report?.publishedAt);
-  const quote=INSIGHTS.displayOdds([p],priced.prices)[0],settled=result?.verified&&result.status==='settled';
+  const quote=INSIGHTS.displayOdds([p],priced.prices)[0],settled=INSIGHTS.usableResult(result);
   const upcoming=scheduledKickoff(p)>Date.now();
   const net=quote&&settled?INSIGHTS.unitReturn(result.grade,quote.price):null;
   return {p,result,quote,settled,upcoming,net,kind:priced.kind,loading:!entry||Boolean(entry.loading)};
@@ -2017,7 +2018,7 @@ function renderHistoryBets(rows){
    (quote?escapeHtml(formatOdds(quote)+' '+quote.source)+'<small>'+escapeHtml(quote.kind==='estimate'?'估算，已納入模擬損益':parlayKind[kind])+'</small>':
     loading?'等待查詢':'缺賠率')+'</td><td>'+
    (Number.isInteger(result?.h)&&Number.isInteger(result?.a)?result.h+' : '+result.a:'—')+'</td><td>'+
-   (settled?gradeLabels[result.grade]:upcoming?'未開賽':result?.status==='cancelled'?'取消':result?.status==='postponed'?'延期':'待核實')+
+   (settled?gradeLabels[result.grade]+(result.status==='reference'?'（單一來源）':''):upcoming?'未開賽':result?.status==='cancelled'?'取消':result?.status==='postponed'?'延期':'待取得比分')+
    '</td><td>'+(net===null?'—':signedUnits(net))+'</td></tr>').join('')+
   (items.length?'':'<tr><td colspan="7">目前沒有符合篩選的紀錄</td></tr>')+'</tbody></table></div>';
  // Tabulator supplies sortable, searchable columns on larger screens; the native
@@ -2030,7 +2031,7 @@ function renderHistoryBets(rows){
    url:INSIGHTS.matchLink(p,'reviews','review'), snapshot:INSIGHTS.matchLink(p,'history','snapshot'), selection:displayPredictionText(p,p.market),
    price:quote?formatOdds(quote)+(quote.kind==='estimate'?'（估算）':''):loading?'等待查詢':'缺賠率',
    score:Number.isInteger(result?.h)&&Number.isInteger(result?.a)?result.h+' : '+result.a:'—',
-   status:settled?gradeLabels[result.grade]:upcoming?'未開賽':result?.status==='cancelled'?'取消':result?.status==='postponed'?'延期':'待核實',
+   status:settled?gradeLabels[result.grade]+(result.status==='reference'?'（單一來源）':''):upcoming?'未開賽':result?.status==='cancelled'?'取消':result?.status==='postponed'?'延期':'待取得比分',
    net:net===null?'—':signedUnits(net)
   }));
   try {
@@ -2086,7 +2087,7 @@ function renderHistory(){
  if(calibration){
   const groups=new Map();
   for(const {p,result} of rows){
-   if(!Number.isFinite(p.probability)||p.probability<0||p.probability>100||!result?.verified||!result.grade||result.grade==='push')continue;
+   if(!Number.isFinite(p.probability)||p.probability<0||p.probability>100||!INSIGHTS.usableResult(result)||result.grade==='push')continue;
    const type=p.probabilityType||'命中';
    const start=Math.min(90,Math.floor(p.probability/10)*10);
    const key=type+'|'+start;
@@ -2099,7 +2100,7 @@ function renderHistory(){
    const wins=g.type==='全贏'?st.win:st.win+.5*st.halfwin;
    const actual=100*wins/n;
    return '<tr><td>'+escapeHtml(g.type)+'</td><td>'+g.start+'%～'+(g.start===90?100:g.start+9)+'%</td><td>'+st.finished+'</td><td><div class="history-market-meter"><meter min="0" max="100" value="'+actual+'" aria-label="實際比率"></meter><strong>'+actual.toFixed(1)+'%（'+wins+'/'+n+'）</strong></div></td></tr>';
-  }).join('')||'<tr><td colspan="4">目前沒有可計算的已核實樣本</td></tr>';
+  }).join('')||'<tr><td colspan="4">目前沒有可計算的完場樣本</td></tr>';
  }
 
  const label=missingFeed?(state.feedStatus==='loading'?'正在同步預測紀錄…':'正式預測來源暫時無法同步'):
