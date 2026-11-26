@@ -81,10 +81,12 @@ test('The same selection in two explicit parlay groups stays visible in each gro
 
 test('probability reciprocal is explicitly an estimate and absent probabilities remain unknown',()=>{
  const q=insights.estimatedOdds({probability:80,probabilityType:'全贏'});
- assert.equal(q.price,1.25);
+ assert.equal(q.price,1.075);
  assert.equal(q.kind,'estimate');
  assert.equal(insights.estimatedOdds({probability:null}),null);
  assert.equal(insights.estimatedOdds({probability:100}),null);
+ assert.equal(insights.estimatedOdds({probability:90}),null);
+ assert.equal(insights.estimatedOdds({probability:86}),null);
  const selected=insights.parlayPrices([{id:'a',probability:80}],{},'2026-11-26 16:00');
  assert.equal(selected.priced,0);
 });
@@ -94,7 +96,7 @@ test('shared display retains real quotes and uses a labelled estimate only for m
  const actual={price:1.3,book:'1xbet',source:'1xBet'};
  const shown=insights.displayOdds(legs,[actual,null,null]);
  assert.equal(shown[0],actual);
- assert.equal(shown[1].price,2);
+ assert.equal(shown[1].price,1.72);
  assert.equal(shown[1].kind,'estimate');
  assert.equal(shown[2],null);
  assert.equal(insights.parlayProduct(shown),null);
