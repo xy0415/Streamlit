@@ -16,7 +16,24 @@
       "probabilityType": "命中",
       "publishedAt": "2026-11-26T08:08:59.000Z",
       "original": null,
-      "books": {}
+      "books": {
+        "compactstats": {
+          "first": {
+            "book": "compactstats",
+            "source": "CompactStats",
+            "price": 1.14,
+            "capturedAt": "2026-11-26T11:13:01.000Z",
+            "url": "https://compactstats.com/match/2026-11-26/dinamo-zagreb-v-bayer-leverkusen/"
+          },
+          "latest": {
+            "book": "compactstats",
+            "source": "CompactStats",
+            "price": 1.14,
+            "capturedAt": "2026-11-26T11:13:01.000Z",
+            "url": "https://compactstats.com/match/2026-11-26/dinamo-zagreb-v-bayer-leverkusen/"
+          }
+        }
+      }
     },
     "[\"2026-11-27\",\"01:45\",\"Olympiacos\",\"Milan\",\"全場總進球大 1.5\",\"串關單\"]": {
       "market": "全場總進球大 1.5",
