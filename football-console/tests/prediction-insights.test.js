@@ -88,3 +88,14 @@ test('probability reciprocal is explicitly an estimate and absent probabilities 
  const selected=insights.parlayPrices([{id:'a',probability:80}],{},'2026-11-26 16:00');
  assert.equal(selected.priced,0);
 });
+
+test('shared display retains real quotes and uses a labelled estimate only for missing quotes',()=>{
+ const legs=[{id:'a',probability:80},{id:'b',probability:50},{id:'c'}];
+ const actual={price:1.3,book:'1xbet',source:'1xBet'};
+ const shown=insights.displayOdds(legs,[actual,null,null]);
+ assert.equal(shown[0],actual);
+ assert.equal(shown[1].price,2);
+ assert.equal(shown[1].kind,'estimate');
+ assert.equal(shown[2],null);
+ assert.equal(insights.parlayProduct(shown),null);
+});
