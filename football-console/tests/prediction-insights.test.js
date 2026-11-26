@@ -110,3 +110,11 @@ test('estimated and observed quotes settle wins, pushes and half wins in a simul
  assert.equal(insights.parlayNet(['loss',null],[null,null]),-1);
  assert.equal(insights.parlayNet(['win',null],prices),null);
 });
+
+test('one-source final scores are usable but pending or conflicting data are not',()=>{
+ assert.equal(insights.usableResult({status:'reference',verified:false,h:2,a:2,grade:'win'}),true);
+ assert.equal(insights.usableResult({status:'settled',verified:true,h:2,a:2,grade:'win'}),true);
+ assert.equal(insights.usableResult({status:'conflict',h:2,a:2,grade:'win'}),false);
+ assert.equal(insights.usableResult({status:'pending',h:2,a:2,grade:'win'}),false);
+ assert.equal(insights.usableResult({status:'reference',h:null,a:2,grade:'win'}),false);
+});
