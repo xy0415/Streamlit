@@ -1,0 +1,49 @@
+{
+  "snapshots": {
+    "[\"2026-11-27\",\"01:45\",\"Ajax\",\"Thun\",\"全場總進球大 2.0\",\"串關單\"]": {
+      "market": "全場總進球大 2.0",
+      "group": "串關單",
+      "probability": 79,
+      "probabilityType": "全贏",
+      "publishedAt": "2026-11-26T08:08:59.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-27\",\"01:45\",\"Dinamo Zagreb\",\"Bayer Leverkusen\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 80,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-26T08:08:59.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-27\",\"01:45\",\"Olympiacos\",\"Milan\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 77,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-26T08:08:59.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-27\",\"04:00\",\"Juventus\",\"Omonia Nicosia\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 81,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-26T08:08:59.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-27\",\"04:00\",\"Lyon\",\"Lillestrøm\",\"全場總進球小 4.0\",\"串關單\"]": {
+      "market": "全場總進球小 4.0",
+      "group": "串關單",
+      "probability": 74,
+      "probabilityType": "全贏",
+      "publishedAt": "2026-11-26T08:08:59.000Z",
+      "original": null,
+      "books": {}
+    }
+  }
+}
