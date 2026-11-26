@@ -62,7 +62,7 @@
     <p class="history-explain">命中率 =（全贏 + 半贏 × 0.5）÷（全贏 + 半贏 + 全輸 + 半輸），走盤不計。未取得可靠賽果的不納入命中率。</p>
     <section class="history-table history-market-panel" aria-labelledby="parlay-roi-heading">
      <h3 class="history-heading" id="parlay-roi-heading">串關報酬率回測</h3>
-     <p class="history-explain">依預測日期篩選，起訖日期均包含在內。任一關核實全輸即計入虧損；其他串關須賠率齊全且結算已核實。同日各組以當日開始時的本金計算，合計下注超過本金時按比例縮減。跨平台賠率相乘的回測僅供參考，非單一平台實際報價。</p>
+     <p class="history-explain">依預測日期篩選，起訖日期均包含在內。任一關完場全輸即計入虧損；其他串關須賠率齊全且已有完場比分。單一來源比分及估算賠率均可納入模擬，資料更正時結果會變動。同日各組以當日開始時的本金計算，合計下注超過本金時按比例縮減。</p>
      <form class="history-filters parlay-backtest-form" id="parlayBacktestForm">
       <div style="display:flex;flex-wrap:wrap;gap:inherit;width:100%">
       <div class="inputset"><label for="parlayStartDate">開始日期</label>
@@ -100,7 +100,7 @@
     </div>
     <section class="history-table history-market-panel" aria-labelledby="history-probability-heading">
      <h3 class="history-heading" id="history-probability-heading">預測機率與實際結果</h3>
-     <p class="history-explain">依發布時機率分組，僅計入已核實結算。命中率依網站既有半贏計算方式，走盤不計入；全贏機率對照實際全贏率。</p>
+     <p class="history-explain">依發布時機率分組，納入已有完場比分的結算，含單一來源比分。命中率依網站既有半贏計算方式，走盤不計入；全贏機率對照實際全贏率。</p>
      <div class="tablewrap"><table class="history-league-table history-probability-table"><thead><tr><th scope="col">機率類型</th><th scope="col">預測機率</th><th scope="col">計入樣本</th><th scope="col">實際比率</th></tr></thead><tbody id="historyProbabilityRows"></tbody></table></div>
     </section>
     <section class="history-table history-market-panel" aria-labelledby="history-market-heading">
@@ -131,7 +131,7 @@
     <div class="standings-controls"><div class="inputset"><label for="standingsLeague">聯賽</label><select id="standingsLeague"></select></div><span id="standingsUpdated" class="standings-updated" role="status"></span></div>
     <div id="standingsContent" class="standings-content"></div>
    </section>
-   <div class="footer"><span id="dataFooter">資料來源：公開賽程與已寄出之正式預測</span><span>Asia/Taipei · 90 分鐘賽果須核實</span></div>
+   <div class="footer"><span id="dataFooter">資料來源：公開賽程與已寄出之正式預測</span><span>Asia/Taipei · 90 分鐘賽果，單一來源可能更正</span></div>
  </div>
 </main></div>
 <div class="modalback hidden" id="leaguesModal"><div class="modal"><div class="modalhead"><h2>查核聯賽設定</h2><button data-modal-close class="cross">×</button></div><p class="modaldesc">免費 ESPN 公開介面。未選取的聯賽不會查詢，也不會視為無賽程。</p><div class="leagueoptions" id="leagueOptions"></div><div class="modalfoot"><button class="btn secondary" data-modal-close>取消</button><button class="btn primary" id="saveLeagues">儲存設定</button></div></div></div>
