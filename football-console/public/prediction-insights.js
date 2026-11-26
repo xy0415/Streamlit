@@ -111,13 +111,15 @@
        prices.every(q=>q&&Date.parse(q.capturedAt)<=published)?'beforePublication':'reference'};
   }
 
-  // A probability reciprocal is indicative only. It is not a bookmaker offer;
-  // it ignores margin and any push or half-settlement probability.
+  // User-defined haircut is indicative only; it is not an observed bookmaker
+  // margin and cannot represent push or partial-settlement probabilities.
   function estimatedOdds(leg) {
     if (leg?.probability === null || leg?.probability === undefined || leg?.probability === '') return null;
     const probability = Number(leg.probability);
     if (!Number.isFinite(probability) || probability <= 0 || probability >= 100) return null;
-    return {price:100/probability, book:'estimate', source:'模型機率倒數估算', kind:'estimate',
+    const price=86/probability;
+    if (price <= 1 || Number(price.toFixed(2)) <= 1) return null;
+    return {price, book:'estimate', source:'機率倒數 × 0.86 估算', kind:'estimate',
       probability, probabilityType:leg.probabilityType||'命中'};
   }
 
