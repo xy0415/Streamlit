@@ -1546,7 +1546,9 @@ function parlayValues(picks,report){
  const result=INSIGHTS.parlayPrices(picks,entry?.legs||{},report.publishedAt);
  const duplicate=new Set(picks.map(parlayMatchKey)).size!==picks.length;
  const product=duplicate?null:INSIGHTS.parlayProduct(result.prices);
- return {...result,product,duplicate};
+ const displayPrices=INSIGHTS.displayOdds(picks,result.prices);
+ const displayProduct=duplicate?null:INSIGHTS.parlayProduct(displayPrices);
+ return {...result,product,duplicate,displayPrices,displayProduct,hasEstimates:displayPrices.some(q=>q?.kind==='estimate')};
 }
 const parlayCapitalSettings={initial:10000,percentage:5,start:'2026-11-18',end:todayTaiwan()};
 const parlayCapitalStorage='fxi.parlayCapitalSettings';
@@ -1595,7 +1597,7 @@ function renderParlayHistory(){
   });
   const net=!odds.duplicate&&picks.length>=2&&(grades.includes('loss')||odds.product)?INSIGHTS.parlayNet(grades,odds.prices):null;
   const pendingKickoff=picks.some(p=>scheduledKickoff(p)>Date.now());
-  const status=odds.duplicate?'同場多關':picks.length<2?'單場':!odds.product?(parlayOddsByDate.get(report.date)?.status==='rate_limited'?'賠率待查詢':'缺賠率'):
+  const status=odds.duplicate?'同場多關':picks.length<2?'單場':!odds.product?(odds.displayProduct?'參考估算，未計入實價回測':parlayOddsByDate.get(report.date)?.status==='rate_limited'?'賠率待查詢':'缺賠率'):
    net===null?(pendingKickoff?'尚未開賽':'比分待核實'):parlayKind[odds.kind];
   return {date:report.date,group,odds,net,status};
  }));
@@ -1613,13 +1615,13 @@ function renderParlayHistory(){
   metric('淨損益',model.count?profit(model.profit):'—')+
   metric('累計報酬率',model.count?signedUnits(model.roi)+'%':'—',model.count?model.count+' 組已計入':'無可用樣本')+
   '</div>'+charts.parlayPlot(model.points)+
-  '<p class="history-explain">賠率齊全 '+coverage+'／'+rows.length+' 組'+(parlayHistoryLoading?' · 正在查詢':'')+'</p>'+
+  '<p class="history-explain">實價齊全 '+coverage+'／'+rows.length+' 組 · 含估算的賠率僅供參考，不計入實價回測'+(parlayHistoryLoading?' · 正在查詢':'')+'</p>'+
   (rows.length?'<div class="tablewrap"><table class="history-league-table"><thead><tr><th>日期</th><th>串關</th><th>綜合賠率</th><th>下注金額</th><th>損益</th><th>狀態</th></tr></thead><tbody>'+
    rows.map(r=>{
     const bet=model.bets.get(r);
     const status=Number.isFinite(r.net)?'已計入回測'+(r.odds.product&&!r.odds.commonBook?'（跨平台參考）':''):r.status;
     return '<tr><td>'+escapeHtml(r.date)+'</td><td>'+escapeHtml(r.group)+'</td><td>'+
-     (r.odds.product?r.odds.product.toFixed(2):'—')+'</td><td>'+
+     (r.odds.displayProduct?r.odds.displayProduct.toFixed(2)+(r.odds.hasEstimates?' <small>含估算</small>':''):'—')+'</td><td>'+
      (bet?amount(bet.stake):'—')+'</td><td>'+(bet?profit(bet.profit):'—')+'</td><td>'+status+'</td></tr>';
    }).join('')+'</tbody></table></div>':'');
  charts.enhancePlot?.(host.querySelector('.parlay-roi-chart'),model.points,'roi');
@@ -1652,9 +1654,7 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
    return {p,score,verified:!conflict&&(stored||live?.scoreVerified),grade:gradeHistory(p,score)||
     (stored&&!conflict?HISTORY?.settledFromString(p.settlement):null)};
   });
-  const displayPrices=odds.prices.map((quote,index)=>quote||INSIGHTS.estimatedOdds(picks[index]));
-  const hasEstimates=displayPrices.some(quote=>quote?.kind==='estimate');
-  const displayProduct=odds.duplicate?null:INSIGHTS.parlayProduct(displayPrices);
+  const {displayPrices,hasEstimates,displayProduct}=odds;
   const status=review?' · '+INSIGHTS.parlayStatus(legs.map(leg=>leg.grade)):'';
   const grades=legs.map(leg=>leg.verified?leg.grade:null);
   const net=review&&!odds.duplicate&&picks.length>=2&&(grades.includes('loss')||odds.product)?INSIGHTS.parlayNet(grades,odds.prices):null;
@@ -2001,9 +2001,9 @@ function renderHistoryBets(rows){
   const entry=parlayOddsByDate.get(reportDate);
   const report=(state.feed?.reports||[]).find(r=>r.date===reportDate);
   const priced=INSIGHTS.parlayPrices([p],entry?.legs||{},report?.publishedAt);
-  const quote=priced.prices[0],settled=result?.verified&&result.status==='settled';
+  const actualQuote=priced.prices[0],quote=INSIGHTS.displayOdds([p],priced.prices)[0],settled=result?.verified&&result.status==='settled';
   const upcoming=scheduledKickoff(p)>Date.now();
-  const net=quote&&settled?INSIGHTS.unitReturn(result.grade,quote.price):null;
+  const net=actualQuote&&settled?INSIGHTS.unitReturn(result.grade,actualQuote.price):null;
   return {p,result,quote,settled,upcoming,net,kind:priced.kind,loading:!entry||Boolean(entry.loading)};
  }).filter(x=>!status||(status==='missing'?(!x.quote&&!x.loading):
   status==='settled'?x.settled:!x.settled&&!x.upcoming));
@@ -2014,7 +2014,7 @@ function renderHistoryBets(rows){
    '<tr><td>'+escapeHtml(p.date+' '+p.time)+'</td><td><a href="'+escapeHtml(INSIGHTS.matchLink(p,'reviews','review'))+'">'+
    escapeHtml(localizedTeamName(p.home,p.homeZh)+' – '+localizedTeamName(p.away,p.awayZh))+'</a><a class="snapshot-link" href="'+
    escapeHtml(INSIGHTS.matchLink(p,'history','snapshot'))+'">賽前快照</a></td><td>'+escapeHtml(displayPredictionText(p,p.market))+'</td><td>'+
-   (quote?escapeHtml(formatOdds(quote)+' '+quote.source)+'<small>'+escapeHtml(parlayKind[kind])+'</small>':
+   (quote?escapeHtml(formatOdds(quote)+' '+quote.source)+'<small>'+escapeHtml(quote.kind==='estimate'?'估算，不計入實價損益':parlayKind[kind])+'</small>':
     loading?'等待查詢':'缺賠率')+'</td><td>'+
    (Number.isInteger(result?.h)&&Number.isInteger(result?.a)?result.h+' : '+result.a:'—')+'</td><td>'+
    (settled?gradeLabels[result.grade]:upcoming?'未開賽':result?.status==='cancelled'?'取消':result?.status==='postponed'?'延期':'待核實')+
@@ -2028,7 +2028,7 @@ function renderHistoryBets(rows){
   const data=items.map(({p,result,quote,settled,upcoming,net,loading})=>({
    date:p.date+' '+p.time, match:localizedTeamName(p.home,p.homeZh)+' – '+localizedTeamName(p.away,p.awayZh),
    url:INSIGHTS.matchLink(p,'reviews','review'), snapshot:INSIGHTS.matchLink(p,'history','snapshot'), selection:displayPredictionText(p,p.market),
-   price:quote?formatOdds(quote):loading?'等待查詢':'缺賠率',
+   price:quote?formatOdds(quote)+(quote.kind==='estimate'?'（估算）':''):loading?'等待查詢':'缺賠率',
    score:Number.isInteger(result?.h)&&Number.isInteger(result?.a)?result.h+' : '+result.a:'—',
    status:settled?gradeLabels[result.grade]:upcoming?'未開賽':result?.status==='cancelled'?'取消':result?.status==='postponed'?'延期':'待核實',
    net:net===null?'—':signedUnits(net)
