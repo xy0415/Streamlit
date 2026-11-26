@@ -121,6 +121,10 @@
       probability, probabilityType:leg.probabilityType||'命中'};
   }
 
+  function displayOdds(legs, prices) {
+    return legs.map((leg, index) => prices[index] || estimatedOdds(leg));
+  }
+
   function parlayProduct(prices) {
     return prices.length>1&&prices.every(q=>Number.isFinite(q?.price)&&q.price>1)?
       prices.reduce((total,q)=>total*q.price,1):null;
@@ -135,5 +139,5 @@
     return returns.reduce((product,net)=>product*(1+net),1)-1;
   }
 
-  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, marketLabel, matchLink, readMatchLink, originalOdds, oddsTimestamp, unitReturn, parlayStatus, parlayPrices, estimatedOdds, parlayProduct, parlayNet});
+  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, marketLabel, matchLink, readMatchLink, originalOdds, oddsTimestamp, unitReturn, parlayStatus, parlayPrices, estimatedOdds, displayOdds, parlayProduct, parlayNet});
 })(window);
