@@ -111,6 +111,16 @@
        prices.every(q=>q&&Date.parse(q.capturedAt)<=published)?'beforePublication':'reference'};
   }
 
+  // A probability reciprocal is indicative only. It is not a bookmaker offer;
+  // it ignores margin and any push or half-settlement probability.
+  function estimatedOdds(leg) {
+    if (leg?.probability === null || leg?.probability === undefined || leg?.probability === '') return null;
+    const probability = Number(leg.probability);
+    if (!Number.isFinite(probability) || probability <= 0 || probability >= 100) return null;
+    return {price:100/probability, book:'estimate', source:'模型機率倒數估算', kind:'estimate',
+      probability, probabilityType:leg.probabilityType||'命中'};
+  }
+
   function parlayProduct(prices) {
     return prices.length>1&&prices.every(q=>Number.isFinite(q?.price)&&q.price>1)?
       prices.reduce((total,q)=>total*q.price,1):null;
@@ -125,5 +135,5 @@
     return returns.reduce((product,net)=>product*(1+net),1)-1;
   }
 
-  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, marketLabel, matchLink, readMatchLink, originalOdds, oddsTimestamp, unitReturn, parlayStatus, parlayPrices, parlayProduct, parlayNet});
+  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, marketLabel, matchLink, readMatchLink, originalOdds, oddsTimestamp, unitReturn, parlayStatus, parlayPrices, estimatedOdds, parlayProduct, parlayNet});
 })(window);

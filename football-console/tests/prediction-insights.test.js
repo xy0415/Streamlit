@@ -78,3 +78,13 @@ test('The same selection in two explicit parlay groups stays visible in each gro
  assert.notEqual(parsed[0].id,parsed[1].id);
  assert.equal(includePublishedCards(article,date,[{...parsed[0],verified:true}]).length,2);
 });
+
+test('probability reciprocal is explicitly an estimate and absent probabilities remain unknown',()=>{
+ const q=insights.estimatedOdds({probability:80,probabilityType:'全贏'});
+ assert.equal(q.price,1.25);
+ assert.equal(q.kind,'estimate');
+ assert.equal(insights.estimatedOdds({probability:null}),null);
+ assert.equal(insights.estimatedOdds({probability:100}),null);
+ const selected=insights.parlayPrices([{id:'a',probability:80}],{},'2026-11-26 16:00');
+ assert.equal(selected.priced,0);
+});
