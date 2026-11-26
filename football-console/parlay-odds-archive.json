@@ -1,11 +1,15 @@
 {
   "2026-11-23|01:00|AC Milan|Frosinone|全場總進球大 1.5|串關單": {
-    "prices": {"compactstats": 1.12},
+    "prices": {
+      "compactstats": 1.12
+    },
     "capturedAt": "2026-11-22T15:03:00Z",
     "url": "https://compactstats.com/match/2026-11-22/ac-milan-v-frosinone/"
   },
   "2026-11-23|04:00|Getafe|Atlético Madrid|全場總進球小 4.0|串關單": {
-    "prices": {"bet365": 1.12},
+    "prices": {
+      "bet365": 1.12
+    },
     "capturedAt": "2026-11-16T02:41:30Z",
     "url": "https://footycheck.com/football/match/getafe-vs-atletico-madrid-2026-11-22/1570456/"
   },
@@ -572,5 +576,19 @@
       3,
       2
     ]
+  },
+  "2026-11-27|01:45|Olympiacos|Milan|全場總進球大 1.5|串關單": {
+    "prices": {
+      "1xbet": 1.25
+    },
+    "capturedAt": "2026-11-26T09:21:49Z",
+    "url": "https://tipsterarea.com/match/olympiacos-piraeus-milan-europa-league-group-stage-956981"
+  },
+  "2026-11-27|04:00|Juventus|Omonia Nicosia|全場總進球大 1.5|串關單": {
+    "prices": {
+      "1xbet": 1.09
+    },
+    "capturedAt": "2026-11-26T09:21:49Z",
+    "url": "https://tipsterarea.com/match/juventus-omonia-nicosia-europa-league-group-stage-956987"
   }
 }
