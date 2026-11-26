@@ -101,3 +101,12 @@ test('shared display retains real quotes and uses a labelled estimate only for m
  assert.equal(shown[2],null);
  assert.equal(insights.parlayProduct(shown),null);
 });
+
+test('estimated and observed quotes settle wins, pushes and half wins in a simulated parlay',()=>{
+ const prices=insights.displayOdds([{probability:50},{probability:80}],[{price:2,book:'1xbet'},null]);
+ assert.equal(insights.parlayNet(['win','win'],prices),1.15);
+ assert.equal(insights.parlayNet(['win','push'],prices),1);
+ assert.ok(Math.abs(insights.parlayNet(['win','halfwin'],prices)-1.075)<1e-10);
+ assert.equal(insights.parlayNet(['loss',null],[null,null]),-1);
+ assert.equal(insights.parlayNet(['win',null],prices),null);
+});
