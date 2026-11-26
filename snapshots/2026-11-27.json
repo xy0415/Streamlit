@@ -25,7 +25,24 @@
       "probabilityType": "命中",
       "publishedAt": "2026-11-26T08:08:59.000Z",
       "original": null,
-      "books": {}
+      "books": {
+        "1xbet": {
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.25,
+            "capturedAt": "2026-11-26T09:21:49.000Z",
+            "url": "https://tipsterarea.com/match/olympiacos-piraeus-milan-europa-league-group-stage-956981"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.25,
+            "capturedAt": "2026-11-26T09:21:49.000Z",
+            "url": "https://tipsterarea.com/match/olympiacos-piraeus-milan-europa-league-group-stage-956981"
+          }
+        }
+      }
     },
     "[\"2026-11-27\",\"04:00\",\"Juventus\",\"Omonia Nicosia\",\"全場總進球大 1.5\",\"串關單\"]": {
       "market": "全場總進球大 1.5",
@@ -34,7 +51,24 @@
       "probabilityType": "命中",
       "publishedAt": "2026-11-26T08:08:59.000Z",
       "original": null,
-      "books": {}
+      "books": {
+        "1xbet": {
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.09,
+            "capturedAt": "2026-11-26T09:21:49.000Z",
+            "url": "https://tipsterarea.com/match/juventus-omonia-nicosia-europa-league-group-stage-956987"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.09,
+            "capturedAt": "2026-11-26T09:21:49.000Z",
+            "url": "https://tipsterarea.com/match/juventus-omonia-nicosia-europa-league-group-stage-956987"
+          }
+        }
+      }
     },
     "[\"2026-11-27\",\"04:00\",\"Lyon\",\"Lillestrøm\",\"全場總進球小 4.0\",\"串關單\"]": {
       "market": "全場總進球小 4.0",
