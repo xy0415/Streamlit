@@ -1659,7 +1659,7 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
   const grades=legs.map(leg=>leg.verified?leg.grade:null);
   const net=review&&!odds.duplicate&&picks.length>=2&&(grades.includes('loss')||odds.product)?INSIGHTS.parlayNet(grades,odds.prices):null;
   const foot=odds.duplicate?'同場多關，無法以獨立賠率相乘':picks.length<2?'單場推薦':
-   hasEstimates?'估算為發布機率倒數，未含莊家水位及走盤／半贏半輸，非平台報價，不計入實價回測':
+   hasEstimates?'估算為發布機率倒數 × 0.86；非平台報價，未考量走盤／半贏半輸，不計入實價回測':
    odds.product?odds.commonBook?'':'跨平台參考，非單一平台串關報價':
    entry?.loading?'查詢賠率中…':entry?.status==='unavailable'?'賠率來源暫無資料':'賠率齊全後可計算（'+odds.priced+'／'+legs.length+' 關）';
   return '<article class="parlay-group"><header><h4>'+escapeHtml(group)+'</h4><span>'+legs.length+' 關'+status+'</span></header><ol>'+
@@ -1671,7 +1671,7 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
      '</strong></a>'+(!review?prematchAlert(p,eventForPrediction(p,fixtures)):'')+(shared.length?'<div class="search-meta">同場亦見於 '+escapeHtml(shared.join('、'))+'</div>':'')+
      '<a class="snapshot-link" href="'+escapeHtml(INSIGHTS.matchLink(p,review?'reviews':'predictions','snapshot'))+'">賽前快照</a>'+
      '</div><span class="parlay-market">'+escapeHtml(displayPredictionText(p,p.market))+'</span><div class="parlay-result"><strong>'+
-     (quote?formatOdds(quote):'—')+'</strong>'+(quote?'<small>'+escapeHtml(quote.kind==='estimate'?'估算 · '+quote.probability+'% 機率倒數':(quote.source||quote.book)+' · '+snapshotStamp(quote.capturedAt))+'</small>':'')+(review?'<small>'+(score?score.h+' : '+score.a+' · ':'')+
+     (quote?formatOdds(quote):'—')+'</strong>'+(quote?'<small>'+escapeHtml(quote.kind==='estimate'?'估算 · '+quote.probability+'% 機率倒數 × 0.86':(quote.source||quote.book)+' · '+snapshotStamp(quote.capturedAt))+'</small>':'')+(review?'<small>'+(score?score.h+' : '+score.a+' · ':'')+
      (gradeLabels[grade]||'待結算')+'</small>':'')+'</div></li>';
    }).join('')+'</ol><footer><span>'+foot+'</span><strong>'+(hasEstimates?'參考綜合賠率（含估算） ':'綜合賠率 ')+(displayProduct?displayProduct.toFixed(2):'—')+
    (net===null?'':' · 損益 '+signedUnits(net)+' 單位')+'</strong></footer></article>';
