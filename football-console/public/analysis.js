@@ -1667,7 +1667,7 @@ function renderParlayPanel(report=state.report,fixtures=state.reviewFixtures.con
      '</strong></a>'+(!review?prematchAlert(p,eventForPrediction(p,fixtures)):'')+(shared.length?'<div class="search-meta">同場亦見於 '+escapeHtml(shared.join('、'))+'</div>':'')+
      '<a class="snapshot-link" href="'+escapeHtml(INSIGHTS.matchLink(p,review?'reviews':'predictions','snapshot'))+'">賽前快照</a>'+
      '</div><span class="parlay-market">'+escapeHtml(displayPredictionText(p,p.market))+'</span><div class="parlay-result"><strong>'+
-     (quote?formatOdds(quote):'—')+'</strong>'+(review?'<small>'+(score?score.h+' : '+score.a+' · ':'')+
+     (quote?formatOdds(quote):'—')+'</strong>'+(quote?'<small>'+escapeHtml((quote.source||quote.book)+' · '+snapshotStamp(quote.capturedAt))+'</small>':'')+(review?'<small>'+(score?score.h+' : '+score.a+' · ':'')+
      (gradeLabels[grade]||'待結算')+'</small>':'')+'</div></li>';
    }).join('')+'</ol><footer><span>'+foot+'</span><strong>綜合賠率 '+(odds.product?odds.product.toFixed(2):'—')+
    (net===null?'':' · 損益 '+signedUnits(net)+' 單位')+'</strong></footer></article>';

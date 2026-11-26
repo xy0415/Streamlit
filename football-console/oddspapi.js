@@ -50,9 +50,11 @@ async function reportQuotes(report,picks,selection){
  }
  // OddsPapi allows one odds request per 500 ms.
  for(const [id,items] of events){
-  const data=await request('odds',{fixtureId:id,bookmakers:'1xbet',verbosity:3},60000);
-  const book=data?.bookmakerOdds?.['1xbet'];
-  if(book){
+  const data=await request('odds',{fixtureId:id,verbosity:3},60000);
+  const bookmakers=data?.bookmakerOdds||{};
+  for(const [slug,book] of Object.entries(bookmakers)){
+   const key=String(slug).toLowerCase().replace(/[^a-z0-9]/g,'');
+   if(!key||!book)continue;
    for(const pick of items){
     const wanted=selection(pick);
     const types={winner:'1x2',double:'doublechance',totals:'totals',btts:'bothteamsscore',handicap:'spreads'};
@@ -66,9 +68,9 @@ async function reportQuotes(report,picks,selection){
      const value=book.markets?.[market.marketId]?.outcomes?.[outcome?.outcomeId]?.players?.['0'];
      const at=Date.parse(value?.changedAt), kickoff=Date.parse(pick.date+'T'+pick.time+':00+08:00');
      if(value?.active!==true||!Number.isFinite(at)||at>=kickoff||at>now||!(Number(value.price)>1))continue;
-     quotes.push({book:'1xbet',source:'1xBet',price:Number(value.price),capturedAt:new Date(at).toISOString(),kind:'prematch',provider:'OddsPapi'});
+     quotes.push({book:key,source:key==='1xbet'?'1xBet':String(book.bookmakerName||slug),price:Number(value.price),capturedAt:new Date(at).toISOString(),kind:'prematch',provider:'OddsPapi'});
     }
-    if(quotes.length===1)result[pick.id]=quotes;
+    if(quotes.length===1)(result[pick.id]||= []).push(quotes[0]);
    }
   }
   await new Promise(resolve=>setTimeout(resolve,520));
@@ -76,3 +78,4 @@ async function reportQuotes(report,picks,selection){
  return result;
 }
 module.exports={reportQuotes,nameKey};
+

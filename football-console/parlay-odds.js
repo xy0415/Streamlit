@@ -120,7 +120,10 @@ async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes
  const without1xbet=picks.filter(p=>!legs[p.id]?.some(q=>q.book==='1xbet'));
  if(without1xbet.length){
   const liveQuotes=await oddspapi.reportQuotes(report,without1xbet,selection);
-  for(const [id,quotes] of Object.entries(liveQuotes))legs[id]=[...(legs[id]||[]),...quotes];
+  for(const [id,quotes] of Object.entries(liveQuotes)){
+   const existing=legs[id]||[];
+   legs[id]=[...existing,...quotes.filter(q=>!existing.some(old=>old.book===q.book))];
+  }
  }
  // User-provided price is a fallback when no verified bookmaker quote is available.
  for(const pick of picks){
@@ -155,3 +158,4 @@ async function reportOdds(report,provider=apiFootball,publicQuotes=tipsterQuotes
 }
 
 module.exports={reportOdds,matchFixture,quotesFor,teamKey};
+
