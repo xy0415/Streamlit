@@ -141,5 +141,11 @@
     return returns.reduce((product,net)=>product*(1+net),1)-1;
   }
 
-  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, marketLabel, matchLink, readMatchLink, originalOdds, oddsTimestamp, unitReturn, parlayStatus, parlayPrices, estimatedOdds, displayOdds, parlayProduct, parlayNet});
+  function usableResult(result) {
+    return !!result && ['settled','reference'].includes(result.status) &&
+      ['win','loss','halfwin','halfloss','push'].includes(result.grade) &&
+      Number.isInteger(result.h) && result.h >= 0 && Number.isInteger(result.a) && result.a >= 0;
+  }
+
+  root.FXIPredictionInsights = Object.freeze({marketLabels, marketType, marketLabel, matchLink, readMatchLink, originalOdds, oddsTimestamp, unitReturn, parlayStatus, parlayPrices, estimatedOdds, displayOdds, parlayProduct, parlayNet, usableResult});
 })(window);
