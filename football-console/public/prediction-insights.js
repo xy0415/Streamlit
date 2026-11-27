@@ -99,7 +99,7 @@
     const options=legs.map(leg=>[
       ...(leg.publishedOdds?[{...leg.publishedOdds,kind:'published',book:priceBook(leg.publishedOdds.source)}]:[]),
       ...(quotes[leg.id]||[])
-    ].filter(q=>Number.isFinite(Number(q?.price))&&Number(q.price)>1&&q.book)
+    ].filter(q=>Number.isFinite(Number(q?.price))&&Number(q.price)>1&&q.book&&q.book!=='manual'&&q.kind!=='estimate')
      .sort((a,b)=>Number(b.book==='1xbet')-Number(a.book==='1xbet')||
        Number(a.book==='manual')-Number(b.book==='manual')||
        Number(Date.parse(b.capturedAt)<=published)-Number(Date.parse(a.capturedAt)<=published)));
@@ -124,7 +124,7 @@
   }
 
   function displayOdds(legs, prices) {
-    return legs.map((leg, index) => prices[index] || estimatedOdds(leg));
+    return legs.map((leg, index) => prices[index]?.kind === 'estimate' ? null : (prices[index] || null));
   }
 
   function parlayProduct(prices) {

@@ -91,24 +91,15 @@ test('probability reciprocal is explicitly an estimate and absent probabilities 
  assert.equal(selected.priced,0);
 });
 
-test('shared display retains real quotes and uses a labelled estimate only for missing quotes',()=>{
+test('missing or estimated prices never enter displayed odds or profitable backtests',()=>{
  const legs=[{id:'a',probability:80},{id:'b',probability:50},{id:'c'}];
  const actual={price:1.3,book:'1xbet',source:'1xBet'};
- const shown=insights.displayOdds(legs,[actual,null,null]);
- assert.equal(shown[0],actual);
- assert.equal(shown[1].price,1.72);
- assert.equal(shown[1].kind,'estimate');
- assert.equal(shown[2],null);
+ const shown=insights.displayOdds(legs,[actual,null,{price:1.7,kind:'estimate'}]);
+ assert.deepEqual(shown,[actual,null,null]);
+ assert.equal(insights.parlayPrices([{id:'a'}],{a:[{price:1.5,book:'manual'}]},'').priced,0);
  assert.equal(insights.parlayProduct(shown),null);
-});
-
-test('estimated and observed quotes settle wins, pushes and half wins in a simulated parlay',()=>{
- const prices=insights.displayOdds([{probability:50},{probability:80}],[{price:2,book:'1xbet'},null]);
- assert.equal(insights.parlayNet(['win','win'],prices),1.15);
- assert.equal(insights.parlayNet(['win','push'],prices),1);
- assert.ok(Math.abs(insights.parlayNet(['win','halfwin'],prices)-1.075)<1e-10);
- assert.equal(insights.parlayNet(['loss',null],[null,null]),-1);
- assert.equal(insights.parlayNet(['win',null],prices),null);
+ assert.equal(insights.parlayNet(['win','win','win'],shown),null);
+ assert.equal(insights.parlayNet(['loss',null,null],shown),-1);
 });
 
 test('one-source final scores are usable but pending or conflicting data are not',()=>{

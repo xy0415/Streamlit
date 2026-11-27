@@ -1616,7 +1616,7 @@ function renderParlayHistory(){
   metric('淨損益',model.count?profit(model.profit):'—')+
   metric('累計報酬率',model.count?signedUnits(model.roi)+'%':'—',model.count?model.count+' 組已計入':'無可用樣本')+
   '</div>'+charts.parlayPlot(model.points)+
-  '<p class="history-explain">實價齊全 '+coverage+'／'+rows.length+' 組 · 單一來源比分與估算賠率均納入模擬回測；單一來源比分可能更正，結果可能變動'+(parlayHistoryLoading?' · 正在查詢':'')+'</p>'+
+  '<p class="history-explain">實價齊全 '+coverage+'／'+rows.length+' 組 · 缺少賽前賠率的未輸串關不計入；單一來源比分可能更正，結果可能變動'+(parlayHistoryLoading?' · 正在查詢':'')+'</p>'+
   (rows.length?'<div class="tablewrap"><table class="history-league-table"><thead><tr><th>日期</th><th>串關</th><th>綜合賠率</th><th>下注金額</th><th>損益</th><th>狀態</th></tr></thead><tbody>'+
    rows.map(r=>{
     const bet=model.bets.get(r);
