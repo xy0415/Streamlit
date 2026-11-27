@@ -15,6 +15,20 @@
             "price": 1.28,
             "capturedAt": "2026-11-27T08:02:00.000Z",
             "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          },
+          "first": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.28,
+            "capturedAt": "2026-11-27T12:00:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          },
+          "latest": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.28,
+            "capturedAt": "2026-11-27T12:00:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
           }
         },
         "betfair": {
@@ -23,6 +37,20 @@
             "source": "Betfair",
             "price": 1.29,
             "capturedAt": "2026-11-27T08:02:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          },
+          "first": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.29,
+            "capturedAt": "2026-11-27T12:00:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          },
+          "latest": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.29,
+            "capturedAt": "2026-11-27T12:00:00.000Z",
             "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
           }
         },
@@ -33,6 +61,20 @@
             "price": 1.27,
             "capturedAt": "2026-11-27T08:02:00.000Z",
             "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          },
+          "first": {
+            "book": "bwin",
+            "source": "bwin",
+            "price": 1.27,
+            "capturedAt": "2026-11-27T12:00:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          },
+          "latest": {
+            "book": "bwin",
+            "source": "bwin",
+            "price": 1.27,
+            "capturedAt": "2026-11-27T12:00:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
           }
         },
         "unibet": {
@@ -41,6 +83,20 @@
             "source": "Unibet",
             "price": 1.23,
             "capturedAt": "2026-11-27T08:02:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          },
+          "first": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.23,
+            "capturedAt": "2026-11-27T12:00:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          },
+          "latest": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.23,
+            "capturedAt": "2026-11-27T12:00:00.000Z",
             "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
           }
         }
