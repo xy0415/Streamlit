@@ -1,0 +1,68 @@
+{
+  "snapshots": {
+    "[\"2026-11-28\",\"03:45\",\"Brest\",\"Paris FC\",\"全場總進球大 1.5\",\"串關單\"]": {
+      "market": "全場總進球大 1.5",
+      "group": "串關單",
+      "probability": 79,
+      "probabilityType": "命中",
+      "publishedAt": "2026-11-27T08:08:57.000Z",
+      "original": null,
+      "books": {
+        "1xbet": {
+          "baseline": {
+            "book": "1xbet",
+            "source": "1xBet",
+            "price": 1.28,
+            "capturedAt": "2026-11-27T04:04:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          }
+        },
+        "betfair": {
+          "baseline": {
+            "book": "betfair",
+            "source": "Betfair",
+            "price": 1.25,
+            "capturedAt": "2026-11-27T04:04:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          }
+        },
+        "bwin": {
+          "baseline": {
+            "book": "bwin",
+            "source": "bwin",
+            "price": 1.27,
+            "capturedAt": "2026-11-27T04:04:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          }
+        },
+        "unibet": {
+          "baseline": {
+            "book": "unibet",
+            "source": "Unibet",
+            "price": 1.23,
+            "capturedAt": "2026-11-27T04:04:00.000Z",
+            "url": "https://tipsterarea.com/match/brest-paris-fc-ligue-1-france-957050"
+          }
+        }
+      }
+    },
+    "[\"2026-11-28\",\"04:00\",\"Nottingham Forest\",\"Chelsea\",\"全場總進球小 4.0\",\"串關單\"]": {
+      "market": "全場總進球小 4.0",
+      "group": "串關單",
+      "probability": 78,
+      "probabilityType": "全贏",
+      "publishedAt": "2026-11-27T08:08:57.000Z",
+      "original": null,
+      "books": {}
+    },
+    "[\"2026-11-28\",\"21:00\",\"Real Betis\",\"Rayo Vallecano\",\"全場總進球小 4.0\",\"串關單\"]": {
+      "market": "全場總進球小 4.0",
+      "group": "串關單",
+      "probability": 76,
+      "probabilityType": "全贏",
+      "publishedAt": "2026-11-27T08:08:57.000Z",
+      "original": null,
+      "books": {}
+    }
+  }
+}
